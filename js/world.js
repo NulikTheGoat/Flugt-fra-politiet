@@ -733,6 +733,9 @@ export function updateBuildingChunks(delta) {
                                     (Math.random() - 0.5) * 0.5
                                  );
 
+                                 // Create building debris particles based on speed
+                                 createBuildingDebris(chunk.position, chunk.material.color, carSpeed);
+                                 
                                  gameState.speed *= 0.95; 
                                  takeDamage(Math.floor(carSpeed * 0.1) + 5);
                                  gameState.screenShake = 0.3;
@@ -945,6 +948,162 @@ function createTreeDebris(position, carSpeed) {
         if (!gameState.smallDebris) gameState.smallDebris = [];
         gameState.smallDebris.push(leaf);
     }
+}
+
+// Create building debris (concrete chunks, glass shards, dust particles)
+function createBuildingDebris(position, buildingColor, carSpeed) {
+    const impactX = Math.sin(playerCar?.rotation.y || 0);
+    const impactZ = Math.cos(playerCar?.rotation.y || 0);
+    
+    // Number of debris based on speed
+    const numChunks = Math.min(15, 4 + Math.floor(carSpeed / 5));
+    
+    // Concrete/brick chunks
+    const chunkColor = buildingColor || new THREE.Color(0x8D6E63);
+    for (let i = 0; i < numChunks; i++) {
+        const size = 1 + Math.random() * 4;
+        const chunkGeometry = new THREE.BoxGeometry(
+            size * (0.5 + Math.random()),
+            size * (0.5 + Math.random()),
+            size * (0.5 + Math.random())
+        );
+        // Slightly vary the color for each chunk
+        const variedColor = chunkColor.clone();
+        variedColor.offsetHSL(0, (Math.random() - 0.5) * 0.1, (Math.random() - 0.5) * 0.2);
+        const chunkMaterial = new THREE.MeshLambertMaterial({ color: variedColor });
+        const chunk = new THREE.Mesh(chunkGeometry, chunkMaterial);
+        
+        chunk.position.copy(position);
+        chunk.position.y += Math.random() * 20;
+        chunk.position.x += (Math.random() - 0.5) * 15;
+        chunk.position.z += (Math.random() - 0.5) * 15;
+        
+        chunk.rotation.set(
+            Math.random() * Math.PI,
+            Math.random() * Math.PI,
+            Math.random() * Math.PI
+        );
+        
+        // Spread pattern based on impact
+        const spreadAngle = Math.random() * Math.PI * 2;
+        const spreadForce = 3 + Math.random() * carSpeed * 0.4;
+        
+        chunk.userData = {
+            isSmallDebris: true,
+            velocity: new THREE.Vector3(
+                impactX * carSpeed * 0.25 + Math.sin(spreadAngle) * spreadForce,
+                3 + Math.random() * (carSpeed * 0.3),
+                impactZ * carSpeed * 0.25 + Math.cos(spreadAngle) * spreadForce
+            ),
+            rotVelocity: new THREE.Vector3(
+                (Math.random() - 0.5) * 0.8,
+                (Math.random() - 0.5) * 0.8,
+                (Math.random() - 0.5) * 0.8
+            ),
+            width: size,
+            height: size,
+            depth: size,
+            lifetime: 250 + Math.floor(Math.random() * 150),
+            gravity: 0.35
+        };
+        
+        scene.add(chunk);
+        gameState.activeChunks.push(chunk);
+        if (!gameState.smallDebris) gameState.smallDebris = [];
+        gameState.smallDebris.push(chunk);
+    }
+    
+    // Glass shards (if building has windows)
+    const numShards = Math.min(8, 2 + Math.floor(carSpeed / 8));
+    for (let i = 0; i < numShards; i++) {
+        const shardGeometry = new THREE.BoxGeometry(
+            0.5 + Math.random() * 2,
+            0.2,
+            0.5 + Math.random() * 2
+        );
+        const shardMaterial = new THREE.MeshBasicMaterial({ 
+            color: Math.random() > 0.3 ? 0x90CAF9 : 0xE3F2FD,
+            transparent: true,
+            opacity: 0.7
+        });
+        const shard = new THREE.Mesh(shardGeometry, shardMaterial);
+        
+        shard.position.copy(position);
+        shard.position.y += 10 + Math.random() * 30;
+        shard.position.x += (Math.random() - 0.5) * 20;
+        shard.position.z += (Math.random() - 0.5) * 20;
+        
+        shard.rotation.set(
+            Math.random() * Math.PI,
+            Math.random() * Math.PI,
+            Math.random() * Math.PI
+        );
+        
+        shard.userData = {
+            isSmallDebris: true,
+            velocity: new THREE.Vector3(
+                (Math.random() - 0.5) * 12,
+                2 + Math.random() * 6,
+                (Math.random() - 0.5) * 12
+            ),
+            rotVelocity: new THREE.Vector3(
+                (Math.random() - 0.5) * 1.2,
+                (Math.random() - 0.5) * 1.2,
+                (Math.random() - 0.5) * 1.2
+            ),
+            width: 1.5,
+            height: 0.2,
+            depth: 1.5,
+            lifetime: 180 + Math.floor(Math.random() * 100),
+            gravity: 0.25
+        };
+        
+        scene.add(shard);
+        gameState.activeChunks.push(shard);
+        if (!gameState.smallDebris) gameState.smallDebris = [];
+        gameState.smallDebris.push(shard);
+    }
+    
+    // Dust particles
+    const numDust = Math.min(10, 3 + Math.floor(carSpeed / 6));
+    for (let i = 0; i < numDust; i++) {
+        const dustGeometry = new THREE.SphereGeometry(1 + Math.random() * 2, 6, 6);
+        const dustMaterial = new THREE.MeshBasicMaterial({ 
+            color: 0x9E9E9E,
+            transparent: true,
+            opacity: 0.4 + Math.random() * 0.3
+        });
+        const dust = new THREE.Mesh(dustGeometry, dustMaterial);
+        
+        dust.position.copy(position);
+        dust.position.y += Math.random() * 15;
+        dust.position.x += (Math.random() - 0.5) * 10;
+        dust.position.z += (Math.random() - 0.5) * 10;
+        
+        dust.userData = {
+            isSmallDebris: true,
+            isDust: true,
+            velocity: new THREE.Vector3(
+                impactX * carSpeed * 0.15 + (Math.random() - 0.5) * 5,
+                1 + Math.random() * 3,
+                impactZ * carSpeed * 0.15 + (Math.random() - 0.5) * 5
+            ),
+            rotVelocity: new THREE.Vector3(0, 0, 0),
+            width: 2,
+            height: 2,
+            depth: 2,
+            lifetime: 120 + Math.floor(Math.random() * 80),
+            gravity: -0.02 // Dust rises slightly then dissipates
+        };
+        
+        scene.add(dust);
+        gameState.activeChunks.push(dust);
+        if (!gameState.smallDebris) gameState.smallDebris = [];
+        gameState.smallDebris.push(dust);
+    }
+    
+    // Create sparks on impact
+    createDebrisSparks(position, Math.min(6, Math.floor(carSpeed / 5)));
 }
 
 // Shatter fallen debris into smaller pieces
