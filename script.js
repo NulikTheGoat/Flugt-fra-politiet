@@ -54,7 +54,15 @@ const gameState = {
     sparks: [],
     baseFOV: 75,
     currentFOV: 75,
-    screenShake: 0
+    screenShake: 0,
+    // New physics variables
+    velocityX: 0,
+    velocityZ: 0,
+    angularVelocity: 0,
+    driftFactor: 0,
+    tireMarks: [],
+    carTilt: 0,
+    wheelAngle: 0
 };
 
 // Helper function to darken a hex color
@@ -158,7 +166,8 @@ const DOM = {
     gameOverMoney: document.getElementById('gameOverMoney'),
     shop: document.getElementById('shop'),
     shopMoney: document.getElementById('shopMoney'),
-    carList: document.getElementById('carList')
+    carList: document.getElementById('carList'),
+    driftIndicator: document.getElementById('driftIndicator')
 };
 
 // Shared Geometries and Materials (reduce memory and GC)
@@ -727,6 +736,61 @@ if (!document.getElementById('damageFlashStyle')) {
     document.head.appendChild(style);
 }
 
+// Shared geometry for tire marks
+const tireMarkGeometry = new THREE.PlaneGeometry(3, 8);
+const tireMarkMaterial = new THREE.MeshBasicMaterial({ 
+    color: 0x111111, 
+    transparent: true, 
+    opacity: 0.7,
+    side: THREE.DoubleSide
+});
+
+// Create tire mark on ground
+function createTireMark(x, z, rotation) {
+    // Limit tire marks for performance
+    if (gameState.tireMarks.length > 100) {
+        const oldMark = gameState.tireMarks.shift();
+        scene.remove(oldMark);
+    }
+    
+    // Create two marks for rear wheels
+    const wheelOffset = 10;
+    [-1, 1].forEach(side => {
+        const mark = new THREE.Mesh(tireMarkGeometry, tireMarkMaterial.clone());
+        mark.rotation.x = -Math.PI / 2;
+        mark.rotation.z = rotation;
+        mark.position.set(
+            x + Math.cos(rotation) * wheelOffset * side,
+            0.12, // Just above ground
+            z - Math.sin(rotation) * wheelOffset * side
+        );
+        mark.userData = {
+            spawnTime: Date.now(),
+            lifetime: 5000 // Fade over 5 seconds
+        };
+        scene.add(mark);
+        gameState.tireMarks.push(mark);
+    });
+}
+
+// Update tire marks (fade out)
+function updateTireMarks(delta) {
+    const now = Date.now();
+    for (let i = gameState.tireMarks.length - 1; i >= 0; i--) {
+        const mark = gameState.tireMarks[i];
+        const age = now - mark.userData.spawnTime;
+        
+        if (age > mark.userData.lifetime) {
+            scene.remove(mark);
+            gameState.tireMarks.splice(i, 1);
+            continue;
+        }
+        
+        // Fade out
+        mark.material.opacity = 0.7 * (1 - age / mark.userData.lifetime);
+    }
+}
+
 // Create spark particle
 function createSpark() {
     const spark = new THREE.Mesh(sparkGeometry, sharedMaterials.spark);
@@ -945,6 +1009,14 @@ function updateHUD(policeDistance) {
     } else {
         DOM.speedFill.style.background = 'linear-gradient(to right, #00ff00, #ffff00, #ff0000)';
     }
+    
+    // Drift indicator
+    if (gameState.driftFactor > 0.3) {
+        DOM.driftIndicator.style.display = 'block';
+        DOM.driftIndicator.style.opacity = Math.min(1, gameState.driftFactor * 1.5);
+    } else {
+        DOM.driftIndicator.style.display = 'none';
+    }
 
     // Update time and money
     const elapsedSeconds = Math.floor((Date.now() - gameState.startTime) / 1000);
@@ -1161,33 +1233,91 @@ function animate() {
     lastTime = now;
 
     if (!gameState.arrested) {
-        // Player controls
+        const handling = gameState.handling || 0.05;
+        const absSpeed = Math.abs(gameState.speed);
+        const speedRatio = absSpeed / gameState.maxSpeed;
+        
+        // Steering input
+        let steerInput = 0;
+        if (keys['a'] || keys['arrowleft']) steerInput = 1;
+        if (keys['d'] || keys['arrowright']) steerInput = -1;
+        
+        // Acceleration/braking
         if (keys['w'] || keys['arrowup']) {
-            gameState.speed = Math.min(gameState.speed + gameState.acceleration, gameState.maxSpeed);
+            // Traction-limited acceleration (less grip at high speed)
+            const tractionFactor = 1 - (speedRatio * 0.3);
+            gameState.speed = Math.min(gameState.speed + gameState.acceleration * tractionFactor * delta, gameState.maxSpeed);
         }
         if (keys['s'] || keys['arrowdown']) {
-            gameState.speed = Math.max(gameState.speed - gameState.acceleration, -gameState.maxReverseSpeed);
+            if (gameState.speed > 0) {
+                // Braking
+                gameState.speed = Math.max(0, gameState.speed - gameState.acceleration * 2 * delta);
+            } else {
+                // Reversing
+                gameState.speed = Math.max(gameState.speed - gameState.acceleration * 0.5 * delta, -gameState.maxReverseSpeed);
+            }
         }
-        if (keys[' ']) {
-            gameState.speed *= gameState.brakePower;
+        
+        // Handbrake drift
+        const isHandbraking = keys[' '];
+        if (isHandbraking) {
+            gameState.speed *= Math.pow(gameState.brakePower, delta);
+            gameState.driftFactor = Math.min(gameState.driftFactor + 0.1 * delta, 0.9); // Increase drift
+        } else {
+            gameState.driftFactor = Math.max(gameState.driftFactor - 0.05 * delta, 0); // Recover grip
         }
-        if (keys['a'] || keys['arrowleft']) {
-            playerCar.rotation.y += (gameState.handling || 0.05);
-        }
-        if (keys['d'] || keys['arrowright']) {
-            playerCar.rotation.y -= (gameState.handling || 0.05);
-        }
-
+        
+        // Steering - reduced at high speed, increased when drifting
+        const steerStrength = handling * (1 - speedRatio * 0.4) * (1 + gameState.driftFactor * 0.5);
+        const targetAngularVelocity = steerInput * steerStrength * (absSpeed / 20); // Need speed to turn
+        
+        // Smooth angular velocity (momentum)
+        gameState.angularVelocity += (targetAngularVelocity - gameState.angularVelocity) * 0.15 * delta;
+        gameState.angularVelocity *= 0.92; // Angular friction
+        
+        // Apply rotation
+        playerCar.rotation.y += gameState.angularVelocity * delta;
+        
+        // Calculate forward and sideways directions
+        const forwardX = Math.sin(playerCar.rotation.y);
+        const forwardZ = Math.cos(playerCar.rotation.y);
+        
+        // Velocity with drift physics
+        const grip = 1 - gameState.driftFactor;
+        const targetVelX = forwardX * gameState.speed;
+        const targetVelZ = forwardZ * gameState.speed;
+        
+        // Blend between current velocity and target (grip determines how quickly we align)
+        gameState.velocityX += (targetVelX - gameState.velocityX) * (0.1 + grip * 0.15) * delta;
+        gameState.velocityZ += (targetVelZ - gameState.velocityZ) * (0.1 + grip * 0.15) * delta;
+        
         // Apply friction
         gameState.speed *= Math.pow(gameState.friction, delta);
+        gameState.velocityX *= Math.pow(0.98, delta);
+        gameState.velocityZ *= Math.pow(0.98, delta);
 
         // Apply slow effect if active
         const slowMultiplier = gameState.slowEffect > 0 ? (1 - gameState.slowEffect) : 1;
 
-        // Move player car (apply delta for consistent speed)
-        const moveAmount = gameState.speed * delta * slowMultiplier;
-        playerCar.position.z += Math.cos(playerCar.rotation.y) * moveAmount;
-        playerCar.position.x += Math.sin(playerCar.rotation.y) * moveAmount;
+        // Move player car using velocity
+        playerCar.position.x += gameState.velocityX * delta * slowMultiplier;
+        playerCar.position.z += gameState.velocityZ * delta * slowMultiplier;
+        
+        // Visual wheel steering
+        gameState.wheelAngle = steerInput * 0.4;
+        
+        // Car body tilt (lean into turns)
+        const targetTilt = -gameState.angularVelocity * speedRatio * 0.3;
+        gameState.carTilt += (targetTilt - gameState.carTilt) * 0.1 * delta;
+        playerCar.rotation.z = gameState.carTilt;
+        
+        // Create tire marks when drifting
+        if (gameState.driftFactor > 0.3 && absSpeed > 20) {
+            createTireMark(playerCar.position.x, playerCar.position.z, playerCar.rotation.y);
+        }
+        
+        // Update tire marks
+        updateTireMarks(delta);
 
         // Boundaries
         const boundary = 2000;
