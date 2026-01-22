@@ -50,9 +50,9 @@ const wss = new WebSocketServer({ port: WS_PORT });
 // Game rooms storage
 const rooms = new Map();
 
-// Generate random room code
+// Generate room code (hardcoded for easy testing)
 function generateRoomCode() {
-    return Math.random().toString(36).substring(2, 8).toUpperCase();
+    return 'JAJA';
 }
 
 // Broadcast to all players in a room except sender
