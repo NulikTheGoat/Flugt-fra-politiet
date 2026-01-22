@@ -111,13 +111,31 @@ You'll see something like:
 
 Give the **Network URL** (like `http://192.168.1.100:3000`) to your friends on the same WiFi/LAN.
 
-#### Step 4: Host or Join
+#### Step 4: Host creates a room
 
-1. Click "KØR NU" (Play Now)
-2. Choose **HOST MULTIPLAYER** to create a room
-3. Share the **room code** with friends
-4. Friends click **JOIN MULTIPLAYER** and enter the code
-5. Host clicks **START SPIL** when everyone is ready!
+**On the HOST computer (the one running the server):**
+1. Open browser and go to `http://localhost:3000`
+2. Click "KØR NU" (Play Now)
+3. Choose **HOST MULTIPLAYER**
+4. You'll see a **6-letter room code** (like `ABC123`)
+5. Tell your friends the room code!
+
+#### Step 5: Friends join the room
+
+**On EACH FRIEND'S computer:**
+1. Open browser and go to the **Network URL** (e.g. `http://192.168.1.100:3000`)
+   - ⚠️ NOT localhost! Use the IP address the host shared with you
+2. Click "KØR NU" (Play Now)
+3. Choose **JOIN MULTIPLAYER**
+4. Enter your name
+5. Type the **room code** the host gave you
+6. Click **JOIN SPIL**
+
+#### Step 6: Start the game
+
+Once everyone has joined:
+- Host sees all players in the lobby
+- Host clicks **START SPIL** to begin!
 
 #### Multiplayer Features:
 - 👥 Up to 4 players per room
