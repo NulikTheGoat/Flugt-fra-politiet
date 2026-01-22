@@ -734,41 +734,88 @@ function renderShop() {
     carList.innerHTML = '';
 
     Object.entries(cars).forEach(([key, car]) => {
-        const owned = localStorage.getItem(`car_${key}`) === 'true';
+        const owned = localStorage.getItem(`car_${key}`) === 'true' || key === 'standard';
         const isSelected = gameState.selectedCar === key;
+        const canAfford = gameState.totalMoney >= car.price;
         
         const carCard = document.createElement('div');
-        carCard.className = `carCard ${owned ? 'owned' : ''} ${isSelected ? 'owned' : ''}`;
         
-        // Adjust prices if needed based on new economy, or just keep as is for now
+        // Base classes
+        let classes = ['carCard'];
+        if (owned) classes.push('owned');
+        if (isSelected) classes.push('selected');
+        if (!owned) {
+            if (canAfford) classes.push('affordable');
+            else classes.push('expensive');
+        }
+        carCard.className = classes.join(' ');
+
+        // Visualizing Stats (normalized approx)
+        const maxSpeedPct = Math.min((car.maxSpeed / 160) * 100, 100); 
+        const accelPct = Math.min((car.acceleration / 0.8) * 100, 100);
+        const handlePct = Math.min((car.handling / 0.15) * 100, 100);
+        
+        const colorHex = '#' + car.color.toString(16).padStart(6, '0');
+
+        let actionText = '';
+        if (isSelected) actionText = 'VALGT';
+        else if (owned) actionText = 'VÆLG';
+        else if (canAfford) actionText = 'KØB';
+        else actionText = 'LÅST';
+
         carCard.innerHTML = `
+            <div class="car-preview-box">
+                <div class="car-model-icon" style="background-color: ${colorHex}"></div>
+            </div>
+            
             <h3>${car.name}</h3>
-            <p>Max hastighed: ${car.maxSpeed} km/t</p>
-            <p>Acceleration: ${(car.acceleration * 100).toFixed(0)}%</p>
-            <p>Håndtering: ${(car.handling * 100).toFixed(0)}%</p>
-            <div class="price">${car.price > 0 ? car.price + 'kr' : 'INKLUDERET'}</div>
+            
+            <div class="stats-container">
+                <div class="stat-row">
+                    <span class="stat-label">Fart</span>
+                    <div class="stat-bar-bg"><div class="stat-bar-fill" style="width: ${maxSpeedPct}%"></div></div>
+                </div>
+                <div class="stat-row">
+                    <span class="stat-label">Acc</span>
+                    <div class="stat-bar-bg"><div class="stat-bar-fill" style="width: ${accelPct}%"></div></div>
+                </div>
+                <div class="stat-row">
+                    <span class="stat-label">Styr</span>
+                    <div class="stat-bar-bg"><div class="stat-bar-fill" style="width: ${handlePct}%"></div></div>
+                </div>
+            </div>
+
+            <div class="card-footer">
+                <span class="price-tag">${car.price > 0 ? car.price + ' kr' : 'GRATIS'}</span>
+                <span class="action-indicator">${actionText}</span>
+            </div>
         `;
 
         carCard.addEventListener('click', () => {
-            if (owned || key === 'standard') {
+            if (owned) {
                 gameState.selectedCar = key;
-                const car = cars[key];
-                gameState.maxSpeed = car.maxSpeed;
-                gameState.acceleration = car.acceleration;
+                updateCarStats(key);
                 renderShop();
-            } else if (gameState.totalMoney >= car.price) {
-                gameState.totalMoney -= car.price;
-                localStorage.setItem(`car_${key}`, 'true');
-                gameState.selectedCar = key;
-                const car = cars[key];
-                gameState.maxSpeed = car.maxSpeed;
-                gameState.acceleration = car.acceleration;
-                renderShop();
+            } else if (canAfford) {
+                if(confirm(`Køb ${car.name} for ${car.price}kr?`)) {
+                    gameState.totalMoney -= car.price;
+                    localStorage.setItem(`car_${key}`, 'true');
+                    gameState.selectedCar = key;
+                    updateCarStats(key);
+                    renderShop();
+                }
             }
         });
 
         carList.appendChild(carCard);
     });
+}
+
+function updateCarStats(key) {
+    const car = cars[key];
+    gameState.maxSpeed = car.maxSpeed;
+    gameState.acceleration = car.acceleration;
+    gameState.handling = car.handling;
 }
 
 function startGame() {
@@ -815,10 +862,10 @@ function animate() {
             gameState.speed *= gameState.brakePower;
         }
         if (keys['a'] || keys['arrowleft']) {
-            playerCar.rotation.y += 0.05;
+            playerCar.rotation.y += (gameState.handling || 0.05);
         }
         if (keys['d'] || keys['arrowright']) {
-            playerCar.rotation.y -= 0.05;
+            playerCar.rotation.y -= (gameState.handling || 0.05);
         }
 
         // Apply friction

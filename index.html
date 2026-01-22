@@ -132,123 +132,262 @@
             left: 0;
             width: 100%;
             height: 100%;
-            background: rgba(0, 0, 0, 0.95);
+            background: rgba(10, 10, 16, 0.98); /* Dark background */
             z-index: 300;
             display: none;
             flex-direction: column;
-            justify-content: center;
             align-items: center;
-            padding: 20px;
+            padding: 40px 20px;
+            backdrop-filter: blur(10px);
         }
 
         #shopContent {
-            text-align: center;
-            color: #00ff00;
-            max-width: 1000px;
+            width: 100%;
+            max-width: 1200px;
+            display: flex;
+            flex-direction: column;
+            height: 100%;
         }
 
-        #shopContent h1 {
-            font-size: 40px;
+        #shopHeader {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
             margin-bottom: 30px;
+            padding-bottom: 20px;
+            border-bottom: 2px solid #333;
+        }
+
+        #shopHeader h1 {
+            font-size: 32px;
+            color: #fff;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            margin: 0;
+            font-style: italic;
         }
 
         #moneyDisplay {
             font-size: 24px;
-            margin-bottom: 20px;
             color: #ffdd44;
+            font-family: monospace;
+            background: rgba(255, 221, 68, 0.1);
+            padding: 10px 20px;
+            border-radius: 8px;
+            border: 1px solid #ffdd44;
         }
 
         #carList {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-            gap: 20px;
-            margin-bottom: 30px;
-            max-height: 500px;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 25px;
             overflow-y: auto;
-            padding-right: 15px;
-            border: 1px solid #00ff00;
-            padding: 20px;
-            border-radius: 10px;
+            padding: 10px;
+            flex-grow: 1;
         }
 
         #carList::-webkit-scrollbar {
-            width: 12px;
+            width: 8px;
         }
-
         #carList::-webkit-scrollbar-track {
-            background: rgba(0, 0, 0, 0.3);
-            border-radius: 10px;
+            background: #1a1a1a;
         }
-
         #carList::-webkit-scrollbar-thumb {
-            background: #00ff00;
-            border-radius: 10px;
+            background: #444;
+            border-radius: 4px;
         }
-
         #carList::-webkit-scrollbar-thumb:hover {
-            background: #00cc00;
+            background: #00ff00;
         }
 
         .carCard {
-            background: rgba(50, 50, 50, 0.8);
-            border: 2px solid #00ff00;
+            background: #1e1e24;
+            border: 1px solid #333;
+            border-radius: 12px;
             padding: 20px;
-            border-radius: 10px;
-            cursor: pointer;
-            transition: all 0.3s;
+            transition: all 0.2s cubic-bezier(0.25, 0.8, 0.25, 1);
+            position: relative;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
         }
 
         .carCard:hover {
-            border-color: #ffff00;
-            background: rgba(80, 80, 80, 0.9);
-            transform: scale(1.05);
+            transform: translateY(-5px);
+            box-shadow: 0 10px 20px rgba(0,0,0,0.5);
+            border-color: #555;
         }
+
+        /* Car Preview */
+        .car-preview-box {
+            height: 100px;
+            border-radius: 8px;
+            background: #2a2a30;
+            position: relative;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            box-shadow: inset 0 0 20px rgba(0,0,0,0.5);
+        }
+        
+        .car-model-icon {
+            width: 60px;
+            height: 30px;
+            border-radius: 4px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.4);
+            position: relative;
+        }
+        /* Add wheels to icon */
+        .car-model-icon::before, .car-model-icon::after {
+            content: '';
+            position: absolute;
+            width: 10px;
+            height: 10px;
+            background: black;
+            bottom: -5px;
+            border-radius: 50%;
+        }
+        .car-model-icon::before { left: 5px; }
+        .car-model-icon::after { right: 5px; }
 
         .carCard h3 {
-            color: #ffdd44;
-            font-size: 20px;
-            margin-bottom: 10px;
+            color: #fff;
+            margin: 0;
+            font-size: 1.4rem;
+            text-align: left;
+            text-transform: uppercase;
+            font-style: italic;
         }
 
-        .carCard p {
-            color: #00ff00;
-            margin: 5px 0;
-            font-size: 14px;
+        /* Stats Bars */
+        .stats-container {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
         }
 
-        .carCard .price {
-            color: #ff0000;
-            font-size: 18px;
-            margin-top: 15px;
+        .stat-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 0.8rem;
+            color: #aaa;
             font-weight: bold;
         }
-
-        .carCard.owned {
-            border-color: #00ff00;
-            background: rgba(0, 100, 0, 0.3);
+        
+        .stat-label {
+            width: 40px;
         }
 
-        .carCard.owned .price {
+        .stat-bar-bg {
+            flex-grow: 1;
+            height: 6px;
+            background: #333;
+            border-radius: 3px;
+            overflow: hidden;
+        }
+
+        .stat-bar-fill {
+            height: 100%;
+            background: #00ff00;
+            border-radius: 3px;
+            width: 0%; /* Default */
+        }
+
+        /* Status & Price */
+        .card-footer {
+            margin-top: auto;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-top: 1px solid #333;
+            padding-top: 15px;
+        }
+
+        .price-tag {
+            color: #fff;
+            font-weight: bold;
+            font-size: 1.1rem;
+        }
+        
+        .action-indicator {
+            padding: 8px 16px;
+            border-radius: 6px;
+            font-size: 0.85rem;
+            font-weight: bold;
+            text-transform: uppercase;
+            transition: all 0.2s;
+        }
+
+        /* Logic States */
+        
+        /* Owned State */
+        .carCard.owned {
+            border-color: #444;
+        }
+        .carCard.owned .action-indicator {
+            background: #333;
+            color: #fff;
+        }
+
+        /* Selected State */
+        .carCard.selected {
+            border-color: #ffff00;
+            box-shadow: 0 0 15px rgba(255, 255, 0, 0.2);
+            background: linear-gradient(180deg, #1e1e24 0%, #2e2e1a 100%);
+        }
+        .carCard.selected .action-indicator {
+            background: #ffff00;
+            color: #000;
+        }
+
+        /* Affordable */
+        .carCard.affordable:not(.owned):not(.selected) {
+            border-color: #00ff00;
+            cursor: pointer;
+        }
+        .carCard.affordable:not(.owned):not(.selected) .action-indicator {
+            background: #00ff00;
+            color: #000;
+        }
+        .carCard.affordable:not(.owned):not(.selected) .price-tag {
             color: #00ff00;
         }
 
-        .carCard.owned .price::after {
-            content: " (EJET)";
+        /* Too Expensive */
+        .carCard.expensive:not(.owned) {
+            opacity: 0.6;
+            cursor: not-allowed;
+            border-color: #552222;
+        }
+        .carCard.expensive:not(.owned) .action-indicator {
+            background: #333;
+            color: #666;
+        }
+        .carCard.expensive:not(.owned) .price-tag {
+            color: #ff5555;
         }
 
         #playBtn {
-            padding: 15px 40px;
-            font-size: 20px;
+            padding: 15px 60px;
+            font-size: 24px;
             background: #00ff00;
             color: #000;
             border: none;
-            border-radius: 5px;
+            border-radius: 8px;
             cursor: pointer;
             font-weight: bold;
+            text-transform: uppercase;
+            transition: transform 0.1s, box-shadow 0.1s;
+            box-shadow: 0 0 20px rgba(0, 255, 0, 0.4);
+            margin-top: 20px;
         }
 
         #playBtn:hover {
             background: #00cc00;
+            transform: scale(1.05);
+            box-shadow: 0 0 30px rgba(0, 255, 0, 0.6);
         }
     </style>
 </head>
@@ -290,10 +429,14 @@
 
     <div id="shop">
         <div id="shopContent">
-            <h1>🛒 BILSHOP 🛒</h1>
-            <div id="moneyDisplay">Dine penge: <span id="shopMoney">0</span>kr</div>
+            <div id="shopHeader">
+                <h1>Garage & Shop</h1>
+                <div id="moneyDisplay"><span id="shopMoney">0</span> KR</div>
+            </div>
             <div id="carList"></div>
-            <button id="playBtn" onclick="startGame()">Spil igen</button>
+            <div style="text-align: center; margin-top: 20px;">
+                 <button id="playBtn" onclick="startGame()">KØR NU</button>
+            </div>
         </div>
     </div>
 
