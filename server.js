@@ -1,4 +1,5 @@
 // LAN Multiplayer Server for Flugt fra Politiet
+// Persistent "floating" server - always running, anyone can join
 const http = require('http');
 const fs = require('fs');
 const path = require('path');
@@ -6,6 +7,9 @@ const { WebSocketServer } = require('ws');
 
 const PORT = 3000;
 const WS_PORT = 3001;
+
+// Default room code - always available
+const DEFAULT_ROOM = 'SPIL';
 
 // Simple HTTP server for static files
 const httpServer = http.createServer((req, res) => {
@@ -50,9 +54,32 @@ const wss = new WebSocketServer({ port: WS_PORT });
 // Game rooms storage
 const rooms = new Map();
 
-// Generate room code (hardcoded for easy testing)
-function generateRoomCode() {
-    return 'JAJA';
+// Player colors
+const playerColors = [0xff0000, 0x0066ff, 0x00ff00, 0xffaa00];
+
+// Initialize the default room on startup
+function initDefaultRoom() {
+    rooms.set(DEFAULT_ROOM, {
+        hostId: null,
+        players: new Map(),
+        gameStarted: false,
+        gameState: null,
+        gameConfig: {
+            touchArrest: true,
+            dropInEnabled: true
+        }
+    });
+    console.log(`📦 Default room '${DEFAULT_ROOM}' created and ready for players`);
+}
+
+// Get next available color for a room
+function getNextColor(room) {
+    const usedColors = new Set();
+    room.players.forEach(p => usedColors.add(p.color));
+    for (const color of playerColors) {
+        if (!usedColors.has(color)) return color;
+    }
+    return 0xffffff; // Fallback white
 }
 
 // Broadcast to all players in a room except sender
@@ -81,6 +108,31 @@ function broadcastToAll(roomCode, message) {
     });
 }
 
+// Assign new host when current host leaves
+function assignNewHost(room, roomCode) {
+    if (room.players.size === 0) {
+        room.hostId = null;
+        room.gameStarted = false;
+        console.log(`🔄 Room ${roomCode} reset (no players)`);
+        return;
+    }
+    
+    const newHostId = room.players.keys().next().value;
+    room.hostId = newHostId;
+    const newHost = room.players.get(newHostId);
+    if (newHost) {
+        newHost.isHost = true;
+        
+        // Notify everyone
+        broadcastToAll(roomCode, {
+            type: 'hostChanged',
+            newHostId,
+            newHostName: newHost.name
+        });
+        console.log(`👑 New host in ${roomCode}: ${newHost.name}`);
+    }
+}
+
 wss.on('connection', (ws) => {
     let playerId = null;
     let currentRoom = null;
@@ -90,73 +142,66 @@ wss.on('connection', (ws) => {
             const msg = JSON.parse(data);
             
             switch (msg.type) {
-                case 'host': {
-                    // Create a new room
-                    const roomCode = generateRoomCode();
-                    playerId = 'host_' + Date.now();
-                    currentRoom = roomCode;
-                    
-                    rooms.set(roomCode, {
-                        hostId: playerId,
-                        players: new Map([[playerId, {
-                            ws,
-                            name: msg.playerName || 'Host',
-                            isHost: true,
-                            car: msg.car || 'standard',
-                            color: msg.color || 0xff0000,
-                            state: null
-                        }]]),
-                        gameStarted: false,
-                        gameState: null
-                    });
-                    
-                    ws.send(JSON.stringify({
-                        type: 'hosted',
-                        roomCode,
-                        playerId,
-                        players: [{ id: playerId, name: msg.playerName || 'Host', isHost: true }]
-                    }));
-                    
-                    console.log(`Room ${roomCode} created by ${msg.playerName || 'Host'}`);
-                    break;
-                }
-                
                 case 'join': {
-                    // Join existing room (supports drop-in during gameplay)
-                    const room = rooms.get(msg.roomCode);
+                    // Everyone joins the same way now
+                    const roomCode = msg.roomCode || DEFAULT_ROOM;
+                    const room = rooms.get(roomCode);
+                    
                     if (!room) {
-                        ws.send(JSON.stringify({ type: 'error', message: 'Room not found' }));
+                        ws.send(JSON.stringify({ type: 'error', message: 'Rum findes ikke' }));
                         return;
                     }
                     if (room.players.size >= 4) {
-                        ws.send(JSON.stringify({ type: 'error', message: 'Room full (max 4 players)' }));
+                        ws.send(JSON.stringify({ type: 'error', message: 'Rummet er fyldt (maks 4 spillere)' }));
                         return;
                     }
                     
-                    playerId = 'player_' + Date.now();
-                    currentRoom = msg.roomCode;
+                    playerId = 'player_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5);
+                    currentRoom = roomCode;
                     
-                    // Assign color based on player count
-                    const playerColors = [0xff0000, 0x0066ff, 0x00ff00, 0xffaa00];
-                    const colorIndex = room.players.size;
+                    const color = getNextColor(room);
+                    const isFirstPlayer = room.players.size === 0;
+                    const willBeHost = isFirstPlayer || !room.hostId;
                     
                     room.players.set(playerId, {
                         ws,
-                        name: msg.playerName || 'Player',
-                        isHost: false,
+                        name: msg.playerName || 'Spiller',
+                        isHost: willBeHost,
                         car: msg.car || 'standard',
-                        color: playerColors[colorIndex] || 0xffffff,
+                        color: color,
                         state: null
                     });
+                    
+                    if (willBeHost) {
+                        room.hostId = playerId;
+                        console.log(`👑 ${msg.playerName || 'Spiller'} joined as HOST`);
+                    } else {
+                        console.log(`🎮 ${msg.playerName || 'Spiller'} joined the game`);
+                    }
                     
                     // Get player list
                     const playerList = [];
                     room.players.forEach((p, id) => {
-                        playerList.push({ id, name: p.name, isHost: p.isHost, car: p.car, color: p.color });
+                        playerList.push({ 
+                            id, 
+                            name: p.name, 
+                            isHost: id === room.hostId, 
+                            car: p.car, 
+                            color: p.color 
+                        });
                     });
                     
                     // If game already started, do drop-in join
                     if (room.gameStarted) {
+                        if (room.gameConfig && room.gameConfig.dropInEnabled === false) {
+                            ws.send(JSON.stringify({
+                                type: 'error',
+                                message: 'Spillet er i gang - drop-in er ikke aktiveret'
+                            }));
+                            room.players.delete(playerId);
+                            return;
+                        }
+                        
                         // Spawn positions for drop-in
                         const spawnPositions = [
                             { x: 0, z: 0 },
@@ -165,26 +210,26 @@ wss.on('connection', (ws) => {
                             { x: 0, z: 50 }
                         ];
                         
-                        // Send game start immediately to the joining player
                         const playerData = [];
                         let idx = 0;
                         room.players.forEach((p, id) => {
                             playerData.push({
                                 id,
                                 name: p.name,
-                                isHost: p.isHost,
+                                isHost: id === room.hostId,
                                 car: p.car,
                                 color: p.color,
-                                spawnPos: spawnPositions[idx]
+                                spawnPos: spawnPositions[idx % spawnPositions.length]
                             });
                             idx++;
                         });
                         
                         ws.send(JSON.stringify({
                             type: 'joined',
-                            roomCode: msg.roomCode,
+                            roomCode,
                             playerId,
-                            players: playerList
+                            players: playerList,
+                            isHost: willBeHost
                         }));
                         
                         // Immediately start game for this player (drop-in)
@@ -195,32 +240,43 @@ wss.on('connection', (ws) => {
                             dropIn: true
                         }));
                         
-                        // Notify existing players about the new player
-                        broadcastToRoom(msg.roomCode, {
+                        // Notify existing players
+                        broadcastToRoom(roomCode, {
                             type: 'playerJoined',
-                            player: { id: playerId, name: msg.playerName || 'Player', isHost: false, car: msg.car, color: playerColors[colorIndex] },
+                            player: { 
+                                id: playerId, 
+                                name: msg.playerName || 'Spiller', 
+                                isHost: willBeHost, 
+                                car: msg.car, 
+                                color: color 
+                            },
                             players: playerList,
                             dropIn: true
                         }, playerId);
                         
-                        console.log(`${msg.playerName || 'Player'} dropped into running game in room ${msg.roomCode}`);
+                        console.log(`⚡ ${msg.playerName || 'Spiller'} dropped into running game`);
                     } else {
                         // Normal pre-game join
                         ws.send(JSON.stringify({
                             type: 'joined',
-                            roomCode: msg.roomCode,
+                            roomCode,
                             playerId,
-                            players: playerList
+                            players: playerList,
+                            isHost: willBeHost
                         }));
                         
                         // Notify everyone else
-                        broadcastToRoom(msg.roomCode, {
+                        broadcastToRoom(roomCode, {
                             type: 'playerJoined',
-                            player: { id: playerId, name: msg.playerName || 'Player', isHost: false, car: msg.car, color: playerColors[colorIndex] },
+                            player: { 
+                                id: playerId, 
+                                name: msg.playerName || 'Spiller', 
+                                isHost: willBeHost, 
+                                car: msg.car, 
+                                color: color 
+                            },
                             players: playerList
                         }, playerId);
-                        
-                        console.log(`${msg.playerName || 'Player'} joined room ${msg.roomCode}`);
                     }
                     break;
                 }
@@ -228,12 +284,15 @@ wss.on('connection', (ws) => {
                 case 'startGame': {
                     // Host starts the game
                     const room = rooms.get(currentRoom);
-                    if (!room || room.hostId !== playerId) return;
+                    if (!room || room.hostId !== playerId) {
+                        ws.send(JSON.stringify({ type: 'error', message: 'Kun værten kan starte spillet' }));
+                        return;
+                    }
                     
                     room.gameStarted = true;
-                    room.gameConfig = msg.config || {}; // Save config for drop-in players
+                    room.gameConfig = msg.config || { touchArrest: true, dropInEnabled: true };
                     
-                    // Assign spawn positions for each player
+                    // Assign spawn positions
                     const spawnPositions = [
                         { x: 0, z: 0 },
                         { x: 50, z: 0 },
@@ -247,10 +306,10 @@ wss.on('connection', (ws) => {
                         playerData.push({
                             id,
                             name: p.name,
-                            isHost: p.isHost,
+                            isHost: id === room.hostId,
                             car: p.car,
                             color: p.color,
-                            spawnPos: spawnPositions[idx]
+                            spawnPos: spawnPositions[idx % spawnPositions.length]
                         });
                         idx++;
                     });
@@ -258,10 +317,10 @@ wss.on('connection', (ws) => {
                     broadcastToAll(currentRoom, {
                         type: 'gameStart',
                         players: playerData,
-                        config: msg.config || {}
+                        config: room.gameConfig
                     });
                     
-                    console.log(`Game started in room ${currentRoom}`);
+                    console.log(`🚀 Game started in ${currentRoom} with ${room.players.size} players`);
                     break;
                 }
                 
@@ -275,7 +334,6 @@ wss.on('connection', (ws) => {
                         player.state = msg.state;
                     }
                     
-                    // Broadcast to other players
                     broadcastToRoom(currentRoom, {
                         type: 'playerState',
                         playerId,
@@ -297,7 +355,6 @@ wss.on('connection', (ws) => {
                 }
                 
                 case 'gameEvent': {
-                    // Game events: arrest, death, money, etc.
                     const room = rooms.get(currentRoom);
                     if (!room) return;
                     
@@ -310,8 +367,54 @@ wss.on('connection', (ws) => {
                     break;
                 }
                 
+                case 'respawn': {
+                    const room = rooms.get(currentRoom);
+                    if (!room || !room.gameStarted) return;
+                    
+                    if (room.gameConfig && room.gameConfig.dropInEnabled === false) {
+                        ws.send(JSON.stringify({
+                            type: 'error',
+                            message: 'Drop-in er ikke aktiveret'
+                        }));
+                        return;
+                    }
+                    
+                    const spawnPositions = [
+                        { x: 0, z: 0 },
+                        { x: 50, z: 0 },
+                        { x: -50, z: 0 },
+                        { x: 0, z: 50 },
+                        { x: -50, z: 50 },
+                        { x: 50, z: -50 }
+                    ];
+                    const spawnPos = spawnPositions[Math.floor(Math.random() * spawnPositions.length)];
+                    
+                    // Update player's car if specified
+                    const player = room.players.get(playerId);
+                    const newCar = msg.car || (player ? player.car : 'standard');
+                    if (player && msg.car) {
+                        player.car = msg.car;
+                        console.log(`🚗 Player changed car to: ${msg.car}`);
+                    }
+                    
+                    ws.send(JSON.stringify({
+                        type: 'respawned',
+                        spawnPos,
+                        car: newCar
+                    }));
+                    
+                    broadcastToRoom(currentRoom, {
+                        type: 'gameEvent',
+                        playerId,
+                        event: 'respawned',
+                        data: { spawnPos, car: newCar }
+                    }, playerId);
+                    
+                    console.log(`🔄 Player respawned with ${newCar}`);
+                    break;
+                }
+                
                 case 'chat': {
-                    // Chat message
                     const room = rooms.get(currentRoom);
                     if (!room) return;
                     
@@ -322,6 +425,19 @@ wss.on('connection', (ws) => {
                         playerName: player?.name || 'Unknown',
                         message: msg.message
                     });
+                    break;
+                }
+                
+                case 'resetGame': {
+                    // Host can reset the game to lobby state
+                    const room = rooms.get(currentRoom);
+                    if (!room || room.hostId !== playerId) return;
+                    
+                    room.gameStarted = false;
+                    broadcastToAll(currentRoom, {
+                        type: 'gameReset'
+                    });
+                    console.log(`🔄 Game reset by host`);
                     break;
                 }
             }
@@ -335,40 +451,35 @@ wss.on('connection', (ws) => {
             const room = rooms.get(currentRoom);
             if (room) {
                 const wasHost = room.hostId === playerId;
+                const playerName = room.players.get(playerId)?.name || 'Unknown';
                 room.players.delete(playerId);
                 
                 if (room.players.size === 0) {
-                    // Delete empty room
-                    rooms.delete(currentRoom);
-                    console.log(`Room ${currentRoom} deleted (empty)`);
-                } else if (wasHost) {
-                    // Host left, assign new host
-                    const newHostId = room.players.keys().next().value;
-                    room.hostId = newHostId;
-                    const newHost = room.players.get(newHostId);
-                    if (newHost) {
-                        newHost.isHost = true;
-                        
-                        // Notify everyone
-                        broadcastToAll(currentRoom, {
-                            type: 'hostChanged',
-                            newHostId,
-                            newHostName: newHost.name
-                        });
-                    }
-                    console.log(`Host left room ${currentRoom}, new host: ${newHost?.name}`);
+                    // Reset room but keep it (persistent server)
+                    room.hostId = null;
+                    room.gameStarted = false;
+                    console.log(`🔄 Room ${currentRoom} reset (empty)`);
                 } else {
-                    // Regular player left
+                    // Notify others
                     broadcastToRoom(currentRoom, {
                         type: 'playerLeft',
-                        playerId
+                        playerId,
+                        playerName
                     });
-                    console.log(`Player left room ${currentRoom}`);
+                    
+                    if (wasHost) {
+                        assignNewHost(room, currentRoom);
+                    }
                 }
+                
+                console.log(`👋 ${playerName} left (${room.players.size} remaining)`);
             }
         }
     });
 });
+
+// Initialize default room
+initDefaultRoom();
 
 httpServer.listen(PORT, '0.0.0.0', () => {
     const interfaces = require('os').networkInterfaces();
@@ -384,14 +495,14 @@ httpServer.listen(PORT, '0.0.0.0', () => {
     }
     
     console.log('');
-    console.log('╔════════════════════════════════════════════════════════╗');
-    console.log('║     🚔  FLUGT FRA POLITIET - MULTIPLAYER SERVER  🚔    ║');
-    console.log('╠════════════════════════════════════════════════════════╣');
-    console.log(`║  Local:    http://localhost:${PORT}                       ║`);
-    console.log(`║  Network:  http://${lanIP}:${PORT}                    ║`);
-    console.log(`║  WebSocket: ws://${lanIP}:${WS_PORT}                     ║`);
-    console.log('╠════════════════════════════════════════════════════════╣');
-    console.log('║  Share the Network URL with friends on your LAN!       ║');
-    console.log('╚════════════════════════════════════════════════════════╝');
+    console.log('╔═══════════════════════════════════════════════════════════╗');
+    console.log('║      🚔  FLUGT FRA POLITIET - PERSISTENT SERVER  🚔       ║');
+    console.log('╠═══════════════════════════════════════════════════════════╣');
+    console.log(`║  Local:    http://localhost:${PORT}                          ║`);
+    console.log(`║  Network:  http://${lanIP}:${PORT}                       ║`);
+    console.log('╠═══════════════════════════════════════════════════════════╣');
+    console.log('║  🎮 Server kører altid - alle kan joine når som helst!    ║');
+    console.log('║  📱 Del Network URL med venner på samme netværk           ║');
+    console.log('╚═══════════════════════════════════════════════════════════╝');
     console.log('');
 });

@@ -21,6 +21,8 @@ export const gameState = {
     chunks: [],
     chunkGrid: {},
     activeChunks: [],
+    fallenDebris: [],
+    smallDebris: [],
     chunkGridSize: 200,
     heatLevel: 1,
     collectibles: [],

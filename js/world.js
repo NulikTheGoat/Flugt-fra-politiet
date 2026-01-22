@@ -203,7 +203,7 @@ export function updateBuildingChunks(delta) {
     if(!playerCar) return;
     const d = delta || 1;
 
-    // Active Chunks
+    // Active Chunks (falling/moving)
     for (let i = gameState.activeChunks.length - 1; i >= 0; i--) {
         const chunk = gameState.activeChunks[i];
         
@@ -226,15 +226,23 @@ export function updateBuildingChunks(delta) {
             chunk.userData.rotVelocity.multiplyScalar(frictionFactor);
         }
         
+        // When chunk comes to rest, mark as fallen debris
         if (Math.abs(chunk.userData.velocity.y) < 0.1 && 
             Math.abs(chunk.userData.velocity.x) < 0.1 && 
             Math.abs(chunk.userData.velocity.z) < 0.1 &&
             chunk.position.y <= chunk.userData.height/2 + 0.1) {
              gameState.activeChunks.splice(i, 1);
+             
+             // Mark as fallen debris - solid but no damage, can be shattered
+             if (!chunk.userData.isSmallDebris) {
+                 chunk.userData.isFallenDebris = true;
+                 if (!gameState.fallenDebris) gameState.fallenDebris = [];
+                 gameState.fallenDebris.push(chunk);
+             }
         }
     }
 
-    // Collisions
+    // Collisions with standing building chunks
     const carPos = playerCar.position;
     const carRadius = 15; 
     
@@ -285,6 +293,134 @@ export function updateBuildingChunks(delta) {
                          }
                      }
                 }
+            }
+        }
+    }
+    
+    // Collision with fallen debris (no damage, solid push, shatter once)
+    if (gameState.fallenDebris && gameState.fallenDebris.length > 0) {
+        for (let i = gameState.fallenDebris.length - 1; i >= 0; i--) {
+            const debris = gameState.fallenDebris[i];
+            if (!debris || !debris.userData || !debris.userData.isFallenDebris) continue;
+            
+            const dx = debris.position.x - carPos.x;
+            const dz = debris.position.z - carPos.z;
+            const distSq = dx * dx + dz * dz;
+            
+            // Use actual debris size for collision, with minimum size
+            const debrisSize = Math.max(
+                (debris.userData.width || 10),
+                (debris.userData.depth || 10)
+            ) / 2;
+            const collisionDist = carRadius + debrisSize + 2; // Add buffer
+            
+            if (distSq < collisionDist * collisionDist) {
+                const dist = Math.sqrt(distSq) || 1;
+                const carSpeed = Math.abs(gameState.speed);
+                
+                // Calculate push direction (away from debris center)
+                const normX = -dx / dist;
+                const normZ = -dz / dist;
+                
+                // Push CAR back (solid collision - no passing through!)
+                const overlap = collisionDist - dist;
+                if (overlap > 0) {
+                    playerCar.position.x += normX * overlap * 1.2;
+                    playerCar.position.z += normZ * overlap * 1.2;
+                }
+                
+                // Shatter into smaller pieces if going fast enough
+                if (carSpeed > 12) {
+                    // Remove from fallen debris
+                    gameState.fallenDebris.splice(i, 1);
+                    scene.remove(debris);
+                    
+                    // Create smaller debris pieces
+                    shatterDebris(debris);
+                    
+                    // Speed reduction based on speed (no damage!)
+                    gameState.speed *= 0.85;
+                    gameState.screenShake = 0.15;
+                } else {
+                    // Slow collision - stop the car more
+                    gameState.speed *= 0.7;
+                    
+                    // Also push debris a bit
+                    debris.position.x += (-normX) * 1;
+                    debris.position.z += (-normZ) * 1;
+                }
+            }
+        }
+    }
+}
+
+// Shatter fallen debris into smaller pieces
+function shatterDebris(debris) {
+    const numPieces = 4 + Math.floor(Math.random() * 4); // 4-7 pieces
+    const size = Math.min(debris.userData.width, debris.userData.height, debris.userData.depth) / 2;
+    
+    for (let i = 0; i < numPieces; i++) {
+        const pieceSize = size * (0.3 + Math.random() * 0.4);
+        const geometry = new THREE.BoxGeometry(pieceSize, pieceSize, pieceSize);
+        const piece = new THREE.Mesh(geometry, debris.material.clone());
+        
+        // Scatter around original position
+        piece.position.set(
+            debris.position.x + (Math.random() - 0.5) * debris.userData.width,
+            debris.position.y + Math.random() * 5,
+            debris.position.z + (Math.random() - 0.5) * debris.userData.depth
+        );
+        
+        piece.rotation.set(
+            Math.random() * Math.PI,
+            Math.random() * Math.PI,
+            Math.random() * Math.PI
+        );
+        
+        piece.userData = {
+            isSmallDebris: true,
+            velocity: new THREE.Vector3(
+                (Math.random() - 0.5) * 8,
+                3 + Math.random() * 5,
+                (Math.random() - 0.5) * 8
+            ),
+            rotVelocity: new THREE.Vector3(
+                (Math.random() - 0.5) * 0.3,
+                (Math.random() - 0.5) * 0.3,
+                (Math.random() - 0.5) * 0.3
+            ),
+            width: pieceSize,
+            height: pieceSize,
+            depth: pieceSize,
+            lifetime: 300 // Despawn after ~5 seconds
+        };
+        
+        scene.add(piece);
+        gameState.activeChunks.push(piece);
+        
+        // Track small debris for cleanup
+        if (!gameState.smallDebris) gameState.smallDebris = [];
+        gameState.smallDebris.push(piece);
+    }
+    
+    // Create dust effect
+    createSmoke(debris.position);
+}
+
+// Update and cleanup small debris (call this from the active chunks loop)
+export function cleanupSmallDebris() {
+    if (!gameState.smallDebris) return;
+    
+    for (let i = gameState.smallDebris.length - 1; i >= 0; i--) {
+        const piece = gameState.smallDebris[i];
+        if (piece.userData.lifetime !== undefined) {
+            piece.userData.lifetime--;
+            if (piece.userData.lifetime <= 0) {
+                scene.remove(piece);
+                gameState.smallDebris.splice(i, 1);
+                // Also remove from activeChunks if still there
+                const idx = gameState.activeChunks.indexOf(piece);
+                if (idx > -1) gameState.activeChunks.splice(idx, 1);
             }
         }
     }

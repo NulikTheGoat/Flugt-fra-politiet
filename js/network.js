@@ -7,9 +7,11 @@ let roomCode = null;
 let playerName = 'Player';
 let otherPlayers = new Map(); // id -> { car, state, mesh }
 
+// Default room code (matches server)
+const DEFAULT_ROOM = 'SPIL';
+
 // Callbacks
 let onConnected = null;
-let onHosted = null;
 let onJoined = null;
 let onPlayerJoined = null;
 let onPlayerLeft = null;
@@ -19,6 +21,9 @@ let onPoliceState = null;
 let onGameEvent = null;
 let onError = null;
 let onChat = null;
+let onRespawned = null;
+let onHostChanged = null;
+let onGameReset = null;
 
 // Get WebSocket URL based on current page location
 function getWsUrl() {
@@ -67,18 +72,12 @@ export function connect() {
 // Handle incoming messages
 function handleMessage(msg) {
     switch (msg.type) {
-        case 'hosted':
-            isHost = true;
-            playerId = msg.playerId;
-            roomCode = msg.roomCode;
-            if (onHosted) onHosted(msg.roomCode, msg.playerId, msg.players);
-            break;
-            
         case 'joined':
-            isHost = false;
+            // Everyone gets 'joined' now - check isHost flag
+            isHost = msg.isHost || false;
             playerId = msg.playerId;
             roomCode = msg.roomCode;
-            if (onJoined) onJoined(msg.roomCode, msg.playerId, msg.players);
+            if (onJoined) onJoined(msg.roomCode, msg.playerId, msg.players, msg.isHost);
             break;
             
         case 'playerJoined':
@@ -87,17 +86,23 @@ function handleMessage(msg) {
             
         case 'playerLeft':
             otherPlayers.delete(msg.playerId);
-            if (onPlayerLeft) onPlayerLeft(msg.playerId);
+            if (onPlayerLeft) onPlayerLeft(msg.playerId, msg.playerName);
             break;
             
         case 'hostChanged':
             if (msg.newHostId === playerId) {
                 isHost = true;
+                console.log('You are now the host!');
             }
+            if (onHostChanged) onHostChanged(msg.newHostId, msg.newHostName);
             break;
             
         case 'gameStart':
-            if (onGameStart) onGameStart(msg.players, msg.config);
+            if (onGameStart) onGameStart(msg.players, msg.config, msg.dropIn);
+            break;
+            
+        case 'gameReset':
+            if (onGameReset) onGameReset();
             break;
             
         case 'playerState':
@@ -127,31 +132,23 @@ function handleMessage(msg) {
             console.error('Server error:', msg.message);
             if (onError) onError(msg.message);
             break;
+            
+        case 'respawned':
+            // Server confirmed respawn
+            if (onRespawned) onRespawned(msg.spawnPos, msg.car);
+            break;
     }
 }
 
-// Host a new game
-export function hostGame(name, car = 'standard', color = 0xff0000) {
-    if (!isConnected) return;
-    playerName = name;
-    ws.send(JSON.stringify({
-        type: 'host',
-        playerName: name,
-        car,
-        color
-    }));
-}
-
-// Join an existing game
-export function joinGame(code, name, car = 'standard', color = 0x0000ff) {
+// Join the game (unified - no more host/join distinction)
+export function joinGame(name, car = 'standard', roomCodeOverride = null) {
     if (!isConnected) return;
     playerName = name;
     ws.send(JSON.stringify({
         type: 'join',
-        roomCode: code.toUpperCase(),
+        roomCode: roomCodeOverride || DEFAULT_ROOM,
         playerName: name,
-        car,
-        color
+        car
     }));
 }
 
@@ -208,6 +205,23 @@ export function sendGameEvent(event, data) {
     }));
 }
 
+// Request respawn (after being arrested in multiplayer)
+export function requestRespawn() {
+    if (!isConnected) return;
+    ws.send(JSON.stringify({
+        type: 'respawn'
+    }));
+}
+
+// Request respawn with a specific car (after buying in shop)
+export function requestRespawnWithCar(carKey) {
+    if (!isConnected) return;
+    ws.send(JSON.stringify({
+        type: 'respawn',
+        car: carKey
+    }));
+}
+
 // Send chat message
 export function sendChat(message) {
     if (!isConnected) return;
@@ -219,7 +233,6 @@ export function sendChat(message) {
 
 // Setters for callbacks
 export function setOnConnected(cb) { onConnected = cb; }
-export function setOnHosted(cb) { onHosted = cb; }
 export function setOnJoined(cb) { onJoined = cb; }
 export function setOnPlayerJoined(cb) { onPlayerJoined = cb; }
 export function setOnPlayerLeft(cb) { onPlayerLeft = cb; }
@@ -229,6 +242,9 @@ export function setOnPoliceState(cb) { onPoliceState = cb; }
 export function setOnGameEvent(cb) { onGameEvent = cb; }
 export function setOnError(cb) { onError = cb; }
 export function setOnChat(cb) { onChat = cb; }
+export function setOnRespawned(cb) { onRespawned = cb; }
+export function setOnHostChanged(cb) { onHostChanged = cb; }
+export function setOnGameReset(cb) { onGameReset = cb; }
 
 // Getters
 export function getIsConnected() { return isConnected; }

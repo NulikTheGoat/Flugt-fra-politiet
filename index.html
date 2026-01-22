@@ -589,49 +589,140 @@
             left: 0;
             width: 100%;
             height: 100%;
-            background: rgba(10, 10, 16, 0.98); /* Dark background */
+            background: linear-gradient(135deg, #0a0a10 0%, #1a1a25 50%, #0a0a10 100%);
             z-index: 300;
             display: none;
             flex-direction: column;
             align-items: center;
-            padding: 40px 20px;
-            backdrop-filter: blur(10px);
+            padding: 30px 20px;
+            backdrop-filter: blur(15px);
+            overflow: hidden;
+        }
+        
+        /* Animated background pattern */
+        #shop::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: 
+                radial-gradient(circle at 20% 80%, rgba(0, 255, 100, 0.03) 0%, transparent 50%),
+                radial-gradient(circle at 80% 20%, rgba(255, 200, 0, 0.03) 0%, transparent 50%),
+                radial-gradient(circle at 50% 50%, rgba(0, 150, 255, 0.02) 0%, transparent 70%);
+            pointer-events: none;
+            animation: shopBgPulse 10s ease-in-out infinite;
+        }
+        
+        @keyframes shopBgPulse {
+            0%, 100% { opacity: 0.5; }
+            50% { opacity: 1; }
         }
 
         #shopContent {
             width: 100%;
-            max-width: 1200px;
+            max-width: 1400px;
             display: flex;
             flex-direction: column;
             height: 100%;
+            position: relative;
+            z-index: 1;
         }
 
         #shopHeader {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-bottom: 30px;
+            margin-bottom: 20px;
             padding-bottom: 20px;
-            border-bottom: 2px solid #333;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+            flex-wrap: wrap;
+            gap: 15px;
         }
 
         #shopHeader h1 {
-            font-size: 32px;
+            font-size: 28px;
             color: #fff;
             text-transform: uppercase;
-            letter-spacing: 2px;
+            letter-spacing: 4px;
             margin: 0;
-            font-style: italic;
+            font-weight: 800;
+            background: linear-gradient(90deg, #fff 0%, #aaa 50%, #fff 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            text-shadow: none;
         }
 
         #moneyDisplay {
-            font-size: 24px;
-            color: #ffdd44;
-            font-family: monospace;
-            background: rgba(255, 221, 68, 0.1);
+            font-size: 22px;
+            color: #ffd700;
+            font-family: 'Courier New', monospace;
+            background: linear-gradient(135deg, rgba(255, 215, 0, 0.15) 0%, rgba(255, 180, 0, 0.05) 100%);
+            padding: 12px 24px;
+            border-radius: 12px;
+            border: 2px solid rgba(255, 215, 0, 0.3);
+            box-shadow: 0 0 20px rgba(255, 215, 0, 0.1), inset 0 0 20px rgba(255, 215, 0, 0.05);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        #moneyDisplay::before {
+            content: '💰';
+            font-size: 20px;
+        }
+        
+        /* Category Tabs */
+        #shopTabs {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 20px;
+            padding: 8px;
+            background: rgba(0,0,0,0.3);
+            border-radius: 12px;
+            flex-wrap: wrap;
+        }
+        
+        .shop-tab {
             padding: 10px 20px;
+            background: transparent;
+            border: 1px solid rgba(255,255,255,0.1);
             border-radius: 8px;
-            border: 1px solid #ffdd44;
+            color: #888;
+            font-size: 13px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .shop-tab:hover {
+            background: rgba(255,255,255,0.05);
+            color: #fff;
+            border-color: rgba(255,255,255,0.2);
+        }
+        
+        .shop-tab.active {
+            background: linear-gradient(135deg, #00ff66 0%, #00cc55 100%);
+            color: #000;
+            border-color: #00ff66;
+            box-shadow: 0 0 15px rgba(0, 255, 100, 0.3);
+        }
+        
+        .shop-tab .tab-count {
+            display: inline-block;
+            margin-left: 6px;
+            padding: 2px 6px;
+            background: rgba(0,0,0,0.3);
+            border-radius: 10px;
+            font-size: 11px;
+        }
+        
+        .shop-tab.active .tab-count {
+            background: rgba(0,0,0,0.2);
         }
 
         @keyframes moneyPop {
@@ -652,58 +743,109 @@
 
         #carList {
             display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-            gap: 25px;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 20px;
             overflow-y: auto;
-            padding: 10px;
+            padding: 15px 5px;
             flex-grow: 1;
+            scroll-behavior: smooth;
         }
 
         #carList::-webkit-scrollbar {
-            width: 8px;
+            width: 10px;
         }
         #carList::-webkit-scrollbar-track {
-            background: #1a1a1a;
+            background: rgba(0,0,0,0.2);
+            border-radius: 5px;
         }
         #carList::-webkit-scrollbar-thumb {
-            background: #444;
-            border-radius: 4px;
+            background: linear-gradient(180deg, #444 0%, #333 100%);
+            border-radius: 5px;
+            border: 2px solid transparent;
+            background-clip: padding-box;
         }
         #carList::-webkit-scrollbar-thumb:hover {
-            background: #00ff00;
+            background: linear-gradient(180deg, #00ff66 0%, #00cc55 100%);
+            background-clip: padding-box;
+        }
+        
+        /* Empty state */
+        #carList:empty::after {
+            content: 'Ingen biler i denne kategori';
+            display: block;
+            text-align: center;
+            color: #666;
+            padding: 60px;
+            font-size: 16px;
         }
 
         .carCard {
-            background: #1e1e24;
-            border: 1px solid #333;
-            border-radius: 12px;
-            padding: 20px;
-            transition: all 0.2s cubic-bezier(0.25, 0.8, 0.25, 1);
+            background: linear-gradient(180deg, rgba(30, 30, 40, 0.9) 0%, rgba(20, 20, 28, 0.95) 100%);
+            border: 1px solid rgba(255,255,255,0.08);
+            border-radius: 16px;
+            padding: 0;
+            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
             position: relative;
             overflow: hidden;
             display: flex;
             flex-direction: column;
-            gap: 15px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+        }
+        
+        .carCard::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.1), transparent);
+            opacity: 0;
+            transition: opacity 0.3s;
         }
 
         .carCard:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 10px 20px rgba(0,0,0,0.5);
-            border-color: #555;
+            transform: translateY(-8px) scale(1.02);
+            box-shadow: 0 20px 40px rgba(0,0,0,0.5);
+            border-color: rgba(255,255,255,0.15);
+        }
+        
+        .carCard:hover::before {
+            opacity: 1;
+        }
+        
+        /* Card inner padding wrapper */
+        .card-content {
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            flex-grow: 1;
         }
 
         /* Car Preview - 3D Style */
         .car-preview-box {
-            height: 120px;
-            border-radius: 8px;
-            background: linear-gradient(180deg, #1a1a20 0%, #2a2a35 50%, #1a1a20 100%);
+            height: 140px;
+            background: linear-gradient(180deg, #15151a 0%, #25252f 40%, #1a1a22 100%);
             position: relative;
             display: flex;
             justify-content: center;
             align-items: center;
-            box-shadow: inset 0 0 30px rgba(0,0,0,0.7);
-            perspective: 200px;
+            perspective: 300px;
             overflow: hidden;
+        }
+        
+        /* Spotlight effect */
+        .car-preview-box::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 150px;
+            height: 150px;
+            background: radial-gradient(circle, rgba(255,255,255,0.08) 0%, transparent 70%);
+            pointer-events: none;
         }
         
         /* Floor reflection */
@@ -713,30 +855,59 @@
             bottom: 0;
             left: 0;
             right: 0;
-            height: 40%;
-            background: linear-gradient(to top, rgba(255,255,255,0.05), transparent);
+            height: 50%;
+            background: linear-gradient(to top, rgba(255,255,255,0.03), transparent);
             pointer-events: none;
+        }
+        
+        /* Garage floor grid */
+        .car-preview-box .floor-grid {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 40px;
+            background: 
+                linear-gradient(90deg, rgba(255,255,255,0.02) 1px, transparent 1px),
+                linear-gradient(rgba(255,255,255,0.02) 1px, transparent 1px);
+            background-size: 20px 20px;
+            transform: perspective(100px) rotateX(60deg);
+            transform-origin: bottom;
+            opacity: 0.5;
         }
         
         .car-model-3d {
             position: relative;
             transform-style: preserve-3d;
-            transform: rotateX(15deg) rotateY(-25deg);
-            animation: carFloat 3s ease-in-out infinite;
+            transform: rotateX(12deg) rotateY(-30deg);
+            animation: carFloat 4s ease-in-out infinite;
+            transition: transform 0.5s ease;
+        }
+        
+        .carCard:hover .car-model-3d {
+            animation: carSpin 0.8s ease-out forwards;
         }
         
         @keyframes carFloat {
-            0%, 100% { transform: rotateX(15deg) rotateY(-25deg) translateY(0); }
-            50% { transform: rotateX(15deg) rotateY(-25deg) translateY(-3px); }
+            0%, 100% { transform: rotateX(12deg) rotateY(-30deg) translateY(0); }
+            50% { transform: rotateX(12deg) rotateY(-30deg) translateY(-5px); }
+        }
+        
+        @keyframes carSpin {
+            0% { transform: rotateX(12deg) rotateY(-30deg); }
+            50% { transform: rotateX(5deg) rotateY(15deg) scale(1.1); }
+            100% { transform: rotateX(12deg) rotateY(-30deg); }
         }
         
         .car-body {
-            width: 70px;
-            height: 25px;
-            border-radius: 5px;
+            width: 80px;
+            height: 28px;
+            border-radius: 6px;
             position: relative;
             transform-style: preserve-3d;
-            box-shadow: 0 8px 20px rgba(0,0,0,0.5);
+            box-shadow: 
+                0 10px 30px rgba(0,0,0,0.6),
+                0 0 40px rgba(var(--car-glow), 0.2);
         }
         
         /* Car roof/cabin */
@@ -822,140 +993,302 @@
         .carCard h3 {
             color: #fff;
             margin: 0;
-            font-size: 1.4rem;
+            font-size: 1.3rem;
             text-align: left;
             text-transform: uppercase;
-            font-style: italic;
+            font-weight: 700;
+            letter-spacing: 1px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .car-type-badge {
+            font-size: 0.65rem;
+            padding: 3px 8px;
+            border-radius: 4px;
+            background: rgba(255,255,255,0.1);
+            color: #888;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        
+        .car-type-badge.special {
+            background: linear-gradient(135deg, rgba(255,0,255,0.3), rgba(0,255,255,0.3));
+            color: #fff;
         }
 
         /* Stats Bars */
         .stats-container {
             display: flex;
             flex-direction: column;
-            gap: 8px;
+            gap: 10px;
+            padding: 15px;
+            background: rgba(0,0,0,0.2);
+            border-radius: 10px;
         }
 
         .stat-row {
             display: flex;
             align-items: center;
-            gap: 10px;
-            font-size: 0.8rem;
-            color: #aaa;
-            font-weight: bold;
+            gap: 12px;
+            font-size: 0.75rem;
+            color: #999;
+            font-weight: 600;
+        }
+        
+        .stat-icon {
+            font-size: 14px;
+            width: 20px;
+            text-align: center;
         }
         
         .stat-label {
-            width: 40px;
+            width: 50px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        
+        .stat-value {
+            font-family: 'Courier New', monospace;
+            color: #fff;
+            min-width: 35px;
+            text-align: right;
         }
 
         .stat-bar-bg {
             flex-grow: 1;
-            height: 6px;
-            background: #333;
-            border-radius: 3px;
+            height: 8px;
+            background: rgba(255,255,255,0.05);
+            border-radius: 4px;
             overflow: hidden;
+            position: relative;
+        }
+        
+        .stat-bar-bg::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(90deg, 
+                transparent 0%, 
+                rgba(255,255,255,0.03) 50%, 
+                transparent 100%);
         }
 
         .stat-bar-fill {
             height: 100%;
-            background: #00ff00;
-            border-radius: 3px;
-            width: 0%; /* Default */
+            border-radius: 4px;
+            width: 0%;
+            transition: width 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+            overflow: hidden;
         }
+        
+        .stat-bar-fill::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(90deg, 
+                transparent 0%, 
+                rgba(255,255,255,0.3) 50%, 
+                transparent 100%);
+            animation: shimmer 2s infinite;
+        }
+        
+        @keyframes shimmer {
+            0% { transform: translateX(-100%); }
+            100% { transform: translateX(100%); }
+        }
+        
+        .stat-bar-fill.speed { background: linear-gradient(90deg, #00c853 0%, #00e676 100%); }
+        .stat-bar-fill.accel { background: linear-gradient(90deg, #ff6d00 0%, #ffab00 100%); }
+        .stat-bar-fill.handle { background: linear-gradient(90deg, #2196f3 0%, #03a9f4 100%); }
+        .stat-bar-fill.health { background: linear-gradient(90deg, #f44336 0%, #ff5722 100%); }
 
         /* Status & Price */
         .card-footer {
-            margin-top: auto;
             display: flex;
             justify-content: space-between;
             align-items: center;
-            border-top: 1px solid #333;
-            padding-top: 15px;
+            padding: 15px 20px;
+            background: rgba(0,0,0,0.3);
+            border-top: 1px solid rgba(255,255,255,0.05);
         }
 
         .price-tag {
             color: #fff;
-            font-weight: bold;
+            font-weight: 700;
             font-size: 1.1rem;
+            font-family: 'Courier New', monospace;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        
+        .price-tag::before {
+            content: '🏷️';
+            font-size: 14px;
         }
         
         .action-indicator {
-            padding: 8px 16px;
-            border-radius: 6px;
-            font-size: 0.85rem;
-            font-weight: bold;
+            padding: 10px 20px;
+            border-radius: 8px;
+            font-size: 0.8rem;
+            font-weight: 700;
             text-transform: uppercase;
-            transition: all 0.2s;
+            letter-spacing: 1px;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            cursor: pointer;
         }
 
         /* Logic States */
         
         /* Owned State */
         .carCard.owned {
-            border-color: #444;
+            border-color: rgba(100, 100, 120, 0.3);
         }
         .carCard.owned .action-indicator {
-            background: #333;
+            background: rgba(255,255,255,0.1);
+            color: #aaa;
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+        .carCard.owned:hover .action-indicator {
+            background: rgba(255,255,255,0.15);
             color: #fff;
         }
 
         /* Selected State */
         .carCard.selected {
-            border-color: #ffff00;
-            box-shadow: 0 0 15px rgba(255, 255, 0, 0.2);
-            background: linear-gradient(180deg, #1e1e24 0%, #2e2e1a 100%);
+            border-color: #ffd700;
+            box-shadow: 
+                0 0 30px rgba(255, 215, 0, 0.2),
+                inset 0 0 30px rgba(255, 215, 0, 0.03);
+        }
+        .carCard.selected::before {
+            background: linear-gradient(90deg, transparent, rgba(255, 215, 0, 0.5), transparent);
+            opacity: 1;
         }
         .carCard.selected .action-indicator {
-            background: #ffff00;
+            background: linear-gradient(135deg, #ffd700 0%, #ffaa00 100%);
             color: #000;
+            box-shadow: 0 4px 15px rgba(255, 215, 0, 0.3);
+        }
+        .carCard.selected .car-preview-box {
+            background: linear-gradient(180deg, #1a1815 0%, #2a2820 40%, #1a1815 100%);
         }
 
         /* Affordable */
         .carCard.affordable:not(.owned):not(.selected) {
-            border-color: #00ff00;
+            border-color: rgba(0, 255, 100, 0.4);
             cursor: pointer;
         }
+        .carCard.affordable:not(.owned):not(.selected):hover {
+            border-color: #00ff66;
+            box-shadow: 
+                0 20px 40px rgba(0,0,0,0.5),
+                0 0 30px rgba(0, 255, 100, 0.15);
+        }
         .carCard.affordable:not(.owned):not(.selected) .action-indicator {
-            background: #00ff00;
+            background: linear-gradient(135deg, #00ff66 0%, #00cc55 100%);
             color: #000;
+            box-shadow: 0 4px 15px rgba(0, 255, 100, 0.3);
+        }
+        .carCard.affordable:not(.owned):not(.selected):hover .action-indicator {
+            transform: scale(1.05);
+            box-shadow: 0 6px 20px rgba(0, 255, 100, 0.4);
         }
         .carCard.affordable:not(.owned):not(.selected) .price-tag {
-            color: #00ff00;
+            color: #00ff66;
         }
 
         /* Too Expensive */
         .carCard.expensive:not(.owned) {
-            opacity: 0.6;
+            opacity: 0.5;
             cursor: not-allowed;
-            border-color: #552222;
+            border-color: rgba(255, 50, 50, 0.2);
+            filter: grayscale(30%);
+        }
+        .carCard.expensive:not(.owned):hover {
+            transform: none;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.3);
         }
         .carCard.expensive:not(.owned) .action-indicator {
-            background: #333;
+            background: rgba(80, 30, 30, 0.5);
             color: #666;
+            border: 1px solid rgba(255, 50, 50, 0.2);
         }
         .carCard.expensive:not(.owned) .price-tag {
             color: #ff5555;
         }
-
-        #playBtn {
-            padding: 15px 60px;
-            font-size: 24px;
-            background: #00ff00;
-            color: #000;
-            border: none;
+        .carCard.expensive:not(.owned) .price-tag::before {
+            content: '🔒';
+        }
+        
+        /* Config link styling */
+        .config-link {
+            background: rgba(255,255,255,0.05);
+            border: 1px solid rgba(255,255,255,0.1);
+            color: #888;
+            padding: 10px 18px;
             border-radius: 8px;
             cursor: pointer;
-            font-weight: bold;
+            text-decoration: none;
+            font-size: 13px;
+            font-weight: 600;
+            transition: all 0.3s;
+        }
+        .config-link:hover {
+            background: rgba(255,255,255,0.1);
+            color: #fff;
+            border-color: rgba(255,255,255,0.2);
+        }
+
+        #playBtn {
+            padding: 18px 80px;
+            font-size: 22px;
+            background: linear-gradient(135deg, #00ff66 0%, #00cc44 100%);
+            color: #000;
+            border: none;
+            border-radius: 12px;
+            cursor: pointer;
+            font-weight: 800;
             text-transform: uppercase;
-            transition: transform 0.1s, box-shadow 0.1s;
-            box-shadow: 0 0 20px rgba(0, 255, 0, 0.4);
-            margin-top: 20px;
+            letter-spacing: 2px;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow: 0 8px 30px rgba(0, 255, 100, 0.3);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        #playBtn::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
+            transition: left 0.5s;
         }
 
         #playBtn:hover {
-            background: #00cc00;
-            transform: scale(1.05);
-            box-shadow: 0 0 30px rgba(0, 255, 0, 0.6);
+            transform: translateY(-3px) scale(1.02);
+            box-shadow: 0 15px 40px rgba(0, 255, 100, 0.4);
+        }
+        
+        #playBtn:hover::before {
+            left: 100%;
+        }
+        
+        #playBtn:active {
+            transform: translateY(0) scale(0.98);
         }
     </style>
 </head>
@@ -1038,20 +1371,32 @@
         </div>
         
         <button id="gameOverShopBtn">🎮 Spil igen</button>
+        <button id="gameOverRejoinBtn" style="display: none; margin-top: 10px; background: #00cc66;">🔄 Drop ind igen</button>
+        <button id="gameOverMpShopBtn" style="display: none; margin-top: 10px; background: #ff9900;">🛒 Køb ny bil & Drop ind</button>
     </div>
 
     <div id="shop">
         <div id="shopContent">
             <div id="shopHeader">
-                <h1>Garage & Shop</h1>
+                <h1>🏎️ Garage & Shop</h1>
                 <div style="display: flex; gap: 15px; align-items: center;">
-                    <a href="/config" style="background: #333; border: 1px solid #666; color: #fff; padding: 8px 16px; border-radius: 5px; cursor: pointer; text-decoration: none; font-size: 14px;">⚙️ Server Config</a>
+                    <a href="/config" class="config-link">⚙️ Config</a>
                     <div id="moneyDisplay"><span id="shopMoney">0</span> KR</div>
                 </div>
             </div>
+            
+            <div id="shopTabs">
+                <button class="shop-tab active" data-category="all">Alle<span class="tab-count" id="tabCountAll">0</span></button>
+                <button class="shop-tab" data-category="budget">Budget<span class="tab-count" id="tabCountBudget">0</span></button>
+                <button class="shop-tab" data-category="sport">Sport<span class="tab-count" id="tabCountSport">0</span></button>
+                <button class="shop-tab" data-category="premium">Premium<span class="tab-count" id="tabCountPremium">0</span></button>
+                <button class="shop-tab" data-category="special">Special<span class="tab-count" id="tabCountSpecial">0</span></button>
+            </div>
+            
             <div id="carList"></div>
-            <div style="text-align: center; margin-top: 20px;">
-                 <button id="playBtn">KØR NU</button>
+            
+            <div style="text-align: center; margin-top: 20px; padding-top: 20px; border-top: 1px solid rgba(255,255,255,0.1);">
+                 <button id="playBtn">🚀 KØR NU</button>
             </div>
         </div>
     </div>
@@ -1060,17 +1405,18 @@
     <div id="gameModeModal">
         <div class="gamemode-content">
             <h2>🎮 VÆLG SPILTYPE</h2>
-            <p>Alle på netværket kan joine multiplayer!</p>
+            <p>Server kører altid - join når som helst!</p>
             <div class="gamemode-buttons">
-                <button id="hostModeBtn" class="gamemode-btn host">
-                    <span class="icon">🌐</span> HOST MULTIPLAYER
-                    <span style="font-size: 11px; display: block; opacity: 0.8; margin-top: 3px;">Anbefalet - venner kan joine</span>
-                </button>
-                <button id="joinModeBtn" class="gamemode-btn join">
-                    <span class="icon">🔗</span> JOIN MULTIPLAYER
+                <button id="multiplayerModeBtn" class="gamemode-btn host">
+                    <span class="icon">🌐</span> MULTIPLAYER
+                    <span style="font-size: 11px; display: block; opacity: 0.8; margin-top: 3px;">Spil med venner på netværket</span>
                 </button>
                 <button id="soloModeBtn" class="gamemode-btn solo">
                     <span class="icon">🚗</span> SOLO
+                </button>
+                <button id="menuShopBtn" class="gamemode-btn" style="background: linear-gradient(135deg, #ff9900, #ff6600);">
+                    <span class="icon">🛒</span> SHOP
+                    <span style="font-size: 11px; display: block; opacity: 0.8; margin-top: 3px;">Køb og vælg biler</span>
                 </button>
             </div>
         </div>
@@ -1089,22 +1435,21 @@
                 </div>
                 
                 <div class="lobby-buttons">
-                    <button id="hostGameBtn" class="lobby-btn host">🏠 HOST SPIL</button>
-                    <div class="lobby-divider">ELLER</div>
-                    <div class="lobby-join-row">
-                        <input type="text" id="roomCodeInput" placeholder="KODE" maxlength="6" style="text-transform: uppercase;">
-                        <button id="joinGameBtn" class="lobby-btn join">TILSLUT</button>
-                    </div>
+                    <button id="joinGameBtn" class="lobby-btn host" style="width: 100%; font-size: 18px; padding: 15px;">🎮 JOIN SPIL</button>
                 </div>
+                
+                <p style="color: #888; font-size: 12px; text-align: center; margin-top: 10px;">
+                    Første spiller bliver automatisk vært<br>
+                    Server: <span style="color: #00ff00;">SPIL</span> (altid aktiv)
+                </p>
                 
                 <div id="lobbyError" class="lobby-error"></div>
             </div>
             
             <div id="lobbyRoom" class="lobby-section" style="display: none;">
-                <div class="room-code-display">
-                    <span>Rum kode:</span>
-                    <span id="displayRoomCode" class="room-code">------</span>
-                    <button id="copyCodeBtn" class="copy-btn">📋 Kopier</button>
+                <div class="room-code-display" style="display: none;">
+                    <span>Rum:</span>
+                    <span id="displayRoomCode" class="room-code">SPIL</span>
                 </div>
                 
                 <div class="players-list">
@@ -1113,11 +1458,23 @@
                 </div>
                 
                 <div id="hostControls" style="display: none;">
-                    <button id="startMultiplayerBtn" class="lobby-btn start">🚀 START SPIL</button>
+                    <div style="background: rgba(0,0,0,0.3); border-radius: 10px; padding: 15px; margin-bottom: 15px;">
+                        <h4 style="color: #888; margin-bottom: 10px; font-size: 14px;">⚙️ Spil Indstillinger (kun vært)</h4>
+                        <label style="display: flex; align-items: center; gap: 10px; color: #ccc; cursor: pointer; margin-bottom: 8px;">
+                            <input type="checkbox" id="hostTouchArrest" checked style="width: 18px; height: 18px;">
+                            <span>Touch Arrest (instant fangst)</span>
+                        </label>
+                        <label style="display: flex; align-items: center; gap: 10px; color: #ccc; cursor: pointer;">
+                            <input type="checkbox" id="hostDropInEnabled" checked style="width: 18px; height: 18px;">
+                            <span>Tillad drop-in (spillere kan joine under spil)</span>
+                        </label>
+                    </div>
+                    <button id="startMultiplayerBtn" class="lobby-btn start" style="width: 100%;">🚀 START SPIL</button>
+                    <p id="hostHint" style="color: #00ff00; font-size: 12px; text-align: center; margin-top: 10px;">👑 Du er værten - start når alle er klar!</p>
                 </div>
                 
                 <div id="waitingMessage" style="display: none;">
-                    <p>Venter på at værten starter spillet...</p>
+                    <p style="color: #888; text-align: center;">⏳ Venter på at værten starter spillet...</p>
                 </div>
             </div>
         </div>

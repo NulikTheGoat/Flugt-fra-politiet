@@ -113,6 +113,15 @@ export function createPoliceCar(type = 'standard') {
     return carGroup;
 }
 
+// Unique ID counter for network sync
+let nextPoliceNetworkId = 1;
+
+// Reset function for when games start
+export function resetPoliceNetworkIds() {
+    nextPoliceNetworkId = 1;
+    console.log('[POLICE] Network IDs reset');
+}
+
 export function spawnPoliceCar() {
     if(!playerCar) return;
 
@@ -125,6 +134,9 @@ export function spawnPoliceCar() {
 
     const policeCar = createPoliceCar(type);
     
+    // Assign unique network ID for multiplayer sync
+    policeCar.userData.networkId = nextPoliceNetworkId++;
+    
     // Spawn at random locations on the map
     const mapSize = 3500;
     let x, z;
@@ -136,6 +148,11 @@ export function spawnPoliceCar() {
     policeCar.position.x = x;
     policeCar.position.z = z;
     gameState.policeCars.push(policeCar);
+    
+    if (gameState.isMultiplayer) {
+        console.log(`[POLICE] Spawned police #${policeCar.userData.networkId} (${type}) at (${Math.round(x)}, ${Math.round(z)}). Total: ${gameState.policeCars.length}`);
+    }
+    
     return policeCar;
 }
 
@@ -676,6 +693,9 @@ export function updateProjectiles(delta) {
 export function syncPoliceFromNetwork(policeData) {
     if (!policeData || !Array.isArray(policeData)) return;
     
+    // Debug logging
+    const prevCount = gameState.policeCars.length;
+    
     // Create a map of existing police cars by their network ID
     const existingPolice = new Map();
     gameState.policeCars.forEach((car, index) => {
@@ -735,14 +755,16 @@ export function syncPoliceFromNetwork(policeData) {
 
 // Get police state for sending to clients (host-side)
 export function getPoliceStateForNetwork() {
-    return gameState.policeCars.map((car, index) => ({
-        id: car.userData.networkId !== undefined ? car.userData.networkId : index,
-        x: car.position.x,
-        z: car.position.z,
-        rotation: car.rotation.y,
-        health: car.userData.health,
-        speed: car.userData.speed,
-        type: car.userData.type
-    }));
+    return gameState.policeCars
+        .filter(car => car.userData.networkId !== undefined && !car.userData.dead)
+        .map(car => ({
+            id: car.userData.networkId,
+            x: car.position.x,
+            z: car.position.z,
+            rotation: car.rotation.y,
+            health: car.userData.health,
+            speed: car.userData.speed,
+            type: car.userData.type
+        }));
 }
 
