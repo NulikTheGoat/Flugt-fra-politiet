@@ -95,6 +95,8 @@ if (joinModeBtn) {
 if (DOM.gameOverShopBtn) {
     DOM.gameOverShopBtn.addEventListener('click', () => {
         goToShop();
+        // Show game mode selection after going to shop
+        gameModeModal.style.display = 'flex';
     });
 }
 
