@@ -216,7 +216,7 @@ const sharedMaterials = {
     coin: new THREE.MeshLambertMaterial({ color: 0xffd700 }),
     redLight: new THREE.MeshBasicMaterial({ color: 0xff0000 }),
     blueLight: new THREE.MeshBasicMaterial({ color: 0x0000ff }),
-    projectile: new THREE.MeshBasicMaterial({ color: 0xff4400, emissive: 0xff2200 }),
+    projectile: new THREE.MeshBasicMaterial({ color: 0xff4400 }),
     spark: new THREE.MeshBasicMaterial({ color: 0xffaa00 }),
     duck: new THREE.MeshLambertMaterial({ color: 0xffff00 }),
     duckBeak: new THREE.MeshLambertMaterial({ color: 0xffa500 })
@@ -732,7 +732,7 @@ function createTrees() {
 }
 
 // Initialize
-const playerCar = createPlayerCar();
+let playerCar = createPlayerCar(); // Changed to let for reassignment
 const policeCar = createPoliceCar();
 createGround();
 createBuildings();
