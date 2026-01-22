@@ -920,18 +920,6 @@ function updateProjectiles(delta) {
         }
     }
 }
-            
-            // Visual feedback - flash screen red briefly
-            flashDamage();
-            return; // Exit early since game is over
-        }
-    }
-    
-    // Decay slow effect
-    if (gameState.slowEffect > 0 && now > gameState.slowDuration) {
-        gameState.slowEffect = 0;
-    }
-}
 
 // Flash screen red when hit
 function flashDamage() {
