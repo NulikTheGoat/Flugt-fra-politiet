@@ -50,7 +50,6 @@ const gameState = {
     heatLevel: 1,
     collectibles: [],
     projectiles: [],
-    ducks: [],
     slowEffect: 0,
     slowDuration: 0,
     sparks: [],
@@ -217,9 +216,7 @@ const sharedMaterials = {
     redLight: new THREE.MeshBasicMaterial({ color: 0xff0000 }),
     blueLight: new THREE.MeshBasicMaterial({ color: 0x0000ff }),
     projectile: new THREE.MeshBasicMaterial({ color: 0xff4400 }),
-    spark: new THREE.MeshBasicMaterial({ color: 0xffaa00 }),
-    duck: new THREE.MeshLambertMaterial({ color: 0xffff00 }),
-    duckBeak: new THREE.MeshLambertMaterial({ color: 0xffa500 })
+    spark: new THREE.MeshBasicMaterial({ color: 0xffaa00 })
 };
 
 // Add projectile geometry after shared materials
@@ -1145,105 +1142,6 @@ function updateSparks() {
     }
 }
 
-// Create Duck
-function createDuck() {
-    if (gameState.ducks.length > 5) return; // Max 5 ducks at a time
-
-    const duckGroup = new THREE.Group();
-    
-    // Body
-    const bodyGeo = new THREE.BoxGeometry(4, 3, 5);
-    const body = new THREE.Mesh(bodyGeo, sharedMaterials.duck);
-    body.position.y = 1.5;
-    duckGroup.add(body);
-    
-    // Head
-    const headGeo = new THREE.BoxGeometry(3, 3, 3);
-    const head = new THREE.Mesh(headGeo, sharedMaterials.duck);
-    head.position.set(0, 4, 2);
-    duckGroup.add(head);
-    
-    // Beak
-    const beakGeo = new THREE.BoxGeometry(2, 1, 2);
-    const beak = new THREE.Mesh(beakGeo, sharedMaterials.duckBeak);
-    beak.position.set(0, 3.5, 4);
-    duckGroup.add(beak);
-    
-    // Legs
-    const legGeo = new THREE.BoxGeometry(1, 1.5, 1);
-    const leftLeg = new THREE.Mesh(legGeo, sharedMaterials.duckBeak);
-    leftLeg.position.set(-1, 0.75, 0);
-    duckGroup.add(leftLeg);
-    
-    const rightLeg = new THREE.Mesh(legGeo, sharedMaterials.duckBeak);
-    rightLeg.position.set(1, 0.75, 0);
-    duckGroup.add(rightLeg);
-    
-    // Spawn Logic
-    // Spawn them on the road ahead of the player? Or random?
-    // Let's spawn them crossing the road 
-    const spawnDist = 300 + Math.random() * 200;
-    const playerAngle = playerCar.rotation.y;
-    
-    duckGroup.position.x = playerCar.position.x + Math.sin(playerAngle) * spawnDist;
-    duckGroup.position.z = playerCar.position.z + Math.cos(playerAngle) * spawnDist;
-    
-    // Offset sideways to make them cross
-    // Cross from left to right or right to left
-    const side = Math.random() < 0.5 ? -1 : 1;
-    duckGroup.position.x += side * 100;
-    
-    // Rotate to face appropriate crossing direction
-    // If side is -1 (left), duck should face right (+X relative to road?)
-    // This is simplified: just give them a velocity
-    
-    duckGroup.userData = {
-        velocity: new THREE.Vector3(
-            -side * 0.2, // Move opposite to spawn side
-            0,
-            0
-        ),
-        spawnTime: Date.now()
-    };
-    
-    // Align rotation to velocity roughly
-    duckGroup.rotation.y = side === -1 ? Math.PI / 2 : -Math.PI / 2;
-    
-    scene.add(duckGroup);
-    gameState.ducks.push(duckGroup);
-}
-
-// Update Ducks
-function updateDucks(delta) {
-    for (let i = gameState.ducks.length - 1; i >= 0; i--) {
-        const duck = gameState.ducks[i];
-        
-        // Move duck
-        duck.position.x += duck.userData.velocity.x * (delta || 1) * 60; // Base speed ~12 units/sec
-        // duck.position.addScaledVector(duck.userData.velocity, (delta || 1) * 60);
-
-        // Bobbing animation
-        const time = Date.now() * 0.01;
-        duck.position.y = Math.sin(time) * 0.5 + 0.5;
-        
-        // Distance check for cleanup
-        const dist = duck.position.distanceTo(playerCar.position);
-        if (dist > 600) {
-            scene.remove(duck);
-            gameState.ducks.splice(i, 1);
-            continue;
-        }
-        
-        // Collision Check
-        if (dist < 15) {
-             // KILLED THE DUCK!
-             gameState.arrested = true;
-             gameState.elapsedTime = (Date.now() - gameState.startTime) / 1000;
-             showGameOver("Åh nej! Du dræbte ænderne, brormand...!");
-        }
-    }
-}
-
 // Speed visual effects (FOV, shake, sparks)
 function updateSpeedEffects(delta) {
     const speedRatio = Math.abs(gameState.speed) / gameState.maxSpeed;
@@ -1379,11 +1277,6 @@ function updateGameLogic() {
              const oldCoin = gameState.collectibles.shift();
              scene.remove(oldCoin);
          }
-    }
-
-    // Duck Spawning (Rare)
-    if (Math.random() < 0.005) { // 1 in 200 frames approx
-        createDuck();
     }
 
     // Money Collection & Animation
@@ -1741,9 +1634,6 @@ function startGame() {
     gameState.projectiles.forEach(proj => scene.remove(proj));
     gameState.projectiles = [];
     
-    gameState.ducks.forEach(d => scene.remove(d));
-    gameState.ducks = [];
-
     gameState.slowEffect = 0;
     gameState.slowDuration = 0;
     
@@ -1891,9 +1781,6 @@ function animate() {
     
     // Speed visual effects
     updateSpeedEffects(delta);
-
-    // Update Ducks
-    updateDucks(delta);
 
     // Update police and check arrest
     const policeDistance = updatePoliceAI(delta);

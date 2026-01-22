@@ -30,4 +30,3 @@
 - - [x] by pressing 'C'
 - [x] add a tank in the shop, that is able to shoot and crash heat level 1 police cars (Press 'F' to shoot when driving Tank)
 - [x] crashed deactivated cars should smoke
-- [x] add a ducks crossing the road, and if you crash into them, you loose, with a message "ooohhh not, you killed the ducks, bruh...!"
