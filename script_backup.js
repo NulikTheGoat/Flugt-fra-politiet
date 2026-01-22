@@ -819,7 +819,7 @@ window.addEventListener('keyup', (e) => {
 function updatePoliceAI(delta) {
     let minDistance = 10000;
 
-    gameState.policeCars.forEach((policeCar) => {
+    gameState.policeCars.forEach((policeCar, index) => {
         // Handle Dead/Deactivated Cars
         if (policeCar.userData.dead) {
              policeCar.userData.speed *= Math.pow(0.95, delta || 1);
@@ -836,6 +836,34 @@ function updatePoliceAI(delta) {
                  scene.remove(policeCar);
              }
              return;
+        }
+
+        // --- Police vs Police Collision ---
+        for (let j = index + 1; j < gameState.policeCars.length; j++) {
+            const otherCar = gameState.policeCars[j];
+            if (otherCar.userData.dead) continue; // Don't collide with dead cars to keep it simple
+
+            const dx = policeCar.position.x - otherCar.position.x;
+            const dz = policeCar.position.z - otherCar.position.z;
+            const distSq = dx*dx + dz*dz;
+            const minDist = 12; // Police car width approx
+
+            if (distSq < minDist * minDist) {
+                // Collision!
+                const dist = Math.sqrt(distSq);
+                const overlap = (minDist - dist) * 0.5;
+                const nx = dx / dist; // Normalized vector from other -> police
+                const nz = dz / dist;
+
+                // Push apart (Soft collision)
+                policeCar.position.x += nx * overlap;
+                policeCar.position.z += nz * overlap;
+                otherCar.position.x -= nx * overlap;
+                otherCar.position.z -= nz * overlap;
+                
+                // Add slight friction/slowdown
+                // policeCar.userData.speed *= 0.95; 
+            }
         }
 
         const dx = playerCar.position.x - policeCar.position.x;
@@ -1932,10 +1960,17 @@ function animate() {
     lastTime = now;
 
     if (!gameState.arrested) {
-        // Calculate max speed penalty based on health
-        let effectiveMaxSpeed = gameState.maxSpeed;
-        if (gameState.health <= 0) effectiveMaxSpeed *= 0.25; // Crawling speed
-        else if (gameState.health < 30) effectiveMaxSpeed *= 0.6; // Reduced power
+        // Calculate max speed penalty based on health (Linear degradation)
+        let healthFactor = Math.max(0, gameState.health) / 100;
+        healthFactor = Math.min(1, healthFactor); // Clamp if health > 100
+        
+        // Speed drops from 100% to 20% as health goes to 0
+        // E.g. 50 HP = 0.2 + 0.8 * 0.5 = 0.6 (60% speed)
+        const degradationCurve = 0.2 + (0.8 * healthFactor);
+        let effectiveMaxSpeed = gameState.maxSpeed * degradationCurve;
+        
+        // Ensure minimum crawlable speed if not dead-dead
+        if (gameState.health > 0 && effectiveMaxSpeed < 10) effectiveMaxSpeed = 10;
 
         const handling = gameState.handling || 0.05;
         const absSpeed = Math.abs(gameState.speed);

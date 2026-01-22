@@ -1,0 +1,388 @@
+import { gameState } from './state.js';
+import { scene, camera } from './core.js';
+import { enemies, cars } from './constants.js';
+import { sharedGeometries, sharedMaterials } from './assets.js';
+import { createSmoke, createSpeedParticle } from './particles.js';
+import { playerCar, takeDamage } from './player.js';
+import { normalizeAngleRadians, clamp } from './utils.js';
+import { addMoney } from './ui.js';
+
+const projectileGeometry = new THREE.SphereGeometry(2, 8, 8);
+
+export function createPoliceCar(type = 'standard') {
+    const config = enemies[type];
+    const carGroup = new THREE.Group();
+    carGroup.position.set(0, 0, -500);
+    
+    // Scale the car group
+    carGroup.scale.set(config.scale, config.scale, config.scale);
+    carGroup.userData = { 
+        type: type, 
+        speed: config.speed,
+        health: config.health,
+        maxHealth: config.health
+    };
+
+    // Get shared materials if available
+    const bodyMat = config.bodyMaterial || new THREE.MeshLambertMaterial({ color: config.color });
+    // Car body
+    const body = new THREE.Mesh(sharedGeometries.carBody, bodyMat);
+    body.position.y = 6;
+    body.castShadow = true;
+    carGroup.add(body);
+
+    // White stripe (only for police/interceptor)
+    if (type === 'standard' || type === 'interceptor') {
+        const stripe = new THREE.Mesh(sharedGeometries.policeStripe, sharedMaterials.white);
+        stripe.position.set(0, 12.5, 0);
+        carGroup.add(stripe);
+    } else if (type === 'military') {
+        const camo = new THREE.Mesh(sharedGeometries.militaryCamo, sharedMaterials.camo);
+        camo.position.set(0, 8, 0);
+        carGroup.add(camo);
+        
+        // Add turret for military
+        const turretBase = new THREE.Mesh(sharedGeometries.militaryTurretBase, sharedMaterials.camo);
+        turretBase.position.set(0, 15, -5);
+        carGroup.add(turretBase);
+        
+        const turretBarrel = new THREE.Mesh(sharedGeometries.militaryTurretBarrel, sharedMaterials.darkGrey);
+        turretBarrel.rotation.x = Math.PI / 2;
+        turretBarrel.position.set(0, 17, 10);
+        turretBarrel.name = 'turretBarrel';
+        carGroup.add(turretBarrel);
+        
+        // Track last shot time
+        carGroup.userData.lastShotTime = 0;
+        carGroup.userData.fireRate = 2000; // ms between shots
+    }
+
+    // Car roof
+    const roofMat = config.roofMaterial || new THREE.MeshLambertMaterial({ color: config.color });
+    const roof = new THREE.Mesh(sharedGeometries.carRoof, roofMat);
+    roof.position.set(0, 16, -5);
+    roof.castShadow = true;
+    carGroup.add(roof);
+
+    // Light on roof
+    const redLight = new THREE.Mesh(sharedGeometries.policeLight, sharedMaterials.redLight);
+    redLight.position.set(-4, 20, -8);
+    carGroup.add(redLight);
+
+    const blueLight = new THREE.Mesh(sharedGeometries.policeLight, sharedMaterials.blueLight);
+    blueLight.position.set(4, 20, -8);
+    carGroup.add(blueLight);
+
+    // Wheels
+    const wheelPositions = [
+        [-12, 5, 12],
+        [12, 5, 12],
+        [-12, 5, -12],
+        [12, 5, -12]
+    ];
+
+    wheelPositions.forEach(pos => {
+        const wheel = new THREE.Mesh(sharedGeometries.wheel, sharedMaterials.wheel);
+        wheel.rotation.z = Math.PI / 2;
+        wheel.position.set(...pos);
+        carGroup.add(wheel);
+    });
+
+    // Health Bar (Billboard)
+    if (config.health) {
+        const hpBg = new THREE.Mesh(
+            new THREE.PlaneGeometry(14, 2),
+            new THREE.MeshBasicMaterial({ color: 0x000000, side: THREE.DoubleSide })
+        );
+        hpBg.position.set(0, 25, 0);
+        hpBg.name = 'hpBg';
+        carGroup.add(hpBg);
+
+        const hpBar = new THREE.Mesh(
+            new THREE.PlaneGeometry(13.6, 1.6),
+            new THREE.MeshBasicMaterial({ color: 0x00ff00, side: THREE.DoubleSide })
+        );
+        hpBar.position.set(0, 25, 0.1); 
+        hpBar.name = 'hpBar';
+        carGroup.add(hpBar);
+    }
+
+    scene.add(carGroup);
+    return carGroup;
+}
+
+export function spawnPoliceCar() {
+    if(!playerCar) return;
+
+    let type = 'standard';
+    const rand = Math.random();
+    
+    if (gameState.heatLevel >= 2 && rand > 0.6) type = 'interceptor';
+    if (gameState.heatLevel >= 3 && rand > 0.7) type = 'swat';
+    if (gameState.heatLevel >= 4 && rand > 0.8) type = 'military';
+
+    const policeCar = createPoliceCar(type);
+    
+    // Spawn at random locations on the map
+    const mapSize = 3500;
+    let x, z;
+    do {
+        x = (Math.random() - 0.5) * mapSize * 2;
+        z = (Math.random() - 0.5) * mapSize * 2;
+    } while (Math.abs(x - playerCar.position.x) < 300 && Math.abs(z - playerCar.position.z) < 300);
+
+    policeCar.position.x = x;
+    policeCar.position.z = z;
+    gameState.policeCars.push(policeCar);
+    return policeCar;
+}
+
+export function updatePoliceAI(delta) {
+    if(!playerCar) return 10000;
+
+    let minDistance = 10000;
+
+    gameState.policeCars.forEach((policeCar, index) => {
+        if (policeCar.userData.dead) {
+             policeCar.userData.speed *= Math.pow(0.95, delta || 1);
+             const move = policeCar.userData.speed * 0.016 * (delta || 1);
+             policeCar.position.x += Math.sin(policeCar.rotation.y) * move;
+             policeCar.position.z += Math.cos(policeCar.rotation.y) * move;
+             
+             if (Math.random() < 0.2) createSmoke(policeCar.position);
+
+             if (Date.now() - policeCar.userData.deathTime > 10000) {
+                 policeCar.userData.remove = true;
+                 scene.remove(policeCar);
+             }
+             return;
+        }
+
+        // Police vs Police Collision
+        for (let j = index + 1; j < gameState.policeCars.length; j++) {
+            const otherCar = gameState.policeCars[j];
+            if (otherCar.userData.dead) continue;
+
+            const dx = policeCar.position.x - otherCar.position.x;
+            const dz = policeCar.position.z - otherCar.position.z;
+            const distSq = dx*dx + dz*dz;
+            const minDist = 12;
+
+            if (distSq < minDist * minDist) {
+                const dist = Math.sqrt(distSq);
+                const overlap = (minDist - dist) * 0.5;
+                const nx = dx / dist; 
+                const nz = dz / dist;
+
+                policeCar.position.x += nx * overlap;
+                policeCar.position.z += nz * overlap;
+                otherCar.position.x -= nx * overlap;
+                otherCar.position.z -= nz * overlap;
+            }
+        }
+
+        const dx = playerCar.position.x - policeCar.position.x;
+        const dz = playerCar.position.z - policeCar.position.z;
+        const distance = Math.sqrt(dx * dx + dz * dz);
+
+        // Tank Ramming Logic
+        const currentCar = cars[gameState.selectedCar];
+        if (currentCar && currentCar.type === 'tank' && distance < 50) {
+             policeCar.userData.dead = true;
+             policeCar.userData.deathTime = Date.now();
+             createSmoke(policeCar.position);
+             gameState.screenShake = 0.5;
+             return; 
+        }
+
+        const targetDirection = Math.atan2(dx, dz);
+        
+        const angleDiff = normalizeAngleRadians(targetDirection - policeCar.rotation.y);
+        policeCar.rotation.y += clamp(angleDiff, -0.06, 0.06) * (delta || 1);
+
+        const policeSpeed = policeCar.userData.speed || 250;
+
+        const policeMove = policeSpeed * 0.016 * (delta || 1);
+        policeCar.position.z += Math.cos(policeCar.rotation.y) * policeMove;
+        policeCar.position.x += Math.sin(policeCar.rotation.y) * policeMove;
+
+        // Update Health Bar
+        const hpBar = policeCar.getObjectByName('hpBar');
+        const hpBg = policeCar.getObjectByName('hpBg');
+        if (hpBar && hpBg) {
+             hpBar.lookAt(camera.position);
+             hpBg.lookAt(camera.position);
+             
+             const healthPct = Math.max(0, policeCar.userData.health / policeCar.userData.maxHealth);
+             hpBar.scale.x = healthPct;
+             hpBar.material.color.setHSL(healthPct * 0.3, 1, 0.5); 
+        }
+
+        // Military vehicles shoot
+        if (policeCar.userData.type === 'military') {
+            const now = Date.now();
+            if (now - policeCar.userData.lastShotTime > policeCar.userData.fireRate && distance < 800) {
+                fireProjectile(policeCar);
+                policeCar.userData.lastShotTime = now;
+            }
+        }
+
+        // Check arrest condition
+        const speedKmh = Math.abs(gameState.speed) * 3.6;
+        const isMovingSlow = speedKmh < 20;
+
+        if (distance < gameState.arrestDistance && !gameState.arrested) {
+            if (isMovingSlow) {
+                gameState.arrested = true;
+                gameState.elapsedTime = (Date.now() - gameState.startTime) / 1000;
+                // Import dynamically to avoid circular dependency
+                import('./ui.js').then(m => m.showGameOver());
+            } else {
+                const now = Date.now();
+                if (now - (policeCar.userData.lastHit || 0) < 500) return;
+                policeCar.userData.lastHit = now;
+
+                const pushDirX = playerCar.position.x - policeCar.position.x;
+                const pushDirZ = playerCar.position.z - policeCar.position.z;
+                const len = Math.sqrt(pushDirX*pushDirX + pushDirZ*pushDirZ);
+                const nx = len > 0 ? pushDirX/len : 1;
+                const nz = len > 0 ? pushDirZ/len : 0;
+                
+                const impactForce = Math.max(20, speedKmh * 0.5); 
+                gameState.speed *= -0.4; 
+                gameState.velocityX += nx * impactForce;
+                gameState.velocityZ += nz * impactForce;
+
+                policeCar.position.x -= nx * 15;
+                policeCar.position.z -= nz * 15;
+                
+                const damage = Math.max(5, speedKmh * 0.3);
+                takeDamage(damage);
+                
+                gameState.screenShake = 0.3;
+                createSmoke(playerCar.position);
+            }
+        }
+
+        minDistance = Math.min(minDistance, distance);
+    });
+
+    gameState.policeCars = gameState.policeCars.filter(c => !c.userData.remove);
+
+    return minDistance;
+}
+
+export function fireProjectile(policeCar) {
+    if(!playerCar) return;
+
+    const projectile = new THREE.Mesh(projectileGeometry, sharedMaterials.projectile);
+    
+    projectile.position.copy(policeCar.position);
+    projectile.position.y = 17 * policeCar.scale.y;
+    
+    const dx = playerCar.position.x - policeCar.position.x;
+    const dz = playerCar.position.z - policeCar.position.z;
+    const angle = Math.atan2(dx, dz);
+    
+    projectile.position.x += Math.sin(angle) * 15 * policeCar.scale.x;
+    projectile.position.z += Math.cos(angle) * 15 * policeCar.scale.z;
+    
+    const speed = 15;
+    projectile.userData = {
+        velocity: new THREE.Vector3(
+            Math.sin(angle) * speed,
+            0,
+            Math.cos(angle) * speed
+        ),
+        lifetime: 3000,
+        spawnTime: Date.now()
+    };
+    
+    scene.add(projectile);
+    gameState.projectiles.push(projectile);
+}
+
+export function firePlayerProjectile() {
+    if (!playerCar || gameState.arrested) return;
+
+    const projectile = new THREE.Mesh(projectileGeometry, sharedMaterials.projectile);
+    
+    const angle = playerCar.rotation.y;
+    projectile.position.copy(playerCar.position);
+    projectile.position.y = 18;
+    projectile.position.x += Math.sin(angle) * 35;
+    projectile.position.z += Math.cos(angle) * 35;
+    
+    projectile.userData = {
+        velocity: new THREE.Vector3(
+            Math.sin(angle) * 60,
+            0,
+            Math.cos(angle) * 60
+        ),
+        lifetime: 2000,
+        spawnTime: Date.now(),
+        isPlayerShot: true
+    };
+    
+    scene.add(projectile);
+    gameState.projectiles.push(projectile);
+    
+    gameState.speed -= 2;
+}
+
+export function updateProjectiles(delta) {
+    if(!playerCar) return;
+
+    const now = Date.now();
+    const playerPos = playerCar.position;
+    
+    for (let i = gameState.projectiles.length - 1; i >= 0; i--) {
+        const proj = gameState.projectiles[i];
+        
+        proj.position.x += proj.userData.velocity.x * (delta || 1);
+        proj.position.y += proj.userData.velocity.y * (delta || 1);
+        proj.position.z += proj.userData.velocity.z * (delta || 1);
+        
+        if (now - proj.userData.spawnTime > proj.userData.lifetime) {
+            scene.remove(proj);
+            gameState.projectiles.splice(i, 1);
+            continue;
+        }
+
+        if (proj.userData.isPlayerShot) {
+            let hit = false;
+            for (let j = 0; j < gameState.policeCars.length; j++) {
+                const police = gameState.policeCars[j];
+                if (police.userData.dead) continue;
+                
+                const dx = police.position.x - proj.position.x;
+                const dz = police.position.z - proj.position.z;
+                if (dx*dx + dz*dz < 600) { 
+                    hit = true;
+                    police.userData.dead = true;
+                    police.userData.deathTime = now;
+                    addMoney(500);
+                    
+                    // Add explosion particles
+                    for(let k=0; k<5; k++) createSpeedParticle(police.position, true);
+                    break;
+                }
+            }
+            if (hit) {
+                scene.remove(proj);
+                gameState.projectiles.splice(i, 1);
+                continue;
+            }
+        } else {
+            const dx = playerPos.x - proj.position.x;
+            const dz = playerPos.z - proj.position.z;
+            const dist = Math.sqrt(dx * dx + dz * dz);
+            
+            if (dist < 20) {
+                scene.remove(proj);
+                gameState.projectiles.splice(i, 1);
+                takeDamage(34); 
+            }
+        }
+    }
+}

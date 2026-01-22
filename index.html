@@ -548,7 +548,7 @@
         <p id="gameOverMessage">Du blev fanget af politiet.</p>
         <p>Tid: <span id="gameOverTime">0</span>s</p>
         <p>Penge tjent: <span id="gameOverMoney">0</span>kr</p>
-        <button onclick="goToShop()">Gå til shop</button>
+        <button id="gameOverShopBtn">Gå til shop</button>
     </div>
 
     <div id="shop">
@@ -559,12 +559,12 @@
             </div>
             <div id="carList"></div>
             <div style="text-align: center; margin-top: 20px;">
-                 <button id="playBtn" onclick="startGame()">KØR NU</button>
+                 <button id="playBtn">KØR NU</button>
             </div>
         </div>
     </div>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-    <script src="script.js"></script>
+    <script type="module" src="js/main.js"></script>
 </body>
 </html>
