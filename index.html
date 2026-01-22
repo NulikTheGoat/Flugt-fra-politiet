@@ -24,6 +24,307 @@
             height: 100%;
         }
 
+        /* Multiplayer Lobby Styles */
+        #multiplayerLobby {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(10, 10, 20, 0.98);
+            z-index: 400;
+            display: none;
+            justify-content: center;
+            align-items: center;
+            backdrop-filter: blur(10px);
+        }
+
+        .lobby-content {
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            border: 2px solid #0066ff;
+            border-radius: 15px;
+            padding: 30px 40px;
+            min-width: 400px;
+            max-width: 500px;
+            position: relative;
+            box-shadow: 0 0 50px rgba(0, 102, 255, 0.3);
+        }
+
+        .lobby-content h1 {
+            text-align: center;
+            color: #0088ff;
+            margin-bottom: 25px;
+            font-size: 28px;
+            text-shadow: 0 0 20px rgba(0, 136, 255, 0.5);
+        }
+
+        .lobby-close {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            background: none;
+            border: none;
+            color: #666;
+            font-size: 24px;
+            cursor: pointer;
+            transition: color 0.2s;
+        }
+
+        .lobby-close:hover {
+            color: #ff4444;
+        }
+
+        .lobby-section {
+            margin-bottom: 20px;
+        }
+
+        .lobby-input-group {
+            margin-bottom: 20px;
+        }
+
+        .lobby-input-group label {
+            display: block;
+            color: #888;
+            margin-bottom: 8px;
+            font-size: 14px;
+        }
+
+        .lobby-input-group input {
+            width: 100%;
+            padding: 12px 15px;
+            background: #0a0a15;
+            border: 1px solid #333;
+            border-radius: 8px;
+            color: #fff;
+            font-size: 16px;
+        }
+
+        .lobby-input-group input:focus {
+            outline: none;
+            border-color: #0066ff;
+            box-shadow: 0 0 10px rgba(0, 102, 255, 0.3);
+        }
+
+        .lobby-buttons {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .lobby-btn {
+            padding: 15px 25px;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.2s;
+            text-transform: uppercase;
+        }
+
+        .lobby-btn.host {
+            background: linear-gradient(135deg, #00aa00, #008800);
+            color: #fff;
+        }
+
+        .lobby-btn.host:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(0, 170, 0, 0.4);
+        }
+
+        .lobby-btn.join {
+            background: linear-gradient(135deg, #0066ff, #0044cc);
+            color: #fff;
+            flex: 1;
+        }
+
+        .lobby-btn.join:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(0, 102, 255, 0.4);
+        }
+
+        .lobby-btn.start {
+            background: linear-gradient(135deg, #ff8800, #ff6600);
+            color: #fff;
+            width: 100%;
+        }
+
+        .lobby-btn.start:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(255, 136, 0, 0.4);
+        }
+
+        .lobby-divider {
+            text-align: center;
+            color: #555;
+            font-size: 12px;
+            position: relative;
+        }
+
+        .lobby-divider::before,
+        .lobby-divider::after {
+            content: '';
+            position: absolute;
+            top: 50%;
+            width: 40%;
+            height: 1px;
+            background: #333;
+        }
+
+        .lobby-divider::before { left: 0; }
+        .lobby-divider::after { right: 0; }
+
+        .lobby-join-row {
+            display: flex;
+            gap: 10px;
+        }
+
+        .lobby-join-row input {
+            width: 120px;
+            padding: 15px;
+            background: #0a0a15;
+            border: 1px solid #333;
+            border-radius: 8px;
+            color: #fff;
+            font-size: 18px;
+            text-align: center;
+            letter-spacing: 3px;
+            font-family: monospace;
+        }
+
+        .lobby-error {
+            color: #ff4444;
+            text-align: center;
+            margin-top: 15px;
+            font-size: 14px;
+            min-height: 20px;
+        }
+
+        .room-code-display {
+            background: #0a0a15;
+            border: 1px solid #0066ff;
+            border-radius: 10px;
+            padding: 20px;
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        .room-code-display span:first-child {
+            color: #888;
+            display: block;
+            margin-bottom: 10px;
+        }
+
+        .room-code {
+            font-size: 36px;
+            font-family: monospace;
+            color: #0088ff;
+            letter-spacing: 5px;
+            text-shadow: 0 0 20px rgba(0, 136, 255, 0.5);
+        }
+
+        .copy-btn {
+            margin-top: 15px;
+            padding: 8px 15px;
+            background: #333;
+            border: 1px solid #555;
+            border-radius: 5px;
+            color: #fff;
+            cursor: pointer;
+            font-size: 12px;
+        }
+
+        .copy-btn:hover {
+            background: #444;
+        }
+
+        .players-list {
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 10px;
+            padding: 15px;
+            margin-bottom: 20px;
+        }
+
+        .players-list h3 {
+            color: #888;
+            font-size: 14px;
+            margin-bottom: 10px;
+        }
+
+        #playersList {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .player-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px 15px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 8px;
+        }
+
+        .player-color {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            border: 2px solid #fff;
+        }
+
+        .player-name {
+            flex: 1;
+            color: #fff;
+        }
+
+        .player-host {
+            background: linear-gradient(135deg, #ffaa00, #ff8800);
+            color: #000;
+            padding: 3px 8px;
+            border-radius: 4px;
+            font-size: 10px;
+            font-weight: bold;
+        }
+
+        #waitingMessage {
+            text-align: center;
+            color: #888;
+            padding: 20px;
+        }
+
+        #waitingMessage p {
+            animation: pulse 1.5s infinite;
+        }
+
+        /* Other Players HUD */
+        #otherPlayersHUD {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            z-index: 100;
+        }
+
+        .other-player-card {
+            background: rgba(0, 0, 0, 0.7);
+            border: 2px solid #0066ff;
+            border-radius: 8px;
+            padding: 10px 15px;
+            margin-bottom: 10px;
+            min-width: 150px;
+        }
+
+        .other-player-card .name {
+            color: #0088ff;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+
+        .other-player-card .stats {
+            color: #888;
+            font-size: 12px;
+        }
+
         #hud {
             position: absolute;
             top: 20px;
@@ -611,6 +912,9 @@
         <div>C - 2D/3D Syn</div>
     </div>
 
+    <!-- Other Players HUD for multiplayer -->
+    <div id="otherPlayersHUD"></div>
+
     <div id="gameOver">
         <h1 id="gameOverTitle">Du blev arresteret!</h1>
         <p id="gameOverMessage">Du blev fanget af politiet.</p>
@@ -646,6 +950,7 @@
             <div id="shopHeader">
                 <h1>Garage & Shop</h1>
                 <div style="display: flex; gap: 15px; align-items: center;">
+                    <button id="multiplayerBtn" style="background: #0066ff; border: 1px solid #0088ff; color: #fff; padding: 8px 16px; border-radius: 5px; cursor: pointer; font-size: 14px;">🌐 Multiplayer</button>
                     <a href="/config" style="background: #333; border: 1px solid #666; color: #fff; padding: 8px 16px; border-radius: 5px; cursor: pointer; text-decoration: none; font-size: 14px;">⚙️ Server Config</a>
                     <div id="moneyDisplay"><span id="shopMoney">0</span> KR</div>
                 </div>
@@ -653,6 +958,53 @@
             <div id="carList"></div>
             <div style="text-align: center; margin-top: 20px;">
                  <button id="playBtn">KØR NU</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Multiplayer Lobby -->
+    <div id="multiplayerLobby">
+        <div class="lobby-content">
+            <h1>🌐 MULTIPLAYER</h1>
+            <button id="lobbyCloseBtn" class="lobby-close">✕</button>
+            
+            <div id="lobbyConnect" class="lobby-section">
+                <div class="lobby-input-group">
+                    <label>Dit navn:</label>
+                    <input type="text" id="playerNameInput" placeholder="Indtast navn..." maxlength="20" value="Spiller">
+                </div>
+                
+                <div class="lobby-buttons">
+                    <button id="hostGameBtn" class="lobby-btn host">🏠 HOST SPIL</button>
+                    <div class="lobby-divider">ELLER</div>
+                    <div class="lobby-join-row">
+                        <input type="text" id="roomCodeInput" placeholder="KODE" maxlength="6" style="text-transform: uppercase;">
+                        <button id="joinGameBtn" class="lobby-btn join">TILSLUT</button>
+                    </div>
+                </div>
+                
+                <div id="lobbyError" class="lobby-error"></div>
+            </div>
+            
+            <div id="lobbyRoom" class="lobby-section" style="display: none;">
+                <div class="room-code-display">
+                    <span>Rum kode:</span>
+                    <span id="displayRoomCode" class="room-code">------</span>
+                    <button id="copyCodeBtn" class="copy-btn">📋 Kopier</button>
+                </div>
+                
+                <div class="players-list">
+                    <h3>Spillere (<span id="playerCount">0</span>/4)</h3>
+                    <div id="playersList"></div>
+                </div>
+                
+                <div id="hostControls" style="display: none;">
+                    <button id="startMultiplayerBtn" class="lobby-btn start">🚀 START SPIL</button>
+                </div>
+                
+                <div id="waitingMessage" style="display: none;">
+                    <p>Venter på at værten starter spillet...</p>
+                </div>
             </div>
         </div>
     </div>

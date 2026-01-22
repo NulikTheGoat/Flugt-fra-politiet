@@ -658,3 +658,82 @@ export function updateProjectiles(delta) {
         }
     }
 }
+
+// ============================================
+// MULTIPLAYER SYNC FUNCTIONS
+// ============================================
+
+// Sync police cars from network (client-side, receives data from host)
+export function syncPoliceFromNetwork(policeData) {
+    if (!policeData || !Array.isArray(policeData)) return;
+    
+    // Create a map of existing police cars by their network ID
+    const existingPolice = new Map();
+    gameState.policeCars.forEach((car, index) => {
+        if (car.userData.networkId !== undefined) {
+            existingPolice.set(car.userData.networkId, { car, index });
+        }
+    });
+    
+    const receivedIds = new Set();
+    
+    // Update or create police cars based on network data
+    policeData.forEach(data => {
+        receivedIds.add(data.id);
+        
+        if (existingPolice.has(data.id)) {
+            // Update existing car
+            const { car } = existingPolice.get(data.id);
+            
+            // Smooth interpolation
+            const lerpFactor = 0.3;
+            car.position.x += (data.x - car.position.x) * lerpFactor;
+            car.position.z += (data.z - car.position.z) * lerpFactor;
+            
+            // Smooth rotation
+            let diff = data.rotation - car.rotation.y;
+            if (diff > Math.PI) diff -= Math.PI * 2;
+            if (diff < -Math.PI) diff += Math.PI * 2;
+            car.rotation.y += diff * lerpFactor;
+            
+            // Update health
+            car.userData.health = data.health;
+            car.userData.speed = data.speed;
+            
+        } else {
+            // Create new police car
+            const type = data.type || 'standard';
+            const newCar = createPoliceCar(type);
+            newCar.position.set(data.x, 0, data.z);
+            newCar.rotation.y = data.rotation;
+            newCar.userData.networkId = data.id;
+            newCar.userData.health = data.health;
+            newCar.userData.speed = data.speed;
+            scene.add(newCar);
+            gameState.policeCars.push(newCar);
+        }
+    });
+    
+    // Remove police cars that no longer exist on host
+    for (let i = gameState.policeCars.length - 1; i >= 0; i--) {
+        const car = gameState.policeCars[i];
+        if (car.userData.networkId !== undefined && !receivedIds.has(car.userData.networkId)) {
+            scene.remove(car);
+            gameState.policeCars.splice(i, 1);
+        }
+    }
+}
+
+// Get police state for sending to clients (host-side)
+export function getPoliceStateForNetwork() {
+    return gameState.policeCars.map((car, index) => ({
+        id: car.userData.networkId !== undefined ? car.userData.networkId : index,
+        x: car.position.x,
+        z: car.position.z,
+        rotation: car.rotation.y,
+        health: car.userData.health,
+        speed: car.userData.speed,
+        type: car.userData.type
+    }));
+}
+

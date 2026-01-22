@@ -18,9 +18,9 @@ export const gameState = {
     lastMoneyCheckTime: 0,
     lastPoliceSpawnTime: 0,
     policeCars: [],
-    chunks: [], // Deprecated in favor of spatial grid? Or just unused static list.
-    chunkGrid: {}, // Spatial hash for static chunks
-    activeChunks: [], // Moving chunks (physics)
+    chunks: [],
+    chunkGrid: {},
+    activeChunks: [],
     chunkGridSize: 200,
     heatLevel: 1,
     collectibles: [],
@@ -31,7 +31,6 @@ export const gameState = {
     baseFOV: 75,
     currentFOV: 75,
     screenShake: 0,
-    // New physics variables
     velocityX: 0,
     velocityZ: 0,
     angularVelocity: 0,
@@ -45,7 +44,16 @@ export const gameState = {
     arrestCountdown: 0,
     arrestStartTime: 0,
     policeKilled: 0,
-    maxPoliceOnScreen: 0
+    maxPoliceOnScreen: 0,
+    collisionDistance: 25,
+    
+    // Multiplayer state
+    isMultiplayer: false,
+    isHost: false,
+    playerId: null,
+    roomCode: null,
+    otherPlayers: new Map(), // playerId -> { car, mesh, state }
+    playerColor: 0xff0000
 };
 
 // Input State
