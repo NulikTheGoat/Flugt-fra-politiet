@@ -44,7 +44,8 @@ const gameState = {
     selectedCar: 'standard',
     lastMoneyCheckTime: 0,
     lastPoliceSpawnTime: 0,
-    policeCars: []
+    policeCars: [],
+    chunks: []
 };
 
 const cars = {
@@ -292,7 +293,7 @@ function spawnPoliceCar() {
     return policeCar;
 }
 
-// Create Buildings (City)
+// Create Buildings (City - Collidable Chunks)
 function createBuildings() {
     const buildingPositions = [
         // Left side
@@ -330,43 +331,54 @@ function createBuildings() {
         [1100, -200, 105, 80, 155],
     ];
 
+    const chunkSize = 30; // Size of each block chunk
+
     buildingPositions.forEach(([x, z, width, depth, height]) => {
-        // Building body
-        const buildingGeometry = new THREE.BoxGeometry(width, height, depth);
+        // Calculate number of chunks in each dimension
+        const nx = Math.ceil(width / chunkSize);
+        const ny = Math.ceil(height / chunkSize);
+        const nz = Math.ceil(depth / chunkSize);
+
+        const dx = width / nx;
+        const dy = height / ny;
+        const dz = depth / nz;
+
         const buildingColor = new THREE.Color().setHSL(Math.random() * 0.1 + 0.05, 0.6, 0.5);
-        const buildingMaterial = new THREE.MeshLambertMaterial({ color: buildingColor });
-        const building = new THREE.Mesh(buildingGeometry, buildingMaterial);
-        building.position.set(x, height / 2, z);
-        building.castShadow = true;
-        building.receiveShadow = true;
-        scene.add(building);
+        
+        // Start position (bottom-left-back corner relative to center)
+        const startX = x - width / 2 + dx / 2;
+        const startY = dy / 2;
+        const startZ = z - depth / 2 + dz / 2;
 
-        // Windows (reduced for performance)
-        const windowGeometry = new THREE.BoxGeometry(5, 5, 1);
-        const windowMaterial = new THREE.MeshBasicMaterial({ color: 0xffdd44 });
-
-        const windowSpacingX = width / 3;
-        const windowSpacingY = height / 4;
-
-        for (let xi = -1; xi <= 1; xi++) {
-            for (let yi = 1; yi <= 3; yi++) {
-                // Front windows
-                const frontWindow = new THREE.Mesh(windowGeometry, windowMaterial);
-                frontWindow.position.set(
-                    x + xi * windowSpacingX,
-                    (yi * windowSpacingY),
-                    z + depth / 2
-                );
-                scene.add(frontWindow);
-
-                // Back windows
-                const backWindow = new THREE.Mesh(windowGeometry, windowMaterial);
-                backWindow.position.set(
-                    x + xi * windowSpacingX,
-                    (yi * windowSpacingY),
-                    z - depth / 2
-                );
-                scene.add(backWindow);
+        for(let ix = 0; ix < nx; ix++) {
+            for(let iy = 0; iy < ny; iy++) {
+                for(let iz = 0; iz < nz; iz++) {
+                    const geometry = new THREE.BoxGeometry(dx, dy, dz);
+                    const material = new THREE.MeshLambertMaterial({ color: buildingColor });
+                    const chunk = new THREE.Mesh(geometry, material);
+                    
+                    chunk.position.set(
+                        startX + ix * dx,
+                        startY + iy * dy,
+                        startZ + iz * dz
+                    );
+                    
+                    chunk.castShadow = true;
+                    chunk.receiveShadow = true;
+                    
+                    // User data for physics
+                    chunk.userData = {
+                        isHit: false,
+                        velocity: new THREE.Vector3(),
+                        rotVelocity: new THREE.Vector3(),
+                        width: dx,
+                        height: dy,
+                        depth: dz
+                    };
+                    
+                    scene.add(chunk);
+                    gameState.chunks.push(chunk);
+                }
             }
         }
     });
@@ -455,6 +467,86 @@ function updatePoliceAI() {
     });
 
     return minDistance;
+}
+
+// Update chunks physics and collision
+function updateBuildingChunks() {
+    if(!playerCar || gameState.chunks.length === 0) return;
+
+    // Player car bounding sphere radius approx
+    const carRadius = 15; 
+    const carPos = playerCar.position;
+
+    gameState.chunks.forEach(chunk => {
+        if (!chunk.userData.isHit) {
+            // Check collision with car
+            // Optimization: first check Manhattan distance or squared distance
+            if (Math.abs(chunk.position.x - carPos.x) < 40 && Math.abs(chunk.position.z - carPos.z) < 40) {
+                // More precise check
+                const dx = chunk.position.x - carPos.x;
+                const dz = chunk.position.z - carPos.z;
+                const distSq = dx*dx + dz*dz;
+                
+                // Collision radius check (car radius + chunk approx radius)
+                if (distSq < (carRadius + chunk.userData.width/2 + 5)**2) {
+                     // Check vertical overlap (car is at y=6 approx, chunk at varying height)
+                     // Car height is approx 12-20
+                     if (Math.abs(chunk.position.y - carPos.y) < (chunk.userData.height/2 + 10)) {
+                         // HIT!
+                         chunk.userData.isHit = true;
+                         
+                         // Calculate impact velocity based on car movement
+                         const carSpeed = gameState.speed;
+                         // Car direction
+                         const carAngle = playerCar.rotation.y;
+                         
+                         // Direction from car to chunk
+                         const angleToChunk = Math.atan2(dx, dz);
+                         
+                         chunk.userData.velocity.set(
+                            Math.sin(carAngle) * carSpeed * 0.2 + (Math.sin(angleToChunk) * 5),
+                            Math.abs(carSpeed) * 0.1 + 5 + Math.random() * 5,
+                            Math.cos(carAngle) * carSpeed * 0.2 + (Math.cos(angleToChunk) * 5)
+                         );
+                         
+                         chunk.userData.rotVelocity.set(
+                            (Math.random() - 0.5) * 0.5,
+                            (Math.random() - 0.5) * 0.5,
+                            (Math.random() - 0.5) * 0.5
+                         );
+
+                         // Slow down car slightly
+                         gameState.speed *= 0.95; 
+                     }
+                }
+            }
+        } else {
+            // Update physics for hit chunks
+            chunk.position.add(chunk.userData.velocity);
+            chunk.rotation.x += chunk.userData.rotVelocity.x;
+            chunk.rotation.y += chunk.userData.rotVelocity.y;
+            chunk.rotation.z += chunk.userData.rotVelocity.z;
+            
+            // Gravity
+            chunk.userData.velocity.y -= 0.5;
+            
+            // Ground bounce
+            if (chunk.position.y < chunk.userData.height/2) {
+                chunk.position.y = chunk.userData.height/2;
+                chunk.userData.velocity.y *= -0.5; // bounce with damping
+                chunk.userData.velocity.x *= 0.8; // friction
+                chunk.userData.velocity.z *= 0.8;
+                
+                chunk.userData.rotVelocity.multiplyScalar(0.8);
+
+                // Stop logic
+                if (Math.abs(chunk.userData.velocity.y) < 0.5 && chunk.userData.velocity.lengthSq() < 1) {
+                    chunk.userData.velocity.set(0,0,0);
+                    chunk.userData.rotVelocity.set(0,0,0);
+                }
+            }
+        }
+    });
 }
 
 // Update HUD
@@ -618,6 +710,9 @@ function animate() {
         spawnPoliceCar();
         gameState.lastPoliceSpawnTime = Date.now();
     }
+
+    // Generate chunks for buildings
+    updateBuildingChunks();
 
     // Update police and check arrest
     const policeDistance = updatePoliceAI();
