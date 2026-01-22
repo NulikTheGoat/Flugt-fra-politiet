@@ -130,7 +130,7 @@ function createGround() {
     const roadMaterial = new THREE.MeshLambertMaterial({ color: 0x222222 });
     const road = new THREE.Mesh(roadGeometry, roadMaterial);
     road.rotation.x = -Math.PI / 2;
-    road.position.y = 0.01;
+    road.position.y = 0.1;
     road.receiveShadow = true;
     scene.add(road);
 
@@ -138,7 +138,7 @@ function createGround() {
     const roadVertical = new THREE.Mesh(roadGeometry, roadMaterial);
     roadVertical.rotation.x = -Math.PI / 2;
     roadVertical.rotation.z = Math.PI / 2;
-    roadVertical.position.y = 0.01;
+    roadVertical.position.y = 0.1;
     roadVertical.receiveShadow = true;
     scene.add(roadVertical);
 
@@ -148,7 +148,7 @@ function createGround() {
     for (let i = -2500; i < 2500; i += 300) {
         const marking = new THREE.Mesh(markingGeometry, markingMaterial);
         marking.rotation.x = -Math.PI / 2;
-        marking.position.set(0, 0.02, i);
+        marking.position.set(0, 0.2, i);
         marking.receiveShadow = true;
         scene.add(marking);
     }
@@ -157,7 +157,7 @@ function createGround() {
     for (let i = -2500; i < 2500; i += 300) {
         const marking = new THREE.Mesh(markingGeometry, markingMaterial);
         marking.rotation.x = -Math.PI / 2;
-        marking.position.set(i, 0.02, 0);
+        marking.position.set(i, 0.2, 0);
         marking.receiveShadow = true;
         scene.add(marking);
     }
@@ -497,6 +497,10 @@ function updateHUD(policeDistance) {
 
 // Show game over screen
 function showGameOver() {
+    // Remove all police cars
+    gameState.policeCars.forEach(car => scene.remove(car));
+    gameState.policeCars = [];
+
     const gameOverScreen = document.getElementById('gameOver');
     document.getElementById('gameOverMessage').textContent = 'Du blev fanget af politiet og sat i fængsel!';
     document.getElementById('gameOverTime').textContent = Math.round(gameState.elapsedTime);
