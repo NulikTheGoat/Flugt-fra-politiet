@@ -46,6 +46,14 @@ const playerColors = [0xff0000, 0x0066ff, 0x00ff00, 0xffaa00];
 // UI Event Listeners - Show game mode selection when clicking Play
 if (DOM.playBtn) {
     DOM.playBtn.addEventListener('click', () => {
+        // If already in multiplayer, respawn with selected car
+        if (gameState.isMultiplayer && Network.isConnectedToServer()) {
+            DOM.shop.style.display = 'none';
+            Network.requestRespawnWithCar(gameState.selectedCar);
+            return;
+        }
+        
+        // Otherwise show game mode selection
         gameModeModal.style.display = 'flex';
     });
 }
@@ -487,8 +495,8 @@ Network.setOnError((message) => {
 });
 
 // Handle respawn confirmation from server
-Network.setOnRespawned((spawnPos, car) => {
-    console.log('Respawned at:', spawnPos, 'with car:', car);
+Network.setOnRespawned((spawnPos, car, resetHeat) => {
+    console.log('Respawned at:', spawnPos, 'with car:', car, 'resetHeat:', resetHeat);
     
     // Hide game over screen and shop
     DOM.gameOver.style.display = 'none';
@@ -509,6 +517,23 @@ Network.setOnRespawned((spawnPos, car) => {
     gameState.health = carData?.health || 100;
     gameState.arrestCountdown = 0;
     gameState.arrestStartTime = 0;
+    
+    // If player is alone, reset heat and police
+    if (resetHeat) {
+        console.log('[RESPAWN] Solo player - resetting heat level and police');
+        gameState.heatLevel = 1;
+        gameState.startTime = Date.now();
+        gameState.policeKilled = 0;
+        
+        // Clear existing police and spawn fresh
+        gameState.policeCars.forEach(car => scene.remove(car));
+        gameState.policeCars = [];
+        
+        // If host, spawn first police
+        if (gameState.isHost) {
+            spawnPoliceCar();
+        }
+    }
     
     // Reposition player car
     if (playerCar) {

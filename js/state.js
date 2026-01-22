@@ -48,6 +48,7 @@ export const gameState = {
     policeKilled: 0,
     maxPoliceOnScreen: 0,
     collisionDistance: 25,
+    hasStartedMoving: false, // Police don't spawn until player moves
     
     // Multiplayer state
     isMultiplayer: false,

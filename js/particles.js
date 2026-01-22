@@ -43,27 +43,29 @@ export function createSpark(position) {
 }
 
 // Create smoke for dead cars
-export function createSmoke(position) {
+export function createSmoke(position, scale = 1) {
     if (gameState.sparks.length > 300) return; // Limit total particles
     
     const smoke = getParticleFromPool('smoke', sharedGeometries.smoke, sharedMaterials.smoke);
     
     smoke.position.copy(position);
-    smoke.position.y += 5 + Math.random() * 5;
+    smoke.position.y += (5 + Math.random() * 5) * scale;
+    
+    smoke.scale.set(scale, scale, scale);
     
     smoke.userData = {
         velocity: new THREE.Vector3(
-             (Math.random() - 0.5) * 2,
-             Math.random() * 3 + 2, // Rise up
-             (Math.random() - 0.5) * 2
+             (Math.random() - 0.5) * 2 * scale,
+             (Math.random() * 3 + 2) * scale, // Rise up
+             (Math.random() - 0.5) * 2 * scale
         ),
-        lifetime: 2000,
+        lifetime: 2000 * scale,
         spawnTime: Date.now(),
         type: 'smoke'
     };
     
     // Reset initial smoke opacity
-    smoke.material.opacity = 0.6;
+    smoke.material.opacity = 0.6 * scale;
 
     scene.add(smoke);
     gameState.sparks.push(smoke);

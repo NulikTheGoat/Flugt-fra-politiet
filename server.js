@@ -420,7 +420,8 @@ wss.on('connection', (ws) => {
                     ws.send(JSON.stringify({
                         type: 'respawned',
                         spawnPos,
-                        car: newCar
+                        car: newCar,
+                        resetHeat: room.players.size === 1 // Reset heat if player is alone
                     }));
                     
                     broadcastToRoom(currentRoom, {
@@ -430,7 +431,7 @@ wss.on('connection', (ws) => {
                         data: { spawnPos, car: newCar }
                     }, playerId);
                     
-                    console.log(`🔄 Player respawned with ${newCar}`);
+                    console.log(`🔄 Player respawned with ${newCar}${room.players.size === 1 ? ' (heat reset - solo)' : ''}`);
                     break;
                 }
                 

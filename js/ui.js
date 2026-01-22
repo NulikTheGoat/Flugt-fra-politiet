@@ -218,6 +218,15 @@ export function goToShop(isMultiplayerRespawn = false) {
         respawnNotice.style.display = isMultiplayerRespawn ? 'block' : 'none';
     }
     
+    // Update play button text for multiplayer
+    if (DOM.playBtn) {
+        if (isMultiplayerRespawn || gameState.isMultiplayer) {
+            DOM.playBtn.textContent = '🚀 SPAWN';
+        } else {
+            DOM.playBtn.textContent = '🚀 KØR NU';
+        }
+    }
+    
     initShopTabs();
     renderShop();
 }

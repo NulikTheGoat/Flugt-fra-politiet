@@ -222,7 +222,7 @@ function handleMessage(msg) {
             
         case 'respawned':
             // Server confirmed respawn
-            if (onRespawned) onRespawned(msg.spawnPos, msg.car);
+            if (onRespawned) onRespawned(msg.spawnPos, msg.car, msg.resetHeat);
             break;
     }
 }
@@ -335,6 +335,7 @@ export function setOnGameReset(cb) { onGameReset = cb; }
 
 // Getters
 export function getIsConnected() { return isConnected; }
+export function isConnectedToServer() { return isConnected && ws && ws.readyState === 1; }
 export function getIsHost() { return isHost; }
 export function getPlayerId() { return playerId; }
 export function getRoomCode() { return roomCode; }

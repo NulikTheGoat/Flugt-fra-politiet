@@ -3,7 +3,7 @@ import { gameConfig } from './config.js';
 import { scene } from './core.js';
 import { sharedGeometries, sharedMaterials } from './assets.js';
 import { playerCar, takeDamage } from './player.js';
-import { createSmoke } from './particles.js';
+import { createSmoke, createSpark } from './particles.js';
 import { addMoney } from './ui.js';
 
 export function createGround() {
@@ -214,23 +214,33 @@ export function updateBuildingChunks(delta) {
         chunk.rotation.y += chunk.userData.rotVelocity.y * d;
         chunk.rotation.z += chunk.userData.rotVelocity.z * d;
         
-        chunk.userData.velocity.y -= 0.5 * d;
+        // Use individual gravity or default
+        const gravity = chunk.userData.gravity || 0.5;
+        chunk.userData.velocity.y -= gravity * d;
         
-        if (chunk.position.y < chunk.userData.height/2) {
-            chunk.position.y = chunk.userData.height/2;
-            chunk.userData.velocity.y *= -0.5; 
+        // Ground collision
+        const groundY = chunk.userData.height ? chunk.userData.height/2 : 0.5;
+        if (chunk.position.y < groundY) {
+            chunk.position.y = groundY;
+            chunk.userData.velocity.y *= -0.4; // Less bounce
             
-            const frictionFactor = Math.pow(0.8, d);
+            const frictionFactor = Math.pow(0.75, d);
             chunk.userData.velocity.x *= frictionFactor;
             chunk.userData.velocity.z *= frictionFactor;
             chunk.userData.rotVelocity.multiplyScalar(frictionFactor);
+        }
+        
+        // Air resistance for small debris
+        if (chunk.userData.isSmallDebris) {
+            chunk.userData.velocity.x *= 0.98;
+            chunk.userData.velocity.z *= 0.98;
         }
         
         // When chunk comes to rest, mark as fallen debris
         if (Math.abs(chunk.userData.velocity.y) < 0.1 && 
             Math.abs(chunk.userData.velocity.x) < 0.1 && 
             Math.abs(chunk.userData.velocity.z) < 0.1 &&
-            chunk.position.y <= chunk.userData.height/2 + 0.1) {
+            chunk.position.y <= groundY + 0.1) {
              gameState.activeChunks.splice(i, 1);
              
              // Mark as fallen debris - solid but no damage, can be shattered
@@ -330,24 +340,77 @@ export function updateBuildingChunks(delta) {
                 }
                 
                 // Shatter into smaller pieces if going fast enough
-                if (carSpeed > 12) {
+                if (carSpeed > 8) {
                     // Remove from fallen debris
                     gameState.fallenDebris.splice(i, 1);
                     scene.remove(debris);
                     
-                    // Create smaller debris pieces
-                    shatterDebris(debris);
+                    // Create smaller debris pieces - more pieces at higher speed
+                    const numPieces = Math.min(12, Math.floor(carSpeed / 3));
+                    shatterDebris(debris, carSpeed, numPieces);
                     
                     // Speed reduction based on speed (no damage!)
                     gameState.speed *= 0.85;
-                    gameState.screenShake = 0.15;
+                    gameState.screenShake = Math.min(0.3, carSpeed / 40);
                 } else {
-                    // Slow collision - stop the car more
-                    gameState.speed *= 0.7;
+                    // Slow collision - stop the car more and push debris
+                    gameState.speed *= 0.6;
                     
-                    // Also push debris a bit
-                    debris.position.x += (-normX) * 1;
-                    debris.position.z += (-normZ) * 1;
+                    // Push debris based on car momentum
+                    const pushForce = Math.max(2, carSpeed * 0.5);
+                    debris.position.x += (-normX) * pushForce;
+                    debris.position.z += (-normZ) * pushForce;
+                    
+                    // Add some rotation to pushed debris
+                    debris.rotation.y += (Math.random() - 0.5) * 0.3;
+                }
+            }
+        }
+    }
+    
+    // Collision with small debris - can also be smashed further
+    if (gameState.smallDebris && gameState.smallDebris.length > 0) {
+        for (let i = gameState.smallDebris.length - 1; i >= 0; i--) {
+            const piece = gameState.smallDebris[i];
+            if (!piece || !piece.userData) continue;
+            
+            const dx = piece.position.x - carPos.x;
+            const dz = piece.position.z - carPos.z;
+            const distSq = dx * dx + dz * dz;
+            
+            const pieceSize = (piece.userData.width || 3) / 2;
+            const collisionDist = carRadius + pieceSize;
+            
+            if (distSq < collisionDist * collisionDist) {
+                const carSpeed = Math.abs(gameState.speed);
+                
+                // Small debris gets kicked around or destroyed
+                if (carSpeed > 5 && piece.userData.width > 1.5) {
+                    // Smash small debris into even tinier pieces
+                    scene.remove(piece);
+                    gameState.smallDebris.splice(i, 1);
+                    const idx = gameState.activeChunks.indexOf(piece);
+                    if (idx > -1) gameState.activeChunks.splice(idx, 1);
+                    
+                    // Create tiny fragments
+                    createTinyFragments(piece.position, piece.material, carSpeed);
+                    
+                    // Minimal speed loss
+                    gameState.speed *= 0.95;
+                } else {
+                    // Kick the debris away
+                    const dist = Math.sqrt(distSq) || 1;
+                    const kickX = -dx / dist * (carSpeed * 0.8);
+                    const kickZ = -dz / dist * (carSpeed * 0.8);
+                    
+                    if (piece.userData.velocity) {
+                        piece.userData.velocity.x += kickX;
+                        piece.userData.velocity.z += kickZ;
+                        piece.userData.velocity.y += carSpeed * 0.3;
+                    }
+                    
+                    // Almost no speed loss from tiny debris
+                    gameState.speed *= 0.98;
                 }
             }
         }
@@ -355,19 +418,23 @@ export function updateBuildingChunks(delta) {
 }
 
 // Shatter fallen debris into smaller pieces
-function shatterDebris(debris) {
-    const numPieces = 4 + Math.floor(Math.random() * 4); // 4-7 pieces
-    const size = Math.min(debris.userData.width, debris.userData.height, debris.userData.depth) / 2;
+function shatterDebris(debris, carSpeed = 15, numPieces = 6) {
+    const actualPieces = Math.max(4, numPieces + Math.floor(Math.random() * 3)); // Variable pieces
+    const baseSize = Math.min(debris.userData.width, debris.userData.height, debris.userData.depth) / 2;
     
-    for (let i = 0; i < numPieces; i++) {
-        const pieceSize = size * (0.3 + Math.random() * 0.4);
-        const geometry = new THREE.BoxGeometry(pieceSize, pieceSize, pieceSize);
+    // Impact direction based on car velocity
+    const impactX = Math.sin(playerCar?.rotation.y || 0);
+    const impactZ = Math.cos(playerCar?.rotation.y || 0);
+    
+    for (let i = 0; i < actualPieces; i++) {
+        const pieceSize = baseSize * (0.2 + Math.random() * 0.5);
+        const geometry = new THREE.BoxGeometry(pieceSize, pieceSize * (0.5 + Math.random() * 0.5), pieceSize);
         const piece = new THREE.Mesh(geometry, debris.material.clone());
         
         // Scatter around original position
         piece.position.set(
             debris.position.x + (Math.random() - 0.5) * debris.userData.width,
-            debris.position.y + Math.random() * 5,
+            debris.position.y + Math.random() * 3,
             debris.position.z + (Math.random() - 0.5) * debris.userData.depth
         );
         
@@ -377,22 +444,28 @@ function shatterDebris(debris) {
             Math.random() * Math.PI
         );
         
+        // Velocity based on car speed and impact direction
+        const spreadX = (Math.random() - 0.5) * carSpeed * 0.6;
+        const spreadZ = (Math.random() - 0.5) * carSpeed * 0.6;
+        
         piece.userData = {
             isSmallDebris: true,
+            canShatter: pieceSize > 2, // Larger pieces can be shattered again
             velocity: new THREE.Vector3(
-                (Math.random() - 0.5) * 8,
-                3 + Math.random() * 5,
-                (Math.random() - 0.5) * 8
+                impactX * carSpeed * 0.4 + spreadX,
+                2 + Math.random() * (carSpeed * 0.3),
+                impactZ * carSpeed * 0.4 + spreadZ
             ),
             rotVelocity: new THREE.Vector3(
-                (Math.random() - 0.5) * 0.3,
-                (Math.random() - 0.5) * 0.3,
-                (Math.random() - 0.5) * 0.3
+                (Math.random() - 0.5) * 0.5,
+                (Math.random() - 0.5) * 0.5,
+                (Math.random() - 0.5) * 0.5
             ),
             width: pieceSize,
             height: pieceSize,
             depth: pieceSize,
-            lifetime: 300 // Despawn after ~5 seconds
+            lifetime: 400 + Math.floor(Math.random() * 200), // Variable lifetime
+            gravity: 0.15 + Math.random() * 0.1
         };
         
         scene.add(piece);
@@ -403,8 +476,68 @@ function shatterDebris(debris) {
         gameState.smallDebris.push(piece);
     }
     
-    // Create dust effect
+    // Create dust/smoke effect
     createSmoke(debris.position);
+    createDebrisSparks(debris.position, Math.min(8, Math.floor(carSpeed / 3)));
+}
+
+// Create tiny fragments when small debris is hit
+function createTinyFragments(position, material, carSpeed) {
+    const numFragments = 3 + Math.floor(Math.random() * 4);
+    
+    const impactX = Math.sin(playerCar?.rotation.y || 0);
+    const impactZ = Math.cos(playerCar?.rotation.y || 0);
+    
+    for (let i = 0; i < numFragments; i++) {
+        const size = 0.3 + Math.random() * 0.7;
+        const geometry = new THREE.BoxGeometry(size, size, size);
+        const piece = new THREE.Mesh(geometry, material.clone());
+        
+        piece.position.copy(position);
+        piece.position.y += Math.random() * 2;
+        
+        piece.rotation.set(
+            Math.random() * Math.PI,
+            Math.random() * Math.PI,
+            Math.random() * Math.PI
+        );
+        
+        piece.userData = {
+            isSmallDebris: true,
+            canShatter: false, // Too small to shatter
+            velocity: new THREE.Vector3(
+                impactX * carSpeed * 0.5 + (Math.random() - 0.5) * carSpeed * 0.8,
+                1 + Math.random() * carSpeed * 0.2,
+                impactZ * carSpeed * 0.5 + (Math.random() - 0.5) * carSpeed * 0.8
+            ),
+            rotVelocity: new THREE.Vector3(
+                (Math.random() - 0.5) * 0.8,
+                (Math.random() - 0.5) * 0.8,
+                (Math.random() - 0.5) * 0.8
+            ),
+            width: size,
+            height: size,
+            depth: size,
+            lifetime: 150 + Math.floor(Math.random() * 100), // Short lifetime
+            gravity: 0.25
+        };
+        
+        scene.add(piece);
+        gameState.activeChunks.push(piece);
+        
+        if (!gameState.smallDebris) gameState.smallDebris = [];
+        gameState.smallDebris.push(piece);
+    }
+    
+    // Tiny dust puff
+    createSmoke(position, 0.5);
+}
+
+// Create sparks effect for debris collision
+function createDebrisSparks(position, count = 5) {
+    for (let i = 0; i < count; i++) {
+        createSpark(position);
+    }
 }
 
 // Update and cleanup small debris (call this from the active chunks loop)
