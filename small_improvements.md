@@ -11,12 +11,12 @@
 - [x] Make the map bigger
 - [x] Tanks can shoot at you - if hit, you get arrested
 - [x] Add gravity to falling objects
-- [ ] Rebirth system: new world with new cars and challenges
+- [x] Rebirth system: new world with new cars and challenges
 - [x] More heat levels (expand beyond 4) - now 6 levels
-- [ ] Rebirth requirements: complete X heat levels + earn X money
+- [x] Rebirth requirements: complete X heat levels + earn X money
 - [x] Make cars more expensive
 - [x] Reset progress when page refreshes (no persistence)
-- [ ] Rebirth resets everything: new world, new cars, new challenges
+- [x] Rebirth resets everything: new world, new cars, new challenges
 
 ## Tech / Engine Suggestions
 - [x] Make all movement fully delta-time based (police, projectiles, chunk gravity)

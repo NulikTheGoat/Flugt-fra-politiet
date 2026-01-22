@@ -40,6 +40,7 @@ const gameState = {
     startTime: Date.now(),
     elapsedTime: 0,
     money: 0,
+    rebirthPoints: 0,
     totalMoney: 0,
     selectedCar: 'standard',
     lastMoneyCheckTime: 0,
@@ -159,6 +160,16 @@ const cars = {
         color: 0x4b5320,
         canShoot: true,
         type: 'tank'
+    },
+    ufo: {
+        name: 'UFO (Rebirth)',
+        price: 0,
+        maxSpeed: 200,
+        acceleration: 0.9,
+        handling: 0.2,
+        color: 0x00ff00,
+        type: 'ufo',
+        reqRebirth: 1
     }
 };
 
@@ -1354,7 +1365,8 @@ function updateGameLogic() {
             // Dynamic value
             const baseValue = 50;
             const timeBonus = Math.floor(time / 10) * 10; 
-            gameState.money += baseValue + timeBonus;
+            const rebirthMult = (gameState.rebirthPoints || 0) + 1;
+            gameState.money += (baseValue + timeBonus) * rebirthMult;
         }
     }
 }
@@ -1478,7 +1490,8 @@ function updateHUD(policeDistance) {
     // Give money every 10 seconds without being arrested (Passive)
     // Scale passive income with heat level: 100 * level
     if (elapsedSeconds > 0 && elapsedSeconds % 10 === 0 && (Date.now() - gameState.lastMoneyCheckTime) > 500) {
-        gameState.money += 100 * gameState.heatLevel;
+        const rebirthMult = (gameState.rebirthPoints || 0) + 1;
+        gameState.money += (100 * gameState.heatLevel) * rebirthMult;
         gameState.lastMoneyCheckTime = Date.now();
     }
 
@@ -1527,7 +1540,31 @@ function renderShop() {
     DOM.shopMoney.textContent = gameState.totalMoney;
     DOM.carList.innerHTML = '';
 
+    // Rebirth Button logic
+    if (gameState.heatLevel >= 6 && gameState.totalMoney >= 200000 && (gameState.rebirthPoints || 0) < 5) {
+        const rebirthBtn = document.createElement('div');
+        rebirthBtn.className = 'carCard'; // Reusing style
+        rebirthBtn.style.background = 'linear-gradient(45deg, #FF00FF, #00FFFF)';
+        rebirthBtn.innerHTML = `
+            <h3>REBIRTH SYSTEM</h3>
+            <p>Req: Heat 6 + 200k Money</p>
+            <p>Reward: Special Cars + 2x Money Payout</p>
+            <div class="card-footer">
+                <span class="action-indicator">REBIRTH NOW</span>
+            </div>
+        `;
+        rebirthBtn.addEventListener('click', () => {
+             if (confirm('Are you sure? This will reset your cars and money but unlock new content!')) {
+                 performRebirth();
+             }
+        });
+        DOM.carList.appendChild(rebirthBtn);
+    }
+
     Object.entries(cars).forEach(([key, car]) => {
+        // Filter Rebirth Cars
+        if (car.reqRebirth && (gameState.rebirthPoints || 0) < car.reqRebirth) return;
+
         const owned = gameState.ownedCars && gameState.ownedCars[key] || key === 'standard';
         const isSelected = gameState.selectedCar === key;
         const canAfford = gameState.totalMoney >= car.price;
@@ -1625,6 +1662,27 @@ function updateCarStats(key) {
     gameState.handling = car.handling;
     // Update car color
     updatePlayerCarColor(car.color);
+}
+
+// Perform Rebirth
+function performRebirth() {
+    gameState.rebirthPoints = (gameState.rebirthPoints || 0) + 1;
+    gameState.totalMoney = 0;
+    gameState.money = 0;
+    gameState.ownedCars = { 'standard': true };
+    gameState.selectedCar = 'standard';
+    
+    // Reset Game State but keep Rebirth Points
+    startGame();
+    
+    // Change World Appearance?
+    if (gameState.rebirthPoints > 0) {
+        scene.fog = new THREE.FogExp2(0x110033, 0.002); // Purple fog
+        renderer.setClearColor(0x110033);
+        
+        // Show unlocked message
+        alert(`REBIRTH SUCCESSFUL! Count: ${gameState.rebirthPoints}\nNew Cars Unlocked!\nMoney gained is doubled!`);
+    }
 }
 
 function startGame() {
