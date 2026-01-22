@@ -85,11 +85,72 @@
             font-size: 48px;
             margin-bottom: 20px;
             color: #ff0000;
+            animation: gameOverTitle 0.5s ease-out;
+        }
+
+        @keyframes gameOverTitle {
+            0% { transform: scale(0.5); opacity: 0; }
+            50% { transform: scale(1.1); }
+            100% { transform: scale(1); opacity: 1; }
         }
 
         #gameOver p {
             font-size: 20px;
             margin: 10px 0;
+        }
+        
+        #gameOverStats {
+            margin: 25px 0;
+            text-align: left;
+        }
+        
+        .stat-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 12px 15px;
+            margin: 8px 0;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 8px;
+            border-left: 3px solid #ff0000;
+            opacity: 0;
+            transform: translateX(-20px);
+            animation: statSlideIn 0.4s ease-out forwards;
+        }
+        
+        @keyframes statSlideIn {
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+        
+        .stat-icon {
+            font-size: 24px;
+            margin-right: 12px;
+        }
+        
+        .stat-label {
+            flex: 1;
+            color: #aaa;
+            font-size: 16px;
+        }
+        
+        .stat-value {
+            font-size: 22px;
+            font-weight: bold;
+            color: #00ff00;
+            text-shadow: 0 0 10px rgba(0, 255, 0, 0.5);
+        }
+        
+        .stat-row:nth-child(3) .stat-value {
+            color: #ff4444;
+            text-shadow: 0 0 10px rgba(255, 68, 68, 0.5);
+        }
+        
+        .stat-row:nth-child(4) .stat-value {
+            color: #ff8800;
+            text-shadow: 0 0 10px rgba(255, 136, 0, 0.5);
         }
 
         #gameOver button {
@@ -520,6 +581,7 @@
         <div>Penge: <span id="money">0</span>kr</div>
         <div>Tid: <span id="time">0</span>s</div>
         <div>Heat Level: <span id="heatLevel">1</span></div>
+        <div>Politibiler: <span id="policeCount">0</span> <span style="color: #ff4444;">💀</span><span id="deadPoliceCount" style="color: #ff4444;">0</span></div>
         <div>Hastighed: <span id="speed">0</span> km/t</div>
         <div id="speedometer">
             <div id="speedBar">
@@ -552,8 +614,30 @@
     <div id="gameOver">
         <h1 id="gameOverTitle">Du blev arresteret!</h1>
         <p id="gameOverMessage">Du blev fanget af politiet.</p>
-        <p>Tid: <span id="gameOverTime">0</span>s</p>
-        <p>Penge tjent: <span id="gameOverMoney">0</span>kr</p>
+        
+        <div id="gameOverStats">
+            <div class="stat-row" style="animation-delay: 0.2s">
+                <span class="stat-icon">⏱️</span>
+                <span class="stat-label">Overlevede</span>
+                <span class="stat-value"><span id="gameOverTime">0</span>s</span>
+            </div>
+            <div class="stat-row" style="animation-delay: 0.4s">
+                <span class="stat-icon">💰</span>
+                <span class="stat-label">Penge tjent</span>
+                <span class="stat-value"><span id="gameOverMoney">0</span>kr</span>
+            </div>
+            <div class="stat-row" style="animation-delay: 0.6s">
+                <span class="stat-icon">💀</span>
+                <span class="stat-label">Politibiler ødelagt</span>
+                <span class="stat-value" id="gameOverPoliceKilled">0</span>
+            </div>
+            <div class="stat-row" style="animation-delay: 0.8s">
+                <span class="stat-icon">🔥</span>
+                <span class="stat-label">Max Heat Level</span>
+                <span class="stat-value" id="gameOverMaxHeat">1</span>
+            </div>
+        </div>
+        
         <button id="gameOverShopBtn">Gå til shop</button>
     </div>
 

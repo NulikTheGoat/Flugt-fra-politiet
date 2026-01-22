@@ -17,6 +17,8 @@ export const DOM = {
     speedFill: document.getElementById('speedFill'),
     time: document.getElementById('time'),
     heatLevel: document.getElementById('heatLevel'),
+    policeCount: document.getElementById('policeCount'),
+    deadPoliceCount: document.getElementById('deadPoliceCount'),
     money: document.getElementById('money'),
     policeDistance: document.getElementById('policeDistance'),
     status: document.getElementById('status'),
@@ -24,6 +26,8 @@ export const DOM = {
     gameOverMessage: document.getElementById('gameOverMessage'),
     gameOverTime: document.getElementById('gameOverTime'),
     gameOverMoney: document.getElementById('gameOverMoney'),
+    gameOverPoliceKilled: document.getElementById('gameOverPoliceKilled'),
+    gameOverMaxHeat: document.getElementById('gameOverMaxHeat'),
     shop: document.getElementById('shop'),
     shopMoney: document.getElementById('shopMoney'),
     carList: document.getElementById('carList'),
@@ -63,6 +67,12 @@ export function updateHUD(policeDistance) {
     }
     DOM.time.textContent = elapsedSeconds;
     DOM.heatLevel.textContent = gameState.heatLevel;
+    
+    // Count active and dead police cars
+    const deadCount = gameState.policeCars.filter(c => c.userData.dead).length;
+    const activeCount = gameState.policeCars.length - deadCount;
+    DOM.policeCount.textContent = activeCount;
+    DOM.deadPoliceCount.textContent = deadCount;
     
     // Style heat level
     const heatColor = ['#00ff00', '#99ff00', '#ffff00', '#ff8800', '#ff4400', '#ff0000'][gameState.heatLevel - 1] || '#ff0000';
@@ -129,9 +139,47 @@ export function showGameOver(customMessage) {
     gameState.projectiles = [];
 
     DOM.gameOverMessage.textContent = customMessage || 'Du blev fanget af politiet og sat i fængsel!';
-    DOM.gameOverTime.textContent = Math.round(gameState.elapsedTime);
-    DOM.gameOverMoney.textContent = gameState.money;
     DOM.gameOver.style.display = 'block';
+    
+    // Animated counting for stats
+    const finalTime = Math.round(gameState.elapsedTime);
+    const finalMoney = gameState.money;
+    const finalKilled = gameState.policeKilled || 0;
+    const finalHeat = gameState.heatLevel;
+    
+    // Reset values for animation
+    DOM.gameOverTime.textContent = '0';
+    DOM.gameOverMoney.textContent = '0';
+    DOM.gameOverPoliceKilled.textContent = '0';
+    DOM.gameOverMaxHeat.textContent = '1';
+    
+    // Animate each stat with delay
+    setTimeout(() => animateCount(DOM.gameOverTime, finalTime, 600), 200);
+    setTimeout(() => animateCount(DOM.gameOverMoney, finalMoney, 800), 400);
+    setTimeout(() => animateCount(DOM.gameOverPoliceKilled, finalKilled, 500), 600);
+    setTimeout(() => animateCount(DOM.gameOverMaxHeat, finalHeat, 300), 800);
+}
+
+function animateCount(element, target, duration) {
+    const start = parseInt(element.textContent) || 0;
+    const startTime = performance.now();
+    
+    function update(currentTime) {
+        const elapsed = currentTime - startTime;
+        const progress = Math.min(elapsed / duration, 1);
+        
+        // Ease out cubic
+        const eased = 1 - Math.pow(1 - progress, 3);
+        const current = Math.round(start + (target - start) * eased);
+        
+        element.textContent = current;
+        
+        if (progress < 1) {
+            requestAnimationFrame(update);
+        }
+    }
+    
+    requestAnimationFrame(update);
 }
 
 export function goToShop() {

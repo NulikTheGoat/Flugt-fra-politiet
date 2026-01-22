@@ -43,7 +43,9 @@ export const gameState = {
     is2DMode: false,
     health: 100,
     arrestCountdown: 0,
-    arrestStartTime: 0
+    arrestStartTime: 0,
+    policeKilled: 0,
+    maxPoliceOnScreen: 0
 };
 
 // Input State

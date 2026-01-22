@@ -259,6 +259,8 @@ export function updatePoliceAI(delta) {
                         if (otherCar.userData.health <= 0) {
                             otherCar.userData.dead = true;
                             otherCar.userData.deathTime = now;
+                            addMoney(gameState.heatLevel * 100);
+                            gameState.policeKilled = (gameState.policeKilled || 0) + 1;
                         }
                     }
                     
@@ -269,6 +271,8 @@ export function updatePoliceAI(delta) {
                     if (policeCar.userData.health <= 0) {
                         policeCar.userData.dead = true;
                         policeCar.userData.deathTime = now;
+                        addMoney(gameState.heatLevel * 100);
+                        gameState.policeKilled = (gameState.policeKilled || 0) + 1;
                     }
                 }
             } else if (distSq < preferredDist * preferredDist && !otherCar.userData.dead) {
@@ -292,6 +296,8 @@ export function updatePoliceAI(delta) {
         if (currentCar && currentCar.type === 'tank' && distance < 50) {
              policeCar.userData.dead = true;
              policeCar.userData.deathTime = Date.now();
+             addMoney(gameState.heatLevel * 100);
+             gameState.policeKilled = (gameState.policeKilled || 0) + 1;
              createSmoke(policeCar.position);
              gameState.screenShake = 0.5;
              return; 
@@ -437,6 +443,8 @@ export function updatePoliceAI(delta) {
                 if (policeCar.userData.health <= 0) {
                     policeCar.userData.dead = true;
                     policeCar.userData.deathTime = now;
+                    addMoney(gameState.heatLevel * 100);
+                    gameState.policeKilled = (gameState.policeKilled || 0) + 1;
                 }
                 
                 createSmoke(playerCar.position);
@@ -475,6 +483,8 @@ export function updatePoliceAI(delta) {
                 if (policeCar.userData.health <= 0) {
                     policeCar.userData.dead = true;
                     policeCar.userData.deathTime = Date.now();
+                    addMoney(gameState.heatLevel * 100);
+                    gameState.policeKilled = (gameState.policeKilled || 0) + 1;
                 }
                 
                 const damage = Math.max(5, speedKmh * 0.3);
@@ -622,7 +632,8 @@ export function updateProjectiles(delta) {
                     hit = true;
                     police.userData.dead = true;
                     police.userData.deathTime = now;
-                    addMoney(500);
+                    addMoney(gameState.heatLevel * 100);
+                    gameState.policeKilled = (gameState.policeKilled || 0) + 1;
                     
                     // Add explosion particles
                     for(let k=0; k<5; k++) createSpeedParticle(police.position, true);
