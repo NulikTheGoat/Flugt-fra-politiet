@@ -259,6 +259,60 @@
         .section-damage .section-header { border-left: 4px solid #ff6600; }
         .section-economy .section-header { border-left: 4px solid #44ff44; }
         .section-spawn .section-header { border-left: 4px solid #4488ff; }
+
+        /* Toggle switch styling */
+        .toggle {
+            position: relative;
+            display: inline-block;
+            width: 60px;
+            height: 30px;
+        }
+
+        .toggle input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        .toggle .slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: #333;
+            border: 1px solid #555;
+            border-radius: 30px;
+            transition: all 0.3s;
+        }
+
+        .toggle .slider:before {
+            position: absolute;
+            content: "";
+            height: 22px;
+            width: 22px;
+            left: 3px;
+            bottom: 3px;
+            background-color: #888;
+            border-radius: 50%;
+            transition: all 0.3s;
+        }
+
+        .toggle input:checked + .slider {
+            background-color: rgba(255, 68, 68, 0.3);
+            border-color: #ff4444;
+        }
+
+        .toggle input:checked + .slider:before {
+            transform: translateX(30px);
+            background-color: #ff4444;
+            box-shadow: 0 0 10px rgba(255, 68, 68, 0.5);
+        }
+
+        .toggle input:focus + .slider {
+            box-shadow: 0 0 5px rgba(255, 68, 68, 0.3);
+        }
     </style>
 </head>
 <body>
@@ -313,6 +367,18 @@
                 <h2>Arrest Mechanics</h2>
             </div>
             <div class="section-content">
+                <div class="config-row">
+                    <div class="config-label">
+                        <span class="name">Touch Arrest</span>
+                        <span class="desc">Instant arrest when any police car touches player</span>
+                    </div>
+                    <div class="config-input">
+                        <label class="toggle">
+                            <input type="checkbox" id="touchArrest">
+                            <span class="slider"></span>
+                        </label>
+                    </div>
+                </div>
                 <div class="config-row">
                     <div class="config-label">
                         <span class="name">Arrest Countdown Time</span>
@@ -454,6 +520,7 @@
         const defaultConfig = {
             heatIncreaseInterval: 60,
             maxHeatLevel: 6,
+            touchArrest: false,
             arrestCountdownTime: 1,
             arrestSpeedThreshold: 10,
             playerCrashDamageMultiplier: 0.3,
@@ -464,6 +531,9 @@
             passiveIncomeBase: 100,
             coinBaseValue: 50
         };
+
+        // Boolean config keys (checkboxes)
+        const booleanKeys = ['touchArrest'];
 
         // All config keys
         const configKeys = Object.keys(defaultConfig);
@@ -502,7 +572,11 @@
             configKeys.forEach(key => {
                 const input = document.getElementById(key);
                 if (input) {
-                    input.value = config[key];
+                    if (booleanKeys.includes(key)) {
+                        input.checked = config[key];
+                    } else {
+                        input.value = config[key];
+                    }
                 }
             });
         }
@@ -513,7 +587,11 @@
             configKeys.forEach(key => {
                 const input = document.getElementById(key);
                 if (input) {
-                    config[key] = parseFloat(input.value) || defaultConfig[key];
+                    if (booleanKeys.includes(key)) {
+                        config[key] = input.checked;
+                    } else {
+                        config[key] = parseFloat(input.value) || defaultConfig[key];
+                    }
                 }
             });
             return config;
@@ -542,8 +620,28 @@
             }
         });
 
+        // Toggle countdown inputs based on Touch Arrest setting
+        function updateTouchArrestUI() {
+            const touchArrest = document.getElementById('touchArrest').checked;
+            const countdownInput = document.getElementById('arrestCountdownTime');
+            const thresholdInput = document.getElementById('arrestSpeedThreshold');
+            
+            countdownInput.disabled = touchArrest;
+            thresholdInput.disabled = touchArrest;
+            
+            // Visual feedback
+            countdownInput.style.opacity = touchArrest ? '0.4' : '1';
+            thresholdInput.style.opacity = touchArrest ? '0.4' : '1';
+            countdownInput.parentElement.parentElement.style.opacity = touchArrest ? '0.5' : '1';
+            thresholdInput.parentElement.parentElement.style.opacity = touchArrest ? '0.5' : '1';
+        }
+        
+        // Listen for Touch Arrest toggle changes
+        document.getElementById('touchArrest').addEventListener('change', updateTouchArrestUI);
+
         // Initialize
         loadFormValues();
+        updateTouchArrestUI();
     </script>
 </body>
 </html>

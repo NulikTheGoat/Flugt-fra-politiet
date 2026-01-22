@@ -488,6 +488,19 @@ export function updatePoliceAI(delta) {
         minDistance = Math.min(minDistance, distance);
     });
 
+    // Touch Arrest - instant arrest when close to any police car (no countdown)
+    if (gameConfig.touchArrest) {
+        if (minDistance < gameState.arrestDistance && !gameState.arrested) {
+            gameState.arrested = true;
+            gameState.arrestCountdown = 0;
+            gameState.arrestStartTime = 0;
+            gameState.elapsedTime = (Date.now() - gameState.startTime) / 1000;
+            showGameOver();
+        }
+        gameState.policeCars = gameState.policeCars.filter(c => !c.userData.remove);
+        return minDistance;
+    }
+    
     // Arrest countdown logic - check based on minimum distance (outside loop)
     // Trigger when speed is less than configured threshold of max speed
     const maxSpeedKmh = gameState.maxSpeed * 3.6;

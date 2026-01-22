@@ -7,6 +7,7 @@ export const gameConfig = {
     // Arrest settings
     arrestCountdownTime: 1,      // seconds before arrest when stopped near police (default: 1)
     arrestSpeedThreshold: 0.1,   // fraction of max speed below which arrest countdown starts (0.1 = 10%)
+    touchArrest: false,          // if true, player is instantly arrested when police touches them
     
     // Collision damage settings
     playerCrashDamageMultiplier: 0.3,   // damage = speed * this value
@@ -46,6 +47,7 @@ export function resetConfig() {
     gameConfig.maxHeatLevel = 6;
     gameConfig.arrestCountdownTime = 1;
     gameConfig.arrestSpeedThreshold = 0.1;
+    gameConfig.touchArrest = false;
     gameConfig.playerCrashDamageMultiplier = 0.3;
     gameConfig.policeCrashDamageMultiplier = 0.4;
     gameConfig.minCrashDamage = 5;
