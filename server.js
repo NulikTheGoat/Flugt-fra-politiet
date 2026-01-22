@@ -11,8 +11,28 @@ const WS_PORT = 3001;
 // Default room code - always available
 const DEFAULT_ROOM = 'SPIL';
 
-// Simple HTTP server for static files
+// Simple HTTP server for static files + discovery endpoint
 const httpServer = http.createServer((req, res) => {
+    // Discovery endpoint for LAN server scanning
+    if (req.url === '/api/discover') {
+        const room = rooms.get(DEFAULT_ROOM);
+        const playerCount = room ? room.players.size : 0;
+        const serverInfo = {
+            name: 'Flugt fra Politiet Server',
+            room: DEFAULT_ROOM,
+            players: playerCount,
+            maxPlayers: 4,
+            gameStarted: room ? room.gameStarted : false,
+            version: '1.0'
+        };
+        res.writeHead(200, { 
+            'Content-Type': 'application/json',
+            'Access-Control-Allow-Origin': '*'
+        });
+        res.end(JSON.stringify(serverInfo));
+        return;
+    }
+    
     let filePath = '.' + req.url;
     if (filePath === './') filePath = './index.html';
     if (filePath === './start' || filePath === './start/') filePath = './index.html';

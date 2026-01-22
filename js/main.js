@@ -67,30 +67,128 @@ if (menuShopBtn) {
     });
 }
 
-// Multiplayer - simplified: connect and show lobby
+// Multiplayer - scan for servers then show lobby
 if (multiplayerModeBtn) {
     multiplayerModeBtn.addEventListener('click', async () => {
         gameModeModal.style.display = 'none';
         multiplayerLobby.style.display = 'flex';
         lobbyError.textContent = '';
         
-        // Show connecting state
-        const joinBtn = document.getElementById('joinGameBtn');
-        if (joinBtn) joinBtn.disabled = true;
-        lobbyError.textContent = 'Forbinder til server...';
-        lobbyError.style.color = '#888';
-        
-        try {
-            await Network.connect();
-            lobbyError.textContent = '';
-            if (joinBtn) joinBtn.disabled = false;
-        } catch (e) {
-            lobbyError.textContent = 'Kunne ikke forbinde til server. Kører serveren?';
-            lobbyError.style.color = '#ff4444';
-            if (joinBtn) joinBtn.disabled = false;
-        }
+        // Reset to server discovery view
+        showServerDiscovery();
     });
 }
+
+// Show server discovery step
+async function showServerDiscovery() {
+    const serverDiscovery = document.getElementById('serverDiscovery');
+    const lobbyConnect = document.getElementById('lobbyConnect');
+    const lobbyRoom = document.getElementById('lobbyRoom');
+    const scanningStatus = document.getElementById('scanningStatus');
+    const discoveredServers = document.getElementById('discoveredServers');
+    const noServersFound = document.getElementById('noServersFound');
+    const serverList = document.getElementById('serverList');
+    
+    // Show only server discovery
+    if (serverDiscovery) serverDiscovery.style.display = 'block';
+    if (lobbyConnect) lobbyConnect.style.display = 'none';
+    if (lobbyRoom) lobbyRoom.style.display = 'none';
+    if (scanningStatus) scanningStatus.style.display = 'block';
+    if (discoveredServers) discoveredServers.style.display = 'none';
+    if (noServersFound) noServersFound.style.display = 'none';
+    
+    // Scan for servers
+    const servers = await Network.scanForServers();
+    
+    if (scanningStatus) scanningStatus.style.display = 'none';
+    
+    if (servers.length > 0) {
+        if (discoveredServers) discoveredServers.style.display = 'block';
+        if (serverList) {
+            serverList.innerHTML = servers.map(server => `
+                <div class="server-card ${server.gameStarted ? 'in-game' : ''}" data-ip="${server.ip}" data-players="${server.players}">
+                    <div class="server-name">🖥️ ${server.ip === 'localhost' ? 'Lokal Server' : server.ip}</div>
+                    <span class="server-players">
+                        ${server.gameStarted ? '🎮 I gang - ' : '⏳ Venter - '}${server.players}/${server.maxPlayers} spillere
+                    </span>
+                </div>
+            `).join('');
+            
+            // Click handler for server cards
+            serverList.querySelectorAll('.server-card').forEach(card => {
+                card.addEventListener('click', () => {
+                    selectServer(card.dataset.ip, card.dataset.players);
+                });
+            });
+        }
+    } else {
+        if (noServersFound) noServersFound.style.display = 'block';
+    }
+}
+
+// Select a server and show name input
+function selectServer(ip, playerCount) {
+    Network.setServerHost(ip);
+    
+    const serverDiscovery = document.getElementById('serverDiscovery');
+    const lobbyConnect = document.getElementById('lobbyConnect');
+    const selectedServerInfo = document.getElementById('selectedServerInfo');
+    
+    // Hide discovery, show connect form
+    if (serverDiscovery) serverDiscovery.style.display = 'none';
+    if (lobbyConnect) lobbyConnect.style.display = 'block';
+    
+    // Show which server we're connecting to
+    if (selectedServerInfo) {
+        selectedServerInfo.textContent = `🖥️ Server: ${ip} (${playerCount} spillere online)`;
+    }
+    
+    // Focus name input
+    const nameInput = document.getElementById('playerNameInput');
+    if (nameInput) nameInput.focus();
+}
+
+// Connect to the selected server
+async function connectToSelectedServer() {
+    const joinBtn = document.getElementById('joinGameBtn');
+    if (joinBtn) joinBtn.disabled = true;
+    lobbyError.textContent = 'Forbinder...';
+    lobbyError.style.color = '#888';
+    
+    try {
+        await Network.connect();
+        lobbyError.textContent = '';
+        if (joinBtn) joinBtn.disabled = false;
+    } catch (e) {
+        lobbyError.textContent = 'Kunne ikke forbinde til server';
+        lobbyError.style.color = '#ff4444';
+        if (joinBtn) joinBtn.disabled = false;
+    }
+}
+
+// Back to server list button
+document.addEventListener('DOMContentLoaded', () => {
+    const backToServersBtn = document.getElementById('backToServersBtn');
+    const rescanBtn = document.getElementById('rescanBtn');
+    const rescanBtnEmpty = document.getElementById('rescanBtnEmpty');
+    const hostOwnServerBtn = document.getElementById('hostOwnServerBtn');
+    
+    if (backToServersBtn) {
+        backToServersBtn.addEventListener('click', () => {
+            Network.disconnect();
+            showServerDiscovery();
+        });
+    }
+    
+    if (rescanBtn) rescanBtn.addEventListener('click', showServerDiscovery);
+    if (rescanBtnEmpty) rescanBtnEmpty.addEventListener('click', showServerDiscovery);
+    
+    if (hostOwnServerBtn) {
+        hostOwnServerBtn.addEventListener('click', () => {
+            selectServer('localhost', '?');
+        });
+    }
+});
 
 if (DOM.gameOverShopBtn) {
     DOM.gameOverShopBtn.addEventListener('click', () => {
@@ -212,12 +310,25 @@ if (lobbyCloseBtn) {
     });
 }
 
-// Single JOIN button - everyone joins the same way
+// Single JOIN button - connect then join
 if (joinGameBtn) {
-    joinGameBtn.addEventListener('click', () => {
+    joinGameBtn.addEventListener('click', async () => {
         const name = playerNameInput.value.trim() || 'Spiller';
         const car = gameState.selectedCar || 'standard';
-        Network.joinGame(name, car);
+        
+        joinGameBtn.disabled = true;
+        lobbyError.textContent = 'Forbinder...';
+        lobbyError.style.color = '#888';
+        
+        try {
+            await Network.connect();
+            lobbyError.textContent = 'Joiner spil...';
+            Network.joinGame(name, car);
+        } catch (e) {
+            lobbyError.textContent = 'Kunne ikke forbinde til server';
+            lobbyError.style.color = '#ff4444';
+            joinGameBtn.disabled = false;
+        }
     });
 }
 
@@ -407,9 +518,15 @@ Network.setOnRespawned((spawnPos, car) => {
 });
 
 function showLobbyRoom(roomCode, players, isHost) {
+    // Hide all other sections - only show lobby room
+    const serverDiscovery = document.getElementById('serverDiscovery');
+    if (serverDiscovery) serverDiscovery.style.display = 'none';
     lobbyConnect.style.display = 'none';
     lobbyRoom.style.display = 'block';
-    displayRoomCode.textContent = roomCode;
+    
+    // Re-enable join button for future use
+    if (joinGameBtn) joinGameBtn.disabled = false;
+    lobbyError.textContent = '';
     
     if (isHost) {
         hostControls.style.display = 'block';

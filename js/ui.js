@@ -211,6 +211,13 @@ export function goToShop(isMultiplayerRespawn = false) {
     multiplayerShopMode = isMultiplayerRespawn;
     gameState.totalMoney += gameState.money;
     DOM.shop.style.display = 'flex';
+    
+    // Show/hide respawn notice
+    const respawnNotice = document.getElementById('respawnNotice');
+    if (respawnNotice) {
+        respawnNotice.style.display = isMultiplayerRespawn ? 'block' : 'none';
+    }
+    
     initShopTabs();
     renderShop();
 }
@@ -308,6 +315,9 @@ export function renderShop() {
         const owned = gameState.ownedCars && gameState.ownedCars[key] || key === 'standard';
         const isSelected = gameState.selectedCar === key;
         const canAfford = gameState.totalMoney >= car.price;
+        
+        // In multiplayer respawn mode, only show owned cars
+        if (multiplayerShopMode && !owned) return;
         
         const carCard = document.createElement('div');
         

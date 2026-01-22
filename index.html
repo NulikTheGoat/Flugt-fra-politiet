@@ -200,6 +200,64 @@
             min-height: 20px;
         }
 
+        /* Server Discovery Styles */
+        .scanning-spinner {
+            width: 40px;
+            height: 40px;
+            border: 4px solid rgba(0, 255, 102, 0.2);
+            border-top-color: #00ff66;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto;
+        }
+        
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        
+        .server-card {
+            background: rgba(0, 100, 50, 0.2);
+            border: 1px solid rgba(0, 255, 102, 0.3);
+            border-radius: 10px;
+            padding: 15px;
+            margin-bottom: 10px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .server-card:hover {
+            background: rgba(0, 100, 50, 0.4);
+            border-color: #00ff66;
+            transform: translateX(5px);
+        }
+        
+        .server-card .server-name {
+            color: #00ff66;
+            font-weight: bold;
+            font-size: 16px;
+            margin-bottom: 5px;
+        }
+        
+        .server-card .server-info {
+            color: #888;
+            font-size: 12px;
+        }
+        
+        .server-card .server-players {
+            display: inline-block;
+            background: rgba(0, 255, 102, 0.2);
+            padding: 3px 8px;
+            border-radius: 5px;
+            color: #00ff66;
+            font-size: 11px;
+            margin-top: 8px;
+        }
+        
+        .server-card.in-game .server-players {
+            background: rgba(255, 153, 0, 0.2);
+            color: #ff9900;
+        }
+
         .room-code-display {
             background: #0a0a15;
             border: 1px solid #0066ff;
@@ -1385,6 +1443,10 @@
                 </div>
             </div>
             
+            <div id="respawnNotice" style="display: none; background: linear-gradient(135deg, #ff6600, #ff9900); color: #fff; padding: 12px 20px; border-radius: 10px; margin-bottom: 15px; text-align: center; font-weight: bold;">
+                🚨 VÆLG EN BIL DU EJER FOR AT SPAWNE IGEN
+            </div>
+            
             <div id="shopTabs">
                 <button class="shop-tab active" data-category="all">Alle<span class="tab-count" id="tabCountAll">0</span></button>
                 <button class="shop-tab" data-category="budget">Budget<span class="tab-count" id="tabCountBudget">0</span></button>
@@ -1422,36 +1484,52 @@
         </div>
     </div>
 
-    <!-- Multiplayer Lobby -->
+    <!-- Multiplayer Lobby - Simplified UX -->
     <div id="multiplayerLobby">
         <div class="lobby-content">
             <h1>🌐 MULTIPLAYER</h1>
             <button id="lobbyCloseBtn" class="lobby-close">✕</button>
             
-            <div id="lobbyConnect" class="lobby-section">
+            <!-- Step 1: Server Discovery -->
+            <div id="serverDiscovery" class="lobby-section">
+                <div id="scanningStatus" style="text-align: center; padding: 20px;">
+                    <div class="scanning-spinner"></div>
+                    <p style="color: #888; margin-top: 10px;">🔍 Scanner netværket for servere...</p>
+                </div>
+                
+                <div id="discoveredServers" style="display: none;">
+                    <h3 style="color: #00ff66; margin-bottom: 10px;">📡 Fundne Servere</h3>
+                    <p style="color: #666; font-size: 12px; margin-bottom: 15px;">Klik på en server for at joine</p>
+                    <div id="serverList"></div>
+                    <button id="rescanBtn" class="lobby-btn" style="width: 100%; background: #333; margin-top: 15px;">🔄 Scan igen</button>
+                </div>
+                
+                <div id="noServersFound" style="display: none; text-align: center; padding: 20px;">
+                    <p style="color: #ff6600; font-size: 18px; margin-bottom: 10px;">❌ Ingen servere fundet</p>
+                    <p style="color: #888; font-size: 12px; margin-bottom: 15px;">Sørg for at serveren kører på netværket</p>
+                    <button id="hostOwnServerBtn" class="lobby-btn host" style="width: 100%; margin-bottom: 10px;">🖥️ Forbind til localhost</button>
+                    <button id="rescanBtnEmpty" class="lobby-btn" style="width: 100%; background: #333;">🔄 Scan igen</button>
+                </div>
+            </div>
+            
+            <!-- Step 2: Enter Name & Join (shown after selecting server) -->
+            <div id="lobbyConnect" class="lobby-section" style="display: none;">
+                <p id="selectedServerInfo" style="color: #00ff66; text-align: center; margin-bottom: 15px;"></p>
+                
                 <div class="lobby-input-group">
                     <label>Dit navn:</label>
                     <input type="text" id="playerNameInput" placeholder="Indtast navn..." maxlength="20" value="Spiller">
                 </div>
                 
-                <div class="lobby-buttons">
-                    <button id="joinGameBtn" class="lobby-btn host" style="width: 100%; font-size: 18px; padding: 15px;">🎮 JOIN SPIL</button>
-                </div>
+                <button id="joinGameBtn" class="lobby-btn host" style="width: 100%; font-size: 18px; padding: 15px; margin-top: 15px;">🎮 JOIN SPIL</button>
                 
-                <p style="color: #888; font-size: 12px; text-align: center; margin-top: 10px;">
-                    Første spiller bliver automatisk vært<br>
-                    Server: <span style="color: #00ff00;">SPIL</span> (altid aktiv)
-                </p>
+                <button id="backToServersBtn" class="lobby-btn" style="width: 100%; background: #333; margin-top: 10px;">← Tilbage til serverliste</button>
                 
                 <div id="lobbyError" class="lobby-error"></div>
             </div>
             
+            <!-- Step 3: In Room (waiting for game to start) -->
             <div id="lobbyRoom" class="lobby-section" style="display: none;">
-                <div class="room-code-display" style="display: none;">
-                    <span>Rum:</span>
-                    <span id="displayRoomCode" class="room-code">SPIL</span>
-                </div>
-                
                 <div class="players-list">
                     <h3>Spillere (<span id="playerCount">0</span>/4)</h3>
                     <div id="playersList"></div>
@@ -1459,22 +1537,22 @@
                 
                 <div id="hostControls" style="display: none;">
                     <div style="background: rgba(0,0,0,0.3); border-radius: 10px; padding: 15px; margin-bottom: 15px;">
-                        <h4 style="color: #888; margin-bottom: 10px; font-size: 14px;">⚙️ Spil Indstillinger (kun vært)</h4>
+                        <h4 style="color: #888; margin-bottom: 10px; font-size: 14px;">⚙️ Spil Indstillinger</h4>
                         <label style="display: flex; align-items: center; gap: 10px; color: #ccc; cursor: pointer; margin-bottom: 8px;">
                             <input type="checkbox" id="hostTouchArrest" checked style="width: 18px; height: 18px;">
                             <span>Touch Arrest (instant fangst)</span>
                         </label>
                         <label style="display: flex; align-items: center; gap: 10px; color: #ccc; cursor: pointer;">
                             <input type="checkbox" id="hostDropInEnabled" checked style="width: 18px; height: 18px;">
-                            <span>Tillad drop-in (spillere kan joine under spil)</span>
+                            <span>Tillad drop-in under spil</span>
                         </label>
                     </div>
                     <button id="startMultiplayerBtn" class="lobby-btn start" style="width: 100%;">🚀 START SPIL</button>
-                    <p id="hostHint" style="color: #00ff00; font-size: 12px; text-align: center; margin-top: 10px;">👑 Du er værten - start når alle er klar!</p>
+                    <p style="color: #00ff00; font-size: 12px; text-align: center; margin-top: 10px;">👑 Du er værten!</p>
                 </div>
                 
                 <div id="waitingMessage" style="display: none;">
-                    <p style="color: #888; text-align: center;">⏳ Venter på at værten starter spillet...</p>
+                    <p style="color: #888; text-align: center;">⏳ Venter på at værten starter...</p>
                 </div>
             </div>
         </div>

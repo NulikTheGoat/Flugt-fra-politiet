@@ -10,6 +10,10 @@ let otherPlayers = new Map(); // id -> { car, state, mesh }
 // Default room code (matches server)
 const DEFAULT_ROOM = 'SPIL';
 
+// Server discovery
+let discoveredServers = [];
+let serverHost = null; // Custom server host if discovered
+
 // Callbacks
 let onConnected = null;
 let onJoined = null;
@@ -25,10 +29,93 @@ let onRespawned = null;
 let onHostChanged = null;
 let onGameReset = null;
 
-// Get WebSocket URL based on current page location
+// Scan for servers on the local network
+export async function scanForServers(onProgress = null) {
+    discoveredServers = [];
+    const localIP = window.location.hostname;
+    
+    // If we're on localhost, we're probably running the server ourselves
+    if (localIP === 'localhost' || localIP === '127.0.0.1') {
+        // Try localhost first
+        const localhost = await checkServer('localhost');
+        if (localhost) discoveredServers.push(localhost);
+        return discoveredServers;
+    }
+    
+    // Extract subnet from current IP (e.g., 192.168.1.x -> 192.168.1)
+    const ipParts = localIP.split('.');
+    if (ipParts.length !== 4) {
+        return discoveredServers;
+    }
+    const subnet = `${ipParts[0]}.${ipParts[1]}.${ipParts[2]}`;
+    
+    // Also check current host (the server we loaded the page from)
+    const currentHostServer = await checkServer(localIP);
+    if (currentHostServer) {
+        discoveredServers.push(currentHostServer);
+    }
+    
+    // Scan common IP addresses in the subnet (1-254)
+    const scanPromises = [];
+    const priorityIPs = [1, 2, 100, 101, 102, 103, 104, 105, 50, 51, 52]; // Common router/device IPs
+    
+    for (const lastOctet of priorityIPs) {
+        const ip = `${subnet}.${lastOctet}`;
+        if (ip !== localIP) { // Skip already checked
+            scanPromises.push(checkServer(ip));
+        }
+    }
+    
+    if (onProgress) onProgress(0, priorityIPs.length);
+    
+    const results = await Promise.all(scanPromises);
+    results.forEach(server => {
+        if (server) discoveredServers.push(server);
+    });
+    
+    if (onProgress) onProgress(priorityIPs.length, priorityIPs.length);
+    
+    return discoveredServers;
+}
+
+// Check if a server exists at the given IP
+async function checkServer(ip) {
+    try {
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 500); // 500ms timeout
+        
+        const response = await fetch(`http://${ip}:3000/api/discover`, {
+            signal: controller.signal
+        });
+        clearTimeout(timeout);
+        
+        if (response.ok) {
+            const data = await response.json();
+            return {
+                ip: ip,
+                ...data
+            };
+        }
+    } catch (e) {
+        // Server not found or timeout - ignore
+    }
+    return null;
+}
+
+// Set custom server host
+export function setServerHost(host) {
+    serverHost = host;
+}
+
+// Get discovered servers
+export function getDiscoveredServers() {
+    return discoveredServers;
+}
+
+// Get WebSocket URL based on current page location or custom host
 function getWsUrl() {
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    const host = window.location.hostname;
+    const host = serverHost || window.location.hostname;
     return `${protocol}//${host}:3001`;
 }
 
