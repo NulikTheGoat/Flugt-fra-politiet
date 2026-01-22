@@ -25,3 +25,8 @@
 - [ ] Reuse geometries/materials for police cars (reduce allocations)
 - [ ] Particle optimization: pool meshes or switch to `THREE.Points`/`InstancedMesh`
 - [ ] Building chunk optimization: only update/check nearby chunks (simple spatial grid)
+- [ ] Police proximity is too big, the police car should crash to you in order to catch you, currently it catches you when its near
+- [x] add possiblity to switch to 2d mode, high up in the air, to be able to controll the car watching whole map
+- [ ] add a tank in the shop, that is able to shoot and crash heat level 1 police cars
+- [ ] crashed deactivated cars should smoke
+- [ ] add a ducks crossing the road, and if you crash into them, you loose, with a message "ooohhh not, you killed the ducks, bruh...!"

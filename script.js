@@ -63,7 +63,8 @@ const gameState = {
     tireMarks: [],
     carTilt: 0,
     wheelAngle: 0,
-    speedParticles: []
+    speedParticles: [],
+    is2DMode: false
 };
 
 // Helper function to darken a hex color
@@ -624,6 +625,9 @@ startGame();
 // Input handling
 window.addEventListener('keydown', (e) => {
     keys[e.key.toLowerCase()] = true;
+    if (e.key === 'c' || e.key === 'C') {
+        gameState.is2DMode = !gameState.is2DMode;
+    }
     if (e.key === ' ') e.preventDefault();
 });
 
@@ -1492,23 +1496,34 @@ function animate() {
     // Update police and check arrest
     const policeDistance = updatePoliceAI(delta);
 
-    // Update camera to follow player car (third person view)
-    const cameraDistance = 80;
-    const cameraHeight = 40;
-    const targetX = playerCar.position.x - Math.sin(playerCar.rotation.y) * cameraDistance;
-    const targetZ = playerCar.position.z - Math.cos(playerCar.rotation.y) * cameraDistance;
+    // Update camera
+    if (gameState.is2DMode) {
+        // 2D Top-down view
+        camera.up.set(0, 0, -1); // Orient camera so -Z is "up" on screen
+        camera.position.x = playerCar.position.x;
+        camera.position.z = playerCar.position.z;
+        camera.position.y = 800; // High altitude
+        camera.lookAt(playerCar.position);
+    } else {
+        // Standard Chase Camera (third person view)
+        camera.up.set(0, 1, 0); // Restore standard up vector
+        const cameraDistance = 80;
+        const cameraHeight = 40;
+        const targetX = playerCar.position.x - Math.sin(playerCar.rotation.y) * cameraDistance;
+        const targetZ = playerCar.position.z - Math.cos(playerCar.rotation.y) * cameraDistance;
 
-    camera.position.x += (targetX - camera.position.x) * 0.1;
-    camera.position.y = playerCar.position.y + cameraHeight;
-    camera.position.z += (targetZ - camera.position.z) * 0.1;
-    
-    // Apply screen shake
-    if (gameState.screenShake > 0.01) {
-        camera.position.x += (Math.random() - 0.5) * gameState.screenShake;
-        camera.position.y += (Math.random() - 0.5) * gameState.screenShake * 0.5;
+        camera.position.x += (targetX - camera.position.x) * 0.1;
+        camera.position.y = playerCar.position.y + cameraHeight;
+        camera.position.z += (targetZ - camera.position.z) * 0.1;
+        
+        // Apply screen shake
+        if (gameState.screenShake > 0.01) {
+            camera.position.x += (Math.random() - 0.5) * gameState.screenShake;
+            camera.position.y += (Math.random() - 0.5) * gameState.screenShake * 0.5;
+        }
+        
+        camera.lookAt(playerCar.position.x, playerCar.position.y + 10, playerCar.position.z);
     }
-    
-    camera.lookAt(playerCar.position.x, playerCar.position.y + 10, playerCar.position.z);
 
     // Update HUD
     updateHUD(policeDistance);
