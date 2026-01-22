@@ -321,6 +321,42 @@ function createPlayerCar(color = 0xff0000, type = 'standard') {
         rightTrack.position.set(14, 6, 0);
         carGroup.add(rightTrack);
 
+    } else if (type === 'ufo') {
+        // UFO Saucer
+        const saucerGeo = new THREE.CylinderGeometry(15, 25, 8, 32);
+        const saucerMat = new THREE.MeshPhongMaterial({ 
+             color: color, 
+             shininess: 100,
+             emissive: 0x222222
+        });
+        const saucer = new THREE.Mesh(saucerGeo, saucerMat);
+        saucer.position.y = 10;
+        saucer.castShadow = true;
+        saucer.name = 'carBody';
+        carGroup.add(saucer);
+        
+        // Cockpit dome
+        const domeGeo = new THREE.SphereGeometry(8, 32, 16, 0, Math.PI * 2, 0, Math.PI/2);
+        const domeMat = new THREE.MeshPhongMaterial({ 
+             color: 0x88ccff, 
+             transparent: true, 
+             opacity: 0.8,
+             shininess: 150
+        });
+        const dome = new THREE.Mesh(domeGeo, domeMat);
+        dome.position.y = 12;
+        carGroup.add(dome);
+
+        // Lights ring
+        const lightGeo = new THREE.SphereGeometry(1, 8, 8);
+        const lightMat = new THREE.MeshBasicMaterial({ color: 0x00ff00 });
+        for (let i = 0; i < 8; i++) {
+             const light = new THREE.Mesh(lightGeo, lightMat);
+             const angle = (i / 8) * Math.PI * 2;
+             light.position.set(Math.cos(angle) * 22, 10, Math.sin(angle) * 22);
+             carGroup.add(light);
+        }
+
     } else {
         // Car body
         const bodyGeometry = new THREE.BoxGeometry(20, 12, 45);
