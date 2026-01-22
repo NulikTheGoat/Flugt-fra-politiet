@@ -80,10 +80,10 @@ function darkenColor(hex, percent) {
 }
 
 const enemies = {
-    standard: { color: 0x0000ff, speed: 250, scale: 1, name: 'Politibil' },
-    interceptor: { color: 0x111111, speed: 300, scale: 1, name: 'Interceptor' },
-    swat: { color: 0x333333, speed: 220, scale: 1.5, name: 'SWAT' },
-    military: { color: 0x556b2f, speed: 350, scale: 1.2, name: 'Militær' }
+    standard: { color: 0x0000ff, speed: 250, scale: 1, name: 'Politibil', health: 50 },
+    interceptor: { color: 0x111111, speed: 300, scale: 1, name: 'Interceptor', health: 40 },
+    swat: { color: 0x333333, speed: 220, scale: 1.5, name: 'SWAT', health: 150 },
+    military: { color: 0x556b2f, speed: 350, scale: 1.2, name: 'Militær', health: 300 }
 };
 
 const cars = {
@@ -93,6 +93,7 @@ const cars = {
         maxSpeed: 80,
         acceleration: 0.3,
         handling: 0.05,
+        health: 100, // Baseline
         color: 0xff0000
     },
     compact: {
@@ -101,6 +102,7 @@ const cars = {
         maxSpeed: 90,
         acceleration: 0.4,
         handling: 0.06,
+        health: 80, // Weaker but agile
         color: 0xff6600
     },
     sedan: {
@@ -109,6 +111,7 @@ const cars = {
         maxSpeed: 100,
         acceleration: 0.45,
         handling: 0.065,
+        health: 120, // Sturdier
         color: 0xffdd00
     },
     sport: {
@@ -117,6 +120,7 @@ const cars = {
         maxSpeed: 110,
         acceleration: 0.5,
         handling: 0.07,
+        health: 90,
         color: 0xff3300
     },
     muscle: {
@@ -125,6 +129,7 @@ const cars = {
         maxSpeed: 120,
         acceleration: 0.55,
         handling: 0.075,
+        health: 150, // Tough
         color: 0xcc0000
     },
     supercar: {
@@ -133,6 +138,7 @@ const cars = {
         maxSpeed: 130,
         acceleration: 0.6,
         handling: 0.09,
+        health: 100,
         color: 0xffff00
     },
     hypercar: {
@@ -141,6 +147,7 @@ const cars = {
         maxSpeed: 140,
         acceleration: 0.65,
         handling: 0.12,
+        health: 110,
         color: 0x00ffff
     },
     legendary: {
@@ -149,6 +156,7 @@ const cars = {
         maxSpeed: 150,
         acceleration: 0.7,
         handling: 0.15,
+        health: 180, // High tech composite
         color: 0xff00ff
     },
     tank: {
@@ -157,6 +165,7 @@ const cars = {
         maxSpeed: 85,
         acceleration: 0.3,
         handling: 0.04,
+        health: 500, // Tanky
         color: 0x4b5320,
         canShoot: true,
         type: 'tank'
@@ -167,6 +176,7 @@ const cars = {
         maxSpeed: 200,
         acceleration: 0.9,
         handling: 0.2,
+        health: 300, // Alien shields
         color: 0x00ff00,
         type: 'ufo',
         reqRebirth: 1
@@ -210,7 +220,13 @@ const sharedGeometries = {
     wheel: new THREE.CylinderGeometry(5, 5, 8, 16), // Reduced segments from 32
     coin: new THREE.CylinderGeometry(5, 5, 2, 8),   // Reduced segments from 16
     carBody: new THREE.BoxGeometry(20, 12, 45),
-    carRoof: new THREE.BoxGeometry(18, 8, 20)
+    carRoof: new THREE.BoxGeometry(18, 8, 20),
+    policeStripe: new THREE.BoxGeometry(20, 2, 45),
+    policeLight: new THREE.BoxGeometry(8, 3, 8),
+    tankBody: new THREE.BoxGeometry(26, 14, 50), // Reused for police 'military' if adjusted or new unique
+    militaryCamo: new THREE.BoxGeometry(18, 5, 40),
+    militaryTurretBase: new THREE.CylinderGeometry(6, 8, 5, 8),
+    militaryTurretBarrel: new THREE.CylinderGeometry(1.5, 1.5, 20, 8)
 };
 
 const sharedMaterials = {
@@ -219,8 +235,18 @@ const sharedMaterials = {
     redLight: new THREE.MeshBasicMaterial({ color: 0xff0000 }),
     blueLight: new THREE.MeshBasicMaterial({ color: 0x0000ff }),
     projectile: new THREE.MeshBasicMaterial({ color: 0xff4400 }),
-    spark: new THREE.MeshBasicMaterial({ color: 0xffaa00 })
+    spark: new THREE.MeshBasicMaterial({ color: 0xffaa00 }),
+    white: new THREE.MeshLambertMaterial({ color: 0xffffff }),
+    camo: new THREE.MeshLambertMaterial({ color: 0x3b4a25 }),
+    darkGrey: new THREE.MeshLambertMaterial({ color: 0x2a2a2a })
 };
+
+// Initialize enemy materials
+Object.values(enemies).forEach(enemy => {
+    enemy.bodyMaterial = new THREE.MeshLambertMaterial({ color: enemy.color });
+    enemy.roofMaterial = new THREE.MeshLambertMaterial({ color: enemy.color });
+    enemy.roofMaterial.color.multiplyScalar(0.8);
+});
 
 // Add projectile geometry after shared materials
 const projectileGeometry = new THREE.SphereGeometry(3, 8, 8);
@@ -465,42 +491,37 @@ function createPoliceCar(type = 'standard') {
     
     // Scale the car group
     carGroup.scale.set(config.scale, config.scale, config.scale);
-    carGroup.userData = { type: type, speed: config.speed };
+    carGroup.userData = { 
+        type: type, 
+        speed: config.speed,
+        health: config.health,
+        maxHealth: config.health
+    };
 
+    // Get shared materials if available (fallback safely if not yet init)
+    const bodyMat = config.bodyMaterial || new THREE.MeshLambertMaterial({ color: config.color });
     // Car body
-    const bodyGeometry = new THREE.BoxGeometry(20, 12, 45);
-    const bodyMaterial = new THREE.MeshLambertMaterial({ color: config.color });
-    const body = new THREE.Mesh(bodyGeometry, bodyMaterial);
+    const body = new THREE.Mesh(sharedGeometries.carBody, bodyMat);
     body.position.y = 6;
     body.castShadow = true;
     carGroup.add(body);
 
     // White stripe (only for police/interceptor)
     if (type === 'standard' || type === 'interceptor') {
-        const stripeGeometry = new THREE.BoxGeometry(20, 2, 45);
-        const stripeMaterial = new THREE.MeshLambertMaterial({ color: 0xffffff });
-        const stripe = new THREE.Mesh(stripeGeometry, stripeMaterial);
+        const stripe = new THREE.Mesh(sharedGeometries.policeStripe, sharedMaterials.white);
         stripe.position.set(0, 12.5, 0);
         carGroup.add(stripe);
     } else if (type === 'military') {
-        const camoGeometry = new THREE.BoxGeometry(18, 5, 40);
-        const camoMaterial = new THREE.MeshLambertMaterial({ color: 0x3b4a25 }); // Darker camo spot
-        const camo = new THREE.Mesh(camoGeometry, camoMaterial);
+        const camo = new THREE.Mesh(sharedGeometries.militaryCamo, sharedMaterials.camo);
         camo.position.set(0, 8, 0);
         carGroup.add(camo);
         
         // Add turret for military
-        const turretBase = new THREE.Mesh(
-            new THREE.CylinderGeometry(6, 8, 5, 8),
-            new THREE.MeshLambertMaterial({ color: 0x3b4a25 })
-        );
+        const turretBase = new THREE.Mesh(sharedGeometries.militaryTurretBase, sharedMaterials.camo);
         turretBase.position.set(0, 15, -5);
         carGroup.add(turretBase);
         
-        const turretBarrel = new THREE.Mesh(
-            new THREE.CylinderGeometry(1.5, 1.5, 20, 8),
-            new THREE.MeshLambertMaterial({ color: 0x2a2a2a })
-        );
+        const turretBarrel = new THREE.Mesh(sharedGeometries.militaryTurretBarrel, sharedMaterials.darkGrey);
         turretBarrel.rotation.x = Math.PI / 2;
         turretBarrel.position.set(0, 17, 10);
         turretBarrel.name = 'turretBarrel';
@@ -512,23 +533,18 @@ function createPoliceCar(type = 'standard') {
     }
 
     // Car roof
-    const roofGeometry = new THREE.BoxGeometry(18, 8, 20);
-    const roofMaterial = new THREE.MeshLambertMaterial({ color: config.color });
-    // Make roof slightly darker
-    roofMaterial.color.multiplyScalar(0.8);
-    
-    const roof = new THREE.Mesh(roofGeometry, roofMaterial);
+    const roofMat = config.roofMaterial || new THREE.MeshLambertMaterial({ color: config.color }); // Fallback should adjust color but simpler here
+    const roof = new THREE.Mesh(sharedGeometries.carRoof, roofMat);
     roof.position.set(0, 16, -5);
     roof.castShadow = true;
     carGroup.add(roof);
 
     // Light on roof (use shared materials)
-    const lightGeometry = new THREE.BoxGeometry(8, 3, 8);
-    const redLight = new THREE.Mesh(lightGeometry, sharedMaterials.redLight);
+    const redLight = new THREE.Mesh(sharedGeometries.policeLight, sharedMaterials.redLight);
     redLight.position.set(-4, 20, -8);
     carGroup.add(redLight);
 
-    const blueLight = new THREE.Mesh(lightGeometry, sharedMaterials.blueLight);
+    const blueLight = new THREE.Mesh(sharedGeometries.policeLight, sharedMaterials.blueLight);
     blueLight.position.set(4, 20, -8);
     carGroup.add(blueLight);
 
@@ -546,6 +562,25 @@ function createPoliceCar(type = 'standard') {
         wheel.position.set(...pos);
         carGroup.add(wheel);
     });
+
+    // Health Bar (Billboard)
+    if (config.health) {
+        const hpBg = new THREE.Mesh(
+            new THREE.PlaneGeometry(14, 2),
+            new THREE.MeshBasicMaterial({ color: 0x000000, side: THREE.DoubleSide })
+        );
+        hpBg.position.set(0, 25, 0);
+        hpBg.name = 'hpBg';
+        carGroup.add(hpBg);
+
+        const hpBar = new THREE.Mesh(
+            new THREE.PlaneGeometry(13.6, 1.6),
+            new THREE.MeshBasicMaterial({ color: 0x00ff00, side: THREE.DoubleSide })
+        );
+        hpBar.position.set(0, 25, 0.1); 
+        hpBar.name = 'hpBar';
+        carGroup.add(hpBar);
+    }
 
     scene.add(carGroup);
     return carGroup;
@@ -824,6 +859,18 @@ function updatePoliceAI(delta) {
         policeCar.position.z += Math.cos(policeCar.rotation.y) * policeMove;
         policeCar.position.x += Math.sin(policeCar.rotation.y) * policeMove;
 
+        // Update Health Bar
+        const hpBar = policeCar.getObjectByName('hpBar');
+        const hpBg = policeCar.getObjectByName('hpBg');
+        if (hpBar && hpBg) {
+             hpBar.lookAt(camera.position);
+             hpBg.lookAt(camera.position);
+             
+             const healthPct = Math.max(0, policeCar.userData.health / policeCar.userData.maxHealth);
+             hpBar.scale.x = healthPct;
+             hpBar.material.color.setHSL(healthPct * 0.3, 1, 0.5); // Green (0.3) to Red (0.0)
+        }
+
         // Military vehicles shoot at player
         if (policeCar.userData.type === 'military') {
             const now = Date.now();
@@ -846,22 +893,68 @@ function updatePoliceAI(delta) {
                 showGameOver();
             } else {
                 // Not arrested (too fast), but collision damage!
-                // Push player away
+                
+                // Cooldown check to prevent instant death from frame-overlaps
+                const now = Date.now();
+                if (now - (policeCar.userData.lastHit || 0) < 500) return;
+                policeCar.userData.lastHit = now;
+
+                // Push vectors
                 const pushDirX = playerCar.position.x - policeCar.position.x;
                 const pushDirZ = playerCar.position.z - policeCar.position.z;
                 const len = Math.sqrt(pushDirX*pushDirX + pushDirZ*pushDirZ);
+                const nx = len > 0 ? pushDirX/len : 1;
+                const nz = len > 0 ? pushDirZ/len : 0;
                 
-                if (len > 0) {
-                     // Bounce effect
-                     const bounceForce = 0.5 * (Math.abs(gameState.speed) / 50); // Scale with speed
-                     gameState.speed *= -0.5; // Reverse/Stop
-                     gameState.velocityX += (pushDirX/len) * 20;
-                     gameState.velocityZ += (pushDirZ/len) * 20;
+                // --- Player Bounce (Rigid Body Feel) ---
+                // Reverse speed slightly and add impulse vector away from collision
+                const impactForce = Math.max(20, speedKmh * 0.5); 
+                gameState.speed *= -0.4; 
+                gameState.velocityX += nx * impactForce;
+                gameState.velocityZ += nz * impactForce;
+
+                // --- Police Bounce ---
+                // Push police back significantly
+                policeCar.position.x -= nx * 15;
+                policeCar.position.z -= nz * 15;
+                
+                // Damage Calculation
+                // Damage scales with speed. Minimum 5 dmg.
+                const damageBase = Math.max(5, speedKmh / 5);
+                
+                // Apply Player Damage
+                takeDamage(damageBase); 
+                createSpark(playerCar.position);
+                gameState.screenShake = 0.4;
+                
+                // Apply Police Damage
+                if (policeCar.userData.health !== undefined) {
+                    // Player deals more damage if they are heavy
+                    const playerMassBonus = (playerCar.userData.type === 'tank') ? 3 : 1;
+                    policeCar.userData.health -= (damageBase * 1.5 * playerMassBonus);
+
+                    // Visual Feedback (Flash red/scale)
+                    const originalColor = policeCar.children[0].material.color.getHex();
+                    policeCar.children[0].material.color.setHex(0xff0000); // Flash red
+                    setTimeout(() => {
+                         if(policeCar && policeCar.children[0]) // check if valid
+                            policeCar.children[0].material.color.setHex(originalColor);
+                    }, 100);
+
+                    // Check Death
+                    if (policeCar.userData.health <= 0) {
+                        policeCar.userData.dead = true;
+                        policeCar.userData.deathTime = now;
+                        createSmoke(policeCar.position);
+                        
+                        // Add some money for takedown
+                        gameState.money += 50;
+                        updateHUD();
+                        
+                        // Add explosion particles
+                        for(let i=0; i<5; i++) createSpeedParticle(policeCar.position, true); 
+                    }
                 }
-                
-                takeDamage(5); // Ramming damage
-                createSpark();
-                gameState.screenShake = 0.3;
             }
         }
 
@@ -1082,9 +1175,43 @@ function updateTireMarks(delta) {
     }
 }
 
+// Particle Pooling
+const particlePool = {
+    spark: [],
+    smoke: [],
+    speed: []
+};
+
+function getParticleFromPool(type, geometry, material) {
+    let particle;
+    if (particlePool[type] && particlePool[type].length > 0) {
+        particle = particlePool[type].pop();
+        particle.visible = true;
+        // Reset scale if it was modified (smoke does this)
+        particle.scale.set(1, 1, 1);
+        // Reset opacity if modified
+        if (particle.material.opacity !== undefined) particle.material.opacity = 1;
+    } else {
+        particle = new THREE.Mesh(geometry, material.clone()); // Clone material to allow individual opacity fading
+    }
+    return particle;
+}
+
+function returnParticleToPool(particle, type) {
+    particle.visible = false;
+    scene.remove(particle); // Remove from scene graph for now
+    if (particlePool[type]) {
+        particlePool[type].push(particle);
+    }
+}
+
+// Shared smoke resources
+const sharedSmokeGeometry = new THREE.BoxGeometry(3, 3, 3);
+const sharedSmokeMaterial = new THREE.MeshBasicMaterial({ color: 0x333333, transparent: true, opacity: 0.6 });
+
 // Create spark particle
 function createSpark() {
-    const spark = new THREE.Mesh(sparkGeometry, sharedMaterials.spark);
+    const spark = getParticleFromPool('spark', sparkGeometry, sharedMaterials.spark);
     
     // Position behind the car
     const carAngle = playerCar.rotation.y;
@@ -1106,6 +1233,9 @@ function createSpark() {
         type: 'spark'
     };
     
+    // Ensure separate material opacity if reused
+    spark.material.opacity = 1;
+
     scene.add(spark);
     gameState.sparks.push(spark);
 }
@@ -1114,9 +1244,7 @@ function createSpark() {
 function createSmoke(position) {
     if (gameState.sparks.length > 300) return; // Limit total particles
     
-    const smokeGeo = new THREE.BoxGeometry(3, 3, 3);
-    const smokeMat = new THREE.MeshBasicMaterial({ color: 0x333333, transparent: true, opacity: 0.6 });
-    const smoke = new THREE.Mesh(smokeGeo, smokeMat);
+    const smoke = getParticleFromPool('smoke', sharedSmokeGeometry, sharedSmokeMaterial);
     
     smoke.position.copy(position);
     smoke.position.y += 5 + Math.random() * 5;
@@ -1132,6 +1260,9 @@ function createSmoke(position) {
         type: 'smoke'
     };
     
+    // Reset initial smoke opacity
+    smoke.material.opacity = 0.6;
+
     scene.add(smoke);
     gameState.sparks.push(smoke);
 }
@@ -1145,7 +1276,7 @@ function updateSparks() {
         const age = now - particle.userData.spawnTime;
         
         if (age > particle.userData.lifetime) {
-            scene.remove(particle);
+            returnParticleToPool(particle, particle.userData.type);
             gameState.sparks.splice(i, 1);
             continue;
         }
@@ -1158,7 +1289,7 @@ function updateSparks() {
              particle.userData.velocity.y -= 0.15;
              // Ground collision
             if (particle.position.y < 0) {
-                scene.remove(particle);
+                returnParticleToPool(particle, 'spark');
                 gameState.sparks.splice(i, 1);
                 continue;
             }
@@ -1226,7 +1357,13 @@ function createSpeedParticle() {
     // Limit particles for performance
     if (gameState.speedParticles.length > 60) return;
     
-    const particle = new THREE.Mesh(speedParticleGeometry, speedParticleMaterial.clone());
+    // Reuse from pool if possible
+    const particle = getParticleFromPool('speed', speedParticleGeometry, speedParticleMaterial);
+
+    // Ensure material is cloned in getParticleFromPool logic for independent opacity
+    // But since speedParticleMaterial is shared and cloned inside createSpeedParticle originally,
+    // we need to make sure pooling handles that. 
+    // getParticleFromPool clones material if new. If from pool, it has its own material.
     
     // Spawn in front of camera, spread out
     const spread = 150;
@@ -1267,7 +1404,7 @@ function updateSpeedParticles(delta) {
         const age = now - particle.userData.spawnTime;
         
         if (age > particle.userData.lifetime) {
-            scene.remove(particle);
+            returnParticleToPool(particle, 'speed');
             gameState.speedParticles.splice(i, 1);
             continue;
         }
@@ -1289,6 +1426,7 @@ function updateSpeedParticles(delta) {
 // Helper to add money and animate
 function addMoney(amount) {
     if (amount <= 0) return;
+    if (gameState.arrested) return; // Stop money gain when arrested/game over
     gameState.money += amount;
     
     // Animate HUD money
@@ -1599,6 +1737,10 @@ function renderShop() {
                     <span class="stat-label">Styr</span>
                     <div class="stat-bar-bg"><div class="stat-bar-fill" style="width: ${handlePct}%"></div></div>
                 </div>
+                <div class="stat-row">
+                    <span class="stat-label">HP</span>
+                    <div class="stat-bar-bg"><div class="stat-bar-fill" style="width: ${Math.min(100, (car.health || 100) / 3)}%"></div></div>
+                </div>
             </div>
 
             <div class="card-footer">
@@ -1634,6 +1776,9 @@ function updateCarStats(key) {
     gameState.maxSpeed = car.maxSpeed;
     gameState.acceleration = car.acceleration;
     gameState.handling = car.handling;
+    // Note: Health only updates on game start or car purchase immediate effect if logical?
+    // For now we just update physics stats. Health is reset on startGame.
+    
     // Update car color
     updatePlayerCarColor(car.color);
 }
@@ -1701,7 +1846,11 @@ function startGame() {
     gameState.speed = 0;
     gameState.money = 0;
     gameState.heatLevel = 1;
-    gameState.health = 100;
+    
+    // Set health based on selected car
+    const carData = cars[gameState.selectedCar];
+    gameState.health = carData.health || 100;
+    
     updateHealthUI();
     gameState.arrested = false;
     gameState.startTime = Date.now();
@@ -1876,30 +2025,36 @@ function animate() {
         playerCar.position.z = Math.max(-boundary, Math.min(boundary, playerCar.position.z));
     }
 
-    // Spawn new police car every 10 seconds
-    const elapsedSeconds = Math.floor((Date.now() - gameState.startTime) / 1000);
-    if (elapsedSeconds > 0 && elapsedSeconds % 10 === 0 && (Date.now() - gameState.lastPoliceSpawnTime) > 500) {
-        spawnPoliceCar();
-        gameState.lastPoliceSpawnTime = Date.now();
+    // --- GAME LOOP LOGIC (Only runs if not arrested/game over) ---
+    let policeDistance = 1000; // Default distance if not calculated
+
+    if (!gameState.arrested) {
+        // Spawn new police car every 10 seconds
+        const elapsedSeconds = Math.floor((Date.now() - gameState.startTime) / 1000);
+        if (elapsedSeconds > 0 && elapsedSeconds % 10 === 0 && (Date.now() - gameState.lastPoliceSpawnTime) > 500) {
+            spawnPoliceCar();
+            gameState.lastPoliceSpawnTime = Date.now();
+        }
+
+        // Generate chunks for buildings
+        updateBuildingChunks(delta);
+
+        // Game Logic
+        updateGameLogic();
+
+        // Update projectiles
+        updateProjectiles(delta);
+        
+        // Update police and check arrest
+        policeDistance = updatePoliceAI(delta);
     }
-
-    // Generate chunks for buildings
-    updateBuildingChunks(delta);
-
-    // Game Logic
-    updateGameLogic();
-
-    // Update projectiles
-    updateProjectiles(delta);
     
+    // --- VISUAL FX (Always run for smoothness) ---
     // Update sparks
-    updateSparks();
+    updateSparks(); // Particles should finish their lifetime
     
     // Speed visual effects
     updateSpeedEffects(delta);
-
-    // Update police and check arrest
-    const policeDistance = updatePoliceAI(delta);
 
     // Update camera
     if (gameState.is2DMode) {
