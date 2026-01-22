@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="da">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bilspil - Flugt fra Politiet</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            width: 100%;
+            height: 100vh;
+            overflow: hidden;
+            font-family: Arial, sans-serif;
+            background: #000;
+        }
+
+        #gameContainer {
+            width: 100%;
+            height: 100%;
+        }
+
+        #hud {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            color: white;
+            font-size: 18px;
+            z-index: 100;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 15px;
+            border: 2px solid #00ff00;
+            border-radius: 5px;
+        }
+
+        #speedometer {
+            margin-top: 10px;
+            font-size: 16px;
+        }
+
+        #speedBar {
+            width: 200px;
+            height: 20px;
+            background: #333;
+            border: 1px solid #00ff00;
+            margin-top: 5px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        #speedFill {
+            height: 100%;
+            background: linear-gradient(to right, #00ff00, #ffff00, #ff0000);
+            width: 0%;
+            transition: width 0.1s;
+        }
+
+        #policeStatus {
+            margin-top: 15px;
+            padding-top: 10px;
+            border-top: 1px solid #00ff00;
+        }
+
+        #gameOver {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0, 0, 0, 0.95);
+            padding: 40px;
+            border: 3px solid #ff0000;
+            border-radius: 10px;
+            text-align: center;
+            color: white;
+            z-index: 200;
+            display: none;
+            min-width: 400px;
+        }
+
+        #gameOver h1 {
+            font-size: 48px;
+            margin-bottom: 20px;
+            color: #ff0000;
+        }
+
+        #gameOver p {
+            font-size: 20px;
+            margin: 10px 0;
+        }
+
+        #gameOver button {
+            margin-top: 20px;
+            padding: 10px 30px;
+            font-size: 18px;
+            background: #00ff00;
+            color: #000;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+
+        #gameOver button:hover {
+            background: #00cc00;
+        }
+
+        #instructions {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            color: #00ff00;
+            font-size: 14px;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 15px;
+            border: 1px solid #00ff00;
+            border-radius: 5px;
+            text-align: right;
+            max-width: 250px;
+        }
+
+        .arrested {
+            color: #ff0000 !important;
+            text-shadow: 0 0 10px #ff0000;
+        }
+
+        #shop {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.95);
+            z-index: 300;
+            display: none;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        #shopContent {
+            text-align: center;
+            color: #00ff00;
+            max-width: 1000px;
+        }
+
+        #shopContent h1 {
+            font-size: 40px;
+            margin-bottom: 30px;
+        }
+
+        #moneyDisplay {
+            font-size: 24px;
+            margin-bottom: 20px;
+            color: #ffdd44;
+        }
+
+        #carList {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+            max-height: 500px;
+            overflow-y: auto;
+            padding-right: 15px;
+            border: 1px solid #00ff00;
+            padding: 20px;
+            border-radius: 10px;
+        }
+
+        #carList::-webkit-scrollbar {
+            width: 12px;
+        }
+
+        #carList::-webkit-scrollbar-track {
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 10px;
+        }
+
+        #carList::-webkit-scrollbar-thumb {
+            background: #00ff00;
+            border-radius: 10px;
+        }
+
+        #carList::-webkit-scrollbar-thumb:hover {
+            background: #00cc00;
+        }
+
+        .carCard {
+            background: rgba(50, 50, 50, 0.8);
+            border: 2px solid #00ff00;
+            padding: 20px;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .carCard:hover {
+            border-color: #ffff00;
+            background: rgba(80, 80, 80, 0.9);
+            transform: scale(1.05);
+        }
+
+        .carCard h3 {
+            color: #ffdd44;
+            font-size: 20px;
+            margin-bottom: 10px;
+        }
+
+        .carCard p {
+            color: #00ff00;
+            margin: 5px 0;
+            font-size: 14px;
+        }
+
+        .carCard .price {
+            color: #ff0000;
+            font-size: 18px;
+            margin-top: 15px;
+            font-weight: bold;
+        }
+
+        .carCard.owned {
+            border-color: #00ff00;
+            background: rgba(0, 100, 0, 0.3);
+        }
+
+        .carCard.owned .price {
+            color: #00ff00;
+        }
+
+        .carCard.owned .price::after {
+            content: " (EJET)";
+        }
+
+        #playBtn {
+            padding: 15px 40px;
+            font-size: 20px;
+            background: #00ff00;
+            color: #000;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+
+        #playBtn:hover {
+            background: #00cc00;
+        }
+    </style>
+</head>
+<body>
+    <div id="gameContainer"></div>
+    
+    <div id="hud">
+        <div>Penge: <span id="money">0</span>kr</div>
+        <div>Tid: <span id="time">0</span>s</div>
+        <div>Hastighed: <span id="speed">0</span> km/t</div>
+        <div id="speedometer">
+            <div id="speedBar">
+                <div id="speedFill"></div>
+            </div>
+        </div>
+        <div id="policeStatus">
+            <div>Politiet: <span id="policeDistance">-</span> m</div>
+            <div>Status: <span id="status" style="color: #00ff00;">Fri</span></div>
+        </div>
+    </div>
+
+    <div id="instructions">
+        <div><strong>Kontroler:</strong></div>
+        <div>W/↑ - Frem</div>
+        <div>S/↓ - Tilbage</div>
+        <div>A/← - Venstre</div>
+        <div>D/→ - Højre</div>
+        <div>SPACE - Bremse</div>
+    </div>
+
+    <div id="gameOver">
+        <h1 id="gameOverTitle">Du blev arresteret!</h1>
+        <p id="gameOverMessage">Du blev fanget af politiet.</p>
+        <p>Tid: <span id="gameOverTime">0</span>s</p>
+        <p>Penge tjent: <span id="gameOverMoney">0</span>kr</p>
+        <button onclick="goToShop()">Gå til shop</button>
+    </div>
+
+    <div id="shop">
+        <div id="shopContent">
+            <h1>🛒 BILSHOP 🛒</h1>
+            <div id="moneyDisplay">Dine penge: <span id="shopMoney">0</span>kr</div>
+            <div id="carList"></div>
+            <button id="playBtn" onclick="startGame()">Spil igen</button>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="script.js"></script>
+</body>
+</html>
