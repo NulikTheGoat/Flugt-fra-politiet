@@ -1,14 +1,19 @@
-[x] buying cars should match the color, next time driving it
-[x] buildings should fall down - implement real physics on boxes
-[x] shop: the cars should be more 3d like
-[x] driving fast should sometime give sparks from behind the car
-[x] generally research the internet around how to make cars in games feel fast (implemented: FOV changes, screen shake, drift mechanics, tire marks, body lean)
- [] map bigger 
- [] tanks can shot at you if they hit you, you die/arested 
- [] tyngdekraft 
- [] rebirh til en ny verden med nye biler
- [] flere heat levels 
- [] for at kunne rebirh skal man have klaret x andtal heat levels og have x antal penge 
- [] bilerne skal være dyre
- [] når man genstarter siden starter du forfra 
- [] når man rebirher starter man på ny i en ntýe verden med nye biler og nye udfordringer
+# Small Improvements Checklist
+
+## Completed
+- [x] Buying cars should match the color when driving
+- [x] Buildings should fall down with physics on chunks
+- [x] Shop: cars should look more 3D
+- [x] Driving fast should give sparks from behind the car
+- [x] Make cars feel fast (FOV changes, screen shake, drift mechanics, tire marks, body lean, speed particles)
+
+## To Do
+- [ ] Make the map bigger
+- [ ] Tanks can shoot at you - if hit, you get arrested
+- [ ] Add gravity to falling objects
+- [ ] Rebirth system: new world with new cars and challenges
+- [ ] More heat levels (expand beyond 4)
+- [ ] Rebirth requirements: complete X heat levels + earn X money
+- [ ] Make cars more expensive
+- [ ] Reset progress when page refreshes (no persistence)
+- [ ] Rebirth resets everything: new world, new cars, new challenges
