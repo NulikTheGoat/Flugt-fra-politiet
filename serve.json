@@ -1,6 +1,8 @@
 {
   "rewrites": [
     { "source": "/start", "destination": "/index.html" },
-    { "source": "/start/", "destination": "/index.html" }
+    { "source": "/start/", "destination": "/index.html" },
+    { "source": "/config", "destination": "/config.html" },
+    { "source": "/config/", "destination": "/config.html" }
   ]
 }

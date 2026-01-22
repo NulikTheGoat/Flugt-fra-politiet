@@ -1,5 +1,5 @@
 import { gameState } from './state.js';
-import { gameConfig, saveConfig, resetConfig } from './config.js';
+import { gameConfig } from './config.js';
 import { clamp, darkenColor } from './utils.js';
 import { cars } from './constants.js';
 import { scene, renderer } from './core.js';
@@ -330,88 +330,4 @@ if (!document.getElementById('damageFlashStyle')) {
         }
     `;
     document.head.appendChild(style);
-}
-
-// Configuration Panel Logic
-const configBtn = document.getElementById('configBtn');
-const configPanel = document.getElementById('configPanel');
-const configOverlay = document.getElementById('configOverlay');
-const configSave = document.getElementById('configSave');
-const configReset = document.getElementById('configReset');
-
-// Config input elements
-const configInputs = {
-    heatInterval: document.getElementById('configHeatInterval'),
-    maxHeat: document.getElementById('configMaxHeat'),
-    arrestTime: document.getElementById('configArrestTime'),
-    arrestSpeed: document.getElementById('configArrestSpeed'),
-    playerDamage: document.getElementById('configPlayerDamage'),
-    policeDamage: document.getElementById('configPoliceDamage'),
-    minDamage: document.getElementById('configMinDamage'),
-    policeSpawn: document.getElementById('configPoliceSpawn'),
-    incomeInterval: document.getElementById('configIncomeInterval'),
-    incomeBase: document.getElementById('configIncomeBase'),
-    coinValue: document.getElementById('configCoinValue')
-};
-
-function loadConfigToUI() {
-    if (configInputs.heatInterval) configInputs.heatInterval.value = gameConfig.heatIncreaseInterval;
-    if (configInputs.maxHeat) configInputs.maxHeat.value = gameConfig.maxHeatLevel;
-    if (configInputs.arrestTime) configInputs.arrestTime.value = gameConfig.arrestCountdownTime;
-    if (configInputs.arrestSpeed) configInputs.arrestSpeed.value = gameConfig.arrestSpeedThreshold * 100;
-    if (configInputs.playerDamage) configInputs.playerDamage.value = gameConfig.playerCrashDamageMultiplier;
-    if (configInputs.policeDamage) configInputs.policeDamage.value = gameConfig.policeCrashDamageMultiplier;
-    if (configInputs.minDamage) configInputs.minDamage.value = gameConfig.minCrashDamage;
-    if (configInputs.policeSpawn) configInputs.policeSpawn.value = gameConfig.policeSpawnInterval;
-    if (configInputs.incomeInterval) configInputs.incomeInterval.value = gameConfig.passiveIncomeInterval;
-    if (configInputs.incomeBase) configInputs.incomeBase.value = gameConfig.passiveIncomeBase;
-    if (configInputs.coinValue) configInputs.coinValue.value = gameConfig.coinBaseValue;
-}
-
-function saveConfigFromUI() {
-    if (configInputs.heatInterval) gameConfig.heatIncreaseInterval = parseInt(configInputs.heatInterval.value) || 60;
-    if (configInputs.maxHeat) gameConfig.maxHeatLevel = parseInt(configInputs.maxHeat.value) || 6;
-    if (configInputs.arrestTime) gameConfig.arrestCountdownTime = parseFloat(configInputs.arrestTime.value) || 1;
-    if (configInputs.arrestSpeed) gameConfig.arrestSpeedThreshold = (parseInt(configInputs.arrestSpeed.value) || 10) / 100;
-    if (configInputs.playerDamage) gameConfig.playerCrashDamageMultiplier = parseFloat(configInputs.playerDamage.value) || 0.3;
-    if (configInputs.policeDamage) gameConfig.policeCrashDamageMultiplier = parseFloat(configInputs.policeDamage.value) || 0.4;
-    if (configInputs.minDamage) gameConfig.minCrashDamage = parseInt(configInputs.minDamage.value) || 5;
-    if (configInputs.policeSpawn) gameConfig.policeSpawnInterval = parseInt(configInputs.policeSpawn.value) || 10;
-    if (configInputs.incomeInterval) gameConfig.passiveIncomeInterval = parseInt(configInputs.incomeInterval.value) || 10;
-    if (configInputs.incomeBase) gameConfig.passiveIncomeBase = parseInt(configInputs.incomeBase.value) || 100;
-    if (configInputs.coinValue) gameConfig.coinBaseValue = parseInt(configInputs.coinValue.value) || 50;
-    saveConfig();
-}
-
-function openConfigPanel() {
-    loadConfigToUI();
-    if (configPanel) configPanel.style.display = 'block';
-    if (configOverlay) configOverlay.style.display = 'block';
-}
-
-function closeConfigPanel() {
-    if (configPanel) configPanel.style.display = 'none';
-    if (configOverlay) configOverlay.style.display = 'none';
-}
-
-if (configBtn) {
-    configBtn.addEventListener('click', openConfigPanel);
-}
-
-if (configOverlay) {
-    configOverlay.addEventListener('click', closeConfigPanel);
-}
-
-if (configSave) {
-    configSave.addEventListener('click', () => {
-        saveConfigFromUI();
-        closeConfigPanel();
-    });
-}
-
-if (configReset) {
-    configReset.addEventListener('click', () => {
-        resetConfig();
-        loadConfigToUI();
-    });
 }
