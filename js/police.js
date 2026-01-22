@@ -2,7 +2,7 @@ import { gameState } from './state.js';
 import { scene, camera } from './core.js';
 import { enemies, cars } from './constants.js';
 import { sharedGeometries, sharedMaterials } from './assets.js';
-import { createSmoke, createSpeedParticle } from './particles.js';
+import { createSmoke, createSpeedParticle, createFire } from './particles.js';
 import { playerCar, takeDamage } from './player.js';
 import { normalizeAngleRadians, clamp } from './utils.js';
 import { addMoney } from './ui.js';
@@ -144,17 +144,28 @@ export function updatePoliceAI(delta) {
 
     gameState.policeCars.forEach((policeCar, index) => {
         if (policeCar.userData.dead) {
-             policeCar.userData.speed *= Math.pow(0.95, delta || 1);
-             const move = policeCar.userData.speed * 0.016 * (delta || 1);
-             policeCar.position.x += Math.sin(policeCar.rotation.y) * move;
-             policeCar.position.z += Math.cos(policeCar.rotation.y) * move;
-             
-             if (Math.random() < 0.2) createSmoke(policeCar.position);
-
-             if (Date.now() - policeCar.userData.deathTime > 10000) {
-                 policeCar.userData.remove = true;
-                 scene.remove(policeCar);
+             // Dead police cars slow down and stop
+             policeCar.userData.speed *= Math.pow(0.9, delta || 1);
+             if (policeCar.userData.speed > 1) {
+                 const move = policeCar.userData.speed * 0.016 * (delta || 1);
+                 policeCar.position.x += Math.sin(policeCar.rotation.y) * move;
+                 policeCar.position.z += Math.cos(policeCar.rotation.y) * move;
+             } else {
+                 policeCar.userData.speed = 0;
              }
+             
+             // Smoke and fire effects - stay forever
+             const timeSinceDeath = Date.now() - policeCar.userData.deathTime;
+             
+             // Smoke constantly
+             if (Math.random() < 0.3) createSmoke(policeCar.position);
+             
+             // Fire sparks after a bit
+             if (timeSinceDeath > 2000 && Math.random() < 0.15) {
+                 createFire(policeCar.position);
+             }
+             
+             // Don't remove dead cars - they stay as obstacles
              return;
         }
 

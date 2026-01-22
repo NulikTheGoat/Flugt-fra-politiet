@@ -69,6 +69,36 @@ export function createSmoke(position) {
     gameState.sparks.push(smoke);
 }
 
+// Create fire particle for burning cars
+export function createFire(position) {
+    if (gameState.sparks.length > 300) return;
+    
+    const fire = getParticleFromPool('smoke', sharedGeometries.spark, sharedMaterials.fire);
+    
+    fire.position.copy(position);
+    fire.position.x += (Math.random() - 0.5) * 10;
+    fire.position.z += (Math.random() - 0.5) * 10;
+    fire.position.y += 8 + Math.random() * 5;
+    
+    fire.scale.set(2 + Math.random(), 3 + Math.random() * 2, 2 + Math.random());
+    
+    fire.userData = {
+        velocity: new THREE.Vector3(
+             (Math.random() - 0.5) * 1,
+             Math.random() * 4 + 3, // Rise up fast
+             (Math.random() - 0.5) * 1
+        ),
+        lifetime: 800,
+        spawnTime: Date.now(),
+        type: 'fire'
+    };
+    
+    fire.material.opacity = 0.9;
+    
+    scene.add(fire);
+    gameState.sparks.push(fire);
+}
+
 // Update sparks and smoke
 export function updateSparks() {
     const now = Date.now();
@@ -99,10 +129,18 @@ export function updateSparks() {
              // Smoke expands and slows
              particle.scale.multiplyScalar(1.02);
              particle.userData.velocity.multiplyScalar(0.95);
+        } else if (particle.userData.type === 'fire') {
+             // Fire expands, rises, and flickers
+             particle.scale.multiplyScalar(1.03);
+             particle.userData.velocity.multiplyScalar(0.92);
+             // Random flicker effect
+             particle.material.opacity = (1 - (age / particle.userData.lifetime)) * 0.8 * (0.7 + Math.random() * 0.3);
         }
         
-        // Fade out
-        particle.material.opacity = (1 - (age / particle.userData.lifetime)) * (particle.userData.type === 'smoke' ? 0.6 : 1);
+        // Fade out (skip fire as it handles its own opacity)
+        if (particle.userData.type !== 'fire') {
+            particle.material.opacity = (1 - (age / particle.userData.lifetime)) * (particle.userData.type === 'smoke' ? 0.6 : 1);
+        }
     }
 }
 

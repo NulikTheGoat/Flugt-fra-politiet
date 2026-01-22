@@ -31,6 +31,7 @@ export const sharedMaterials = {
     camo: new THREE.MeshLambertMaterial({ color: 0x3b4a25 }),
     darkGrey: new THREE.MeshLambertMaterial({ color: 0x2a2a2a }),
     smoke: new THREE.MeshBasicMaterial({ color: 0x333333, transparent: true, opacity: 0.6 }),
+    fire: new THREE.MeshBasicMaterial({ color: 0xff4400, transparent: true, opacity: 0.8 }),
     speedParticle: new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.6 }),
     tireMark: new THREE.MeshBasicMaterial({ color: 0x111111, transparent: true, opacity: 0.7, side: THREE.DoubleSide })
 };
