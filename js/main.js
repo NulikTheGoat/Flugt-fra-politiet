@@ -10,6 +10,9 @@ import { updateSpeedEffects, updateSparks, updateTireMarks } from './particles.j
 // Initialize - attach renderer to gameContainer
 document.getElementById('gameContainer').appendChild(renderer.domElement);
 
+// Check if URL path is /start to auto-start the game
+const autoStart = window.location.pathname === '/start' || window.location.pathname === '/start/';
+
 // UI Event Listeners
 if (DOM.playBtn) {
     DOM.playBtn.addEventListener('click', () => {
@@ -181,5 +184,10 @@ function animate() {
 // Start
 setStartGameCallback(startGame);
 setUICallbacks({ triggerDamageEffect, updateHealthUI });
+
+// Auto-start game if /start path is accessed
+if (autoStart) {
+    startGame();
+}
 startGame();
 animate();

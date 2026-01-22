@@ -81,7 +81,9 @@ Serving!
 
 1. Open your browser
 2. Go to: **http://localhost:3000**
-3. Have fun! 🚗💨
+3. Click "Start" in the shop to begin!
+
+**Pro tip:** Go to **http://localhost:3000/start** to skip the shop and start playing immediately!
 
 ---
 
