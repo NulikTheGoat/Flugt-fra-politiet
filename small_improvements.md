@@ -8,20 +8,20 @@
 - [x] Make cars feel fast (FOV changes, screen shake, drift mechanics, tire marks, body lean, speed particles)
 
 ## To Do
-- [ ] Make the map bigger
-- [ ] Tanks can shoot at you - if hit, you get arrested
-- [ ] Add gravity to falling objects
+- [x] Make the map bigger
+- [x] Tanks can shoot at you - if hit, you get arrested
+- [x] Add gravity to falling objects
 - [ ] Rebirth system: new world with new cars and challenges
-- [ ] More heat levels (expand beyond 4)
+- [x] More heat levels (expand beyond 4) - now 6 levels
 - [ ] Rebirth requirements: complete X heat levels + earn X money
-- [ ] Make cars more expensive
-- [ ] Reset progress when page refreshes (no persistence)
+- [x] Make cars more expensive
+- [x] Reset progress when page refreshes (no persistence)
 - [ ] Rebirth resets everything: new world, new cars, new challenges
 
 ## Tech / Engine Suggestions
-- [ ] Make all movement fully delta-time based (police, projectiles, chunk gravity)
-- [ ] Clamp speed bar width to 0–100% (avoid negative UI while reversing)
-- [ ] Fix police turning near ±π (normalize angle difference)
+- [x] Make all movement fully delta-time based (police, projectiles, chunk gravity)
+- [x] Clamp speed bar width to 0–100% (avoid negative UI while reversing)
+- [x] Fix police turning near ±π (normalize angle difference)
 - [ ] Reuse geometries/materials for police cars (reduce allocations)
 - [ ] Particle optimization: pool meshes or switch to `THREE.Points`/`InstancedMesh`
 - [ ] Building chunk optimization: only update/check nearby chunks (simple spatial grid)

@@ -1,7 +1,7 @@
 // Three.js Scene Setup
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0x87ceeb);
-scene.fog = new THREE.Fog(0x87ceeb, 2000, 4000);
+scene.fog = new THREE.Fog(0x87ceeb, 3000, 6000);
 
 const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 3000);
 const renderer = new THREE.WebGLRenderer({ antialias: false, powerPreference: 'high-performance' });
@@ -94,7 +94,7 @@ const cars = {
     },
     compact: {
         name: 'Compact',
-        price: 500,
+        price: 1500,
         maxSpeed: 90,
         acceleration: 0.4,
         handling: 0.06,
@@ -102,7 +102,7 @@ const cars = {
     },
     sedan: {
         name: 'Sedan',
-        price: 1200,
+        price: 4000,
         maxSpeed: 100,
         acceleration: 0.45,
         handling: 0.065,
@@ -110,7 +110,7 @@ const cars = {
     },
     sport: {
         name: 'Sport Bil',
-        price: 2500,
+        price: 8000,
         maxSpeed: 110,
         acceleration: 0.5,
         handling: 0.07,
@@ -118,7 +118,7 @@ const cars = {
     },
     muscle: {
         name: 'Muscle Car',
-        price: 4000,
+        price: 15000,
         maxSpeed: 120,
         acceleration: 0.55,
         handling: 0.075,
@@ -126,7 +126,7 @@ const cars = {
     },
     supercar: {
         name: 'Supercar',
-        price: 7500,
+        price: 25000,
         maxSpeed: 130,
         acceleration: 0.6,
         handling: 0.09,
@@ -134,7 +134,7 @@ const cars = {
     },
     hypercar: {
         name: 'Hypercar',
-        price: 15000,
+        price: 50000,
         maxSpeed: 140,
         acceleration: 0.65,
         handling: 0.12,
@@ -142,7 +142,7 @@ const cars = {
     },
     legendary: {
         name: 'Legendary Racer',
-        price: 30000,
+        price: 100000,
         maxSpeed: 150,
         acceleration: 0.7,
         handling: 0.15,
@@ -203,7 +203,7 @@ const sparkGeometry = new THREE.BoxGeometry(1, 1, 3);
 
 // Create Ground
 function createGround() {
-    const groundGeometry = new THREE.PlaneGeometry(5000, 5000);
+    const groundGeometry = new THREE.PlaneGeometry(10000, 10000);
     const groundMaterial = new THREE.MeshLambertMaterial({ color: 0x444444 });
     const ground = new THREE.Mesh(groundGeometry, groundMaterial);
     ground.rotation.x = -Math.PI / 2;
@@ -211,7 +211,7 @@ function createGround() {
     scene.add(ground);
 
     // Main Road - Horizontal
-    const roadGeometry = new THREE.PlaneGeometry(300, 5000);
+    const roadGeometry = new THREE.PlaneGeometry(300, 10000);
     const roadMaterial = new THREE.MeshLambertMaterial({ color: 0x222222 });
     const road = new THREE.Mesh(roadGeometry, roadMaterial);
     road.rotation.x = -Math.PI / 2;
@@ -317,7 +317,7 @@ function createMoney() {
     const coin = new THREE.Mesh(sharedGeometries.coin, sharedMaterials.coin);
     
     // Random position
-    const mapSize = 1800;
+    const mapSize = 3500;
     coin.position.set(
         (Math.random() - 0.5) * mapSize * 2,
         5,
@@ -437,7 +437,7 @@ function spawnPoliceCar() {
     const policeCar = createPoliceCar(type);
     
     // Spawn at random locations on the map
-    const mapSize = 1800;
+    const mapSize = 3500;
     // Ensure spawning somewhat away from player
     let x, z;
     do {
@@ -454,7 +454,7 @@ function spawnPoliceCar() {
 // Create Buildings (City - Collidable Chunks)
 function createBuildings() {
     const buildingPositions = [
-        // Left side
+        // Left side (inner)
         [-600, -800, 100, 80, 150],
         [-700, -500, 120, 90, 180],
         [-550, -200, 90, 70, 140],
@@ -463,7 +463,7 @@ function createBuildings() {
         [-750, 700, 130, 95, 190],
         [-600, 1000, 95, 80, 145],
         
-        // Right side
+        // Right side (inner)
         [600, -800, 105, 85, 155],
         [700, -500, 115, 88, 175],
         [550, -200, 95, 72, 145],
@@ -482,11 +482,46 @@ function createBuildings() {
         [1300, 200, 115, 88, 170],
         [1100, 800, 105, 80, 155],
         
-        // Scattered buildings
+        // Scattered buildings (inner)
         [-400, -1000, 85, 65, 130],
         [400, -1000, 90, 70, 135],
         [-1100, -200, 100, 75, 150],
         [1100, -200, 105, 80, 155],
+        
+        // NEW: Expanded map buildings - Far outer areas
+        // North section
+        [-800, 1800, 120, 90, 200],
+        [0, 2200, 150, 100, 220],
+        [800, 1800, 110, 85, 180],
+        [-1500, 2000, 100, 80, 160],
+        [1500, 2000, 105, 82, 170],
+        
+        // South section
+        [-800, -1800, 115, 88, 190],
+        [0, -2200, 140, 95, 210],
+        [800, -1800, 100, 80, 175],
+        [-1500, -2000, 95, 75, 155],
+        [1500, -2000, 110, 85, 165],
+        
+        // Far West
+        [-2000, -1000, 130, 95, 200],
+        [-2200, 0, 140, 100, 230],
+        [-2000, 1000, 120, 90, 190],
+        [-2500, -500, 100, 80, 160],
+        [-2500, 500, 105, 82, 170],
+        
+        // Far East
+        [2000, -1000, 125, 92, 195],
+        [2200, 0, 145, 98, 225],
+        [2000, 1000, 115, 88, 185],
+        [2500, -500, 98, 78, 155],
+        [2500, 500, 102, 80, 165],
+        
+        // Corners
+        [-2500, -2500, 150, 110, 250],
+        [2500, -2500, 145, 105, 240],
+        [-2500, 2500, 140, 100, 235],
+        [2500, 2500, 155, 112, 245],
     ];
 
     const chunkSize = 30; // Size of each block chunk
@@ -701,17 +736,18 @@ function updateProjectiles(delta) {
         const dist = Math.sqrt(dx * dx + dz * dz);
         
         if (dist < 20) {
-            // HIT! Apply slow effect
+            // HIT! Tank shot causes arrest
             scene.remove(proj);
             gameState.projectiles.splice(i, 1);
             
-            // Apply slow: reduce speed and set slow debuff
-            gameState.speed *= 0.3;
-            gameState.slowEffect = 0.5; // 50% speed reduction
-            gameState.slowDuration = now + 3000; // 3 seconds
+            // Arrested by tank!
+            gameState.arrested = true;
+            gameState.elapsedTime = (Date.now() - gameState.startTime) / 1000;
+            showGameOver('Du blev ramt af en tank!');
             
             // Visual feedback - flash screen red briefly
             flashDamage();
+            return; // Exit early since game is over
         }
     }
     
@@ -979,11 +1015,13 @@ function updateGameLogic() {
 
     const time = gameState.elapsedTime;
 
-    // Heat Level Logic
-    if (time < 60) gameState.heatLevel = 1;
-    else if (time < 120) gameState.heatLevel = 2;
-    else if (time < 180) gameState.heatLevel = 3;
-    else gameState.heatLevel = 4;
+    // Heat Level Logic - expanded to 6 levels
+    if (time < 45) gameState.heatLevel = 1;
+    else if (time < 90) gameState.heatLevel = 2;
+    else if (time < 150) gameState.heatLevel = 3;
+    else if (time < 220) gameState.heatLevel = 4;
+    else if (time < 300) gameState.heatLevel = 5;
+    else gameState.heatLevel = 6;
 
     // Money Spawning
     if (Math.random() < 0.02) { // approx 1 per second
@@ -1126,7 +1164,7 @@ function updateHUD(policeDistance) {
     DOM.heatLevel.textContent = gameState.heatLevel;
     
     // Style heat level
-    const heatColor = ['#00ff00', '#ffff00', '#ff8800', '#ff0000'][gameState.heatLevel - 1];
+    const heatColor = ['#00ff00', '#99ff00', '#ffff00', '#ff8800', '#ff4400', '#ff0000'][gameState.heatLevel - 1] || '#ff0000';
     DOM.heatLevel.style.color = heatColor;
 
     gameState.elapsedTime = elapsedSeconds;
@@ -1154,7 +1192,7 @@ function updateHUD(policeDistance) {
 }
 
 // Show game over screen
-function showGameOver() {
+function showGameOver(customMessage) {
     // Remove all police cars
     gameState.policeCars.forEach(car => scene.remove(car));
     gameState.policeCars = [];
@@ -1167,7 +1205,7 @@ function showGameOver() {
     gameState.projectiles.forEach(proj => scene.remove(proj));
     gameState.projectiles = [];
 
-    DOM.gameOverMessage.textContent = 'Du blev fanget af politiet og sat i fængsel!';
+    DOM.gameOverMessage.textContent = customMessage || 'Du blev fanget af politiet og sat i fængsel!';
     DOM.gameOverTime.textContent = Math.round(gameState.elapsedTime);
     DOM.gameOverMoney.textContent = gameState.money;
     DOM.gameOver.style.display = 'block';
@@ -1184,7 +1222,7 @@ function renderShop() {
     DOM.carList.innerHTML = '';
 
     Object.entries(cars).forEach(([key, car]) => {
-        const owned = localStorage.getItem(`car_${key}`) === 'true' || key === 'standard';
+        const owned = gameState.ownedCars && gameState.ownedCars[key] || key === 'standard';
         const isSelected = gameState.selectedCar === key;
         const canAfford = gameState.totalMoney >= car.price;
         
@@ -1260,7 +1298,9 @@ function renderShop() {
             } else if (canAfford) {
                 if(confirm(`Køb ${car.name} for ${car.price}kr?`)) {
                     gameState.totalMoney -= car.price;
-                    localStorage.setItem(`car_${key}`, 'true');
+                    // Mark as owned in memory (resets on page refresh)
+                    if (!gameState.ownedCars) gameState.ownedCars = {};
+                    gameState.ownedCars[key] = true;
                     gameState.selectedCar = key;
                     updateCarStats(key);
                     renderShop();
@@ -1422,7 +1462,7 @@ function animate() {
         updateTireMarks(delta);
 
         // Boundaries
-        const boundary = 2000;
+        const boundary = 4000;
         playerCar.position.x = Math.max(-boundary, Math.min(boundary, playerCar.position.x));
         playerCar.position.z = Math.max(-boundary, Math.min(boundary, playerCar.position.z));
     }
