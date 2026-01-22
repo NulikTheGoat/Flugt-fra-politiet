@@ -122,14 +122,10 @@ wss.on('connection', (ws) => {
                 }
                 
                 case 'join': {
-                    // Join existing room
+                    // Join existing room (supports drop-in during gameplay)
                     const room = rooms.get(msg.roomCode);
                     if (!room) {
                         ws.send(JSON.stringify({ type: 'error', message: 'Room not found' }));
-                        return;
-                    }
-                    if (room.gameStarted) {
-                        ws.send(JSON.stringify({ type: 'error', message: 'Game already started' }));
                         return;
                     }
                     if (room.players.size >= 4) {
@@ -140,12 +136,16 @@ wss.on('connection', (ws) => {
                     playerId = 'player_' + Date.now();
                     currentRoom = msg.roomCode;
                     
+                    // Assign color based on player count
+                    const playerColors = [0xff0000, 0x0066ff, 0x00ff00, 0xffaa00];
+                    const colorIndex = room.players.size;
+                    
                     room.players.set(playerId, {
                         ws,
                         name: msg.playerName || 'Player',
                         isHost: false,
                         car: msg.car || 'standard',
-                        color: msg.color || 0x0000ff,
+                        color: playerColors[colorIndex] || 0xffffff,
                         state: null
                     });
                     
@@ -155,22 +155,73 @@ wss.on('connection', (ws) => {
                         playerList.push({ id, name: p.name, isHost: p.isHost, car: p.car, color: p.color });
                     });
                     
-                    // Send confirmation to joining player
-                    ws.send(JSON.stringify({
-                        type: 'joined',
-                        roomCode: msg.roomCode,
-                        playerId,
-                        players: playerList
-                    }));
-                    
-                    // Notify everyone else
-                    broadcastToRoom(msg.roomCode, {
-                        type: 'playerJoined',
-                        player: { id: playerId, name: msg.playerName || 'Player', isHost: false, car: msg.car, color: msg.color },
-                        players: playerList
-                    }, playerId);
-                    
-                    console.log(`${msg.playerName || 'Player'} joined room ${msg.roomCode}`);
+                    // If game already started, do drop-in join
+                    if (room.gameStarted) {
+                        // Spawn positions for drop-in
+                        const spawnPositions = [
+                            { x: 0, z: 0 },
+                            { x: 50, z: 0 },
+                            { x: -50, z: 0 },
+                            { x: 0, z: 50 }
+                        ];
+                        
+                        // Send game start immediately to the joining player
+                        const playerData = [];
+                        let idx = 0;
+                        room.players.forEach((p, id) => {
+                            playerData.push({
+                                id,
+                                name: p.name,
+                                isHost: p.isHost,
+                                car: p.car,
+                                color: p.color,
+                                spawnPos: spawnPositions[idx]
+                            });
+                            idx++;
+                        });
+                        
+                        ws.send(JSON.stringify({
+                            type: 'joined',
+                            roomCode: msg.roomCode,
+                            playerId,
+                            players: playerList
+                        }));
+                        
+                        // Immediately start game for this player (drop-in)
+                        ws.send(JSON.stringify({
+                            type: 'gameStart',
+                            players: playerData,
+                            config: room.gameConfig || {},
+                            dropIn: true
+                        }));
+                        
+                        // Notify existing players about the new player
+                        broadcastToRoom(msg.roomCode, {
+                            type: 'playerJoined',
+                            player: { id: playerId, name: msg.playerName || 'Player', isHost: false, car: msg.car, color: playerColors[colorIndex] },
+                            players: playerList,
+                            dropIn: true
+                        }, playerId);
+                        
+                        console.log(`${msg.playerName || 'Player'} dropped into running game in room ${msg.roomCode}`);
+                    } else {
+                        // Normal pre-game join
+                        ws.send(JSON.stringify({
+                            type: 'joined',
+                            roomCode: msg.roomCode,
+                            playerId,
+                            players: playerList
+                        }));
+                        
+                        // Notify everyone else
+                        broadcastToRoom(msg.roomCode, {
+                            type: 'playerJoined',
+                            player: { id: playerId, name: msg.playerName || 'Player', isHost: false, car: msg.car, color: playerColors[colorIndex] },
+                            players: playerList
+                        }, playerId);
+                        
+                        console.log(`${msg.playerName || 'Player'} joined room ${msg.roomCode}`);
+                    }
                     break;
                 }
                 
@@ -180,6 +231,7 @@ wss.on('connection', (ws) => {
                     if (!room || room.hostId !== playerId) return;
                     
                     room.gameStarted = true;
+                    room.gameConfig = msg.config || {}; // Save config for drop-in players
                     
                     // Assign spawn positions for each player
                     const spawnPositions = [

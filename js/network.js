@@ -82,7 +82,7 @@ function handleMessage(msg) {
             break;
             
         case 'playerJoined':
-            if (onPlayerJoined) onPlayerJoined(msg.player, msg.players);
+            if (onPlayerJoined) onPlayerJoined(msg.player, msg.players, msg.dropIn);
             break;
             
         case 'playerLeft':

@@ -184,8 +184,23 @@ Network.setOnJoined((roomCode, playerId, players) => {
     showLobbyRoom(roomCode, players, false);
 });
 
-Network.setOnPlayerJoined((player, players) => {
+Network.setOnPlayerJoined((player, players, dropIn) => {
     updatePlayersList(players);
+    
+    // If someone drops in mid-game, create their car
+    if (dropIn && gameState.isMultiplayer && !gameState.arrested) {
+        const mesh = createOtherPlayerCar(player.color || 0x0066ff, player.car || 'standard');
+        // Spawn near origin for drop-in players
+        mesh.position.set(0, 0, 100);
+        gameState.otherPlayers.set(player.id, {
+            name: player.name,
+            car: player.car,
+            color: player.color,
+            mesh: mesh,
+            state: null
+        });
+        console.log(`${player.name} dropped into the game!`);
+    }
 });
 
 Network.setOnPlayerLeft((playerId) => {
