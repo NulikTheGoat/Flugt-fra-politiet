@@ -152,12 +152,14 @@ export function createPlayerCar(color = 0xff0000, type = 'standard') {
     return carGroup;
 }
 
-export function rebuildPlayerCar() {
+export function rebuildPlayerCar(color = null) {
     if (playerCar) {
         scene.remove(playerCar);
     }
     const carData = cars[gameState.selectedCar];
-    createPlayerCar(carData.color, carData.type);
+    // Use provided color or default to car's color
+    const carColor = color !== null ? color : carData.color;
+    createPlayerCar(carColor, carData.type);
 }
 
 export function updatePlayerCarColor(color) {
@@ -328,4 +330,140 @@ export function updatePlayer(delta, now) {
     const boundary = 4000;
     playerCar.position.x = Math.max(-boundary, Math.min(boundary, playerCar.position.x));
     playerCar.position.z = Math.max(-boundary, Math.min(boundary, playerCar.position.z));
+}
+
+// ============================================
+// MULTIPLAYER FUNCTIONS
+// ============================================
+
+// Create a car mesh for another network player
+export function createOtherPlayerCar(color = 0x00ff00, type = 'standard') {
+    const carGroup = new THREE.Group();
+
+    if (type === 'tank') {
+        // Tank Body
+        const bodyGeo = new THREE.BoxGeometry(26, 14, 50);
+        const bodyMat = new THREE.MeshLambertMaterial({ color: color });
+        const body = new THREE.Mesh(bodyGeo, bodyMat);
+        body.position.y = 7;
+        body.castShadow = true;
+        body.receiveShadow = true;
+        carGroup.add(body);
+
+        // Turret
+        const turretGeo = new THREE.BoxGeometry(16, 8, 20);
+        const turretMat = new THREE.MeshLambertMaterial({ color: new THREE.Color(color).multiplyScalar(0.8) });
+        const turret = new THREE.Mesh(turretGeo, turretMat);
+        turret.position.set(0, 18, 0);
+        turret.castShadow = true;
+        carGroup.add(turret);
+
+        // Barrel
+        const barrelGeo = new THREE.CylinderGeometry(2, 2, 30, 16);
+        const barrelMat = new THREE.MeshLambertMaterial({ color: 0x333333 });
+        const barrel = new THREE.Mesh(barrelGeo, barrelMat);
+        barrel.rotation.x = -Math.PI / 2;
+        barrel.position.set(0, 18, 20);
+        barrel.castShadow = true;
+        carGroup.add(barrel);
+
+        // Tracks
+        const trackGeo = new THREE.BoxGeometry(6, 12, 48);
+        const trackMat = new THREE.MeshLambertMaterial({ color: 0x111111 });
+        const leftTrack = new THREE.Mesh(trackGeo, trackMat);
+        leftTrack.position.set(-14, 6, 0);
+        carGroup.add(leftTrack);
+        const rightTrack = new THREE.Mesh(trackGeo, trackMat);
+        rightTrack.position.set(14, 6, 0);
+        carGroup.add(rightTrack);
+
+    } else if (type === 'ufo') {
+        // UFO Disc body
+        const discGeo = new THREE.CylinderGeometry(18, 22, 8, 32);
+        const discMat = new THREE.MeshLambertMaterial({ color: color });
+        const disc = new THREE.Mesh(discGeo, discMat);
+        disc.position.y = 15;
+        disc.castShadow = true;
+        carGroup.add(disc);
+
+        // Dome
+        const domeGeo = new THREE.SphereGeometry(10, 32, 16, 0, Math.PI * 2, 0, Math.PI / 2);
+        const domeMat = new THREE.MeshLambertMaterial({ color: 0x88ccff, transparent: true, opacity: 0.7 });
+        const dome = new THREE.Mesh(domeGeo, domeMat);
+        dome.position.y = 19;
+        carGroup.add(dome);
+
+        // Lights ring
+        const lightsGeo = new THREE.TorusGeometry(20, 1.5, 8, 16);
+        const lightsMat = new THREE.MeshBasicMaterial({ color: 0x00ffff });
+        const lights = new THREE.Mesh(lightsGeo, lightsMat);
+        lights.rotation.x = Math.PI / 2;
+        lights.position.y = 15;
+        carGroup.add(lights);
+
+    } else {
+        // Standard car
+        const bodyGeo = sharedGeometries.carBody || new THREE.BoxGeometry(20, 8, 40);
+        const bodyMat = new THREE.MeshLambertMaterial({ color: color });
+        const body = new THREE.Mesh(bodyGeo, bodyMat);
+        body.position.y = 6;
+        body.castShadow = true;
+        body.receiveShadow = true;
+        carGroup.add(body);
+
+        // Roof
+        const roofGeo = sharedGeometries.carRoof || new THREE.BoxGeometry(16, 6, 20);
+        const roofMat = new THREE.MeshLambertMaterial({ color: new THREE.Color(color).multiplyScalar(0.8) });
+        const roof = new THREE.Mesh(roofGeo, roofMat);
+        roof.position.set(0, 13, -2);
+        roof.castShadow = true;
+        carGroup.add(roof);
+
+        // Wheels
+        const wheelGeo = sharedGeometries.wheel || new THREE.CylinderGeometry(4, 4, 3, 16);
+        const wheelMat = sharedMaterials.wheel || new THREE.MeshLambertMaterial({ color: 0x111111 });
+        const wheelPositions = [
+            { x: -10, y: 4, z: 12 },
+            { x: 10, y: 4, z: 12 },
+            { x: -10, y: 4, z: -12 },
+            { x: 10, y: 4, z: -12 }
+        ];
+        wheelPositions.forEach(pos => {
+            const wheel = new THREE.Mesh(wheelGeo, wheelMat);
+            wheel.rotation.z = Math.PI / 2;
+            wheel.position.set(pos.x, pos.y, pos.z);
+            wheel.castShadow = true;
+            carGroup.add(wheel);
+        });
+    }
+
+    scene.add(carGroup);
+    return carGroup;
+}
+
+// Update another player's car position/rotation from network state
+export function updateOtherPlayerCar(mesh, state) {
+    if (!mesh || !state) return;
+    
+    // Smooth interpolation towards target position
+    const lerpFactor = 0.3;
+    mesh.position.x += (state.x - mesh.position.x) * lerpFactor;
+    mesh.position.z += (state.z - mesh.position.z) * lerpFactor;
+    
+    // Smooth rotation interpolation (support both rotY and rotation field names)
+    let targetRotation = state.rotY !== undefined ? state.rotY : state.rotation;
+    let currentRotation = mesh.rotation.y;
+    
+    // Handle rotation wraparound
+    let diff = targetRotation - currentRotation;
+    if (diff > Math.PI) diff -= Math.PI * 2;
+    if (diff < -Math.PI) diff += Math.PI * 2;
+    
+    mesh.rotation.y += diff * lerpFactor;
+}
+
+// Remove another player's car from the scene
+export function removeOtherPlayerCar(mesh) {
+    if (!mesh) return;
+    scene.remove(mesh);
 }
