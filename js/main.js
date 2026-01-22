@@ -189,5 +189,4 @@ setUICallbacks({ triggerDamageEffect, updateHealthUI });
 if (autoStart) {
     startGame();
 }
-startGame();
 animate();

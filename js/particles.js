@@ -270,6 +270,18 @@ export const tireMarkMaterial = new THREE.MeshBasicMaterial({
     side: THREE.DoubleSide 
 });
 
+// Pre-create tire mark materials pool to avoid cloning
+const tireMarkMaterialPool = [];
+for (let i = 0; i < 20; i++) {
+    tireMarkMaterialPool.push(new THREE.MeshBasicMaterial({ 
+        color: 0x111111, 
+        transparent: true, 
+        opacity: 0.5, 
+        side: THREE.DoubleSide 
+    }));
+}
+let tireMarkPoolIndex = 0;
+
 export function createTireMark(x, z, rotation) {
     // Limit tire marks for performance
     if (gameState.tireMarks.length > 100) {
@@ -279,18 +291,27 @@ export function createTireMark(x, z, rotation) {
     
     // Create two marks for rear wheels
     const wheelOffset = 10;
+    const cosRot = Math.cos(rotation);
+    const sinRot = Math.sin(rotation);
+    const now = Date.now();
+    
     [-1, 1].forEach(side => {
-        const mark = new THREE.Mesh(tireMarkGeometry, tireMarkMaterial.clone());
+        // Reuse material from pool instead of cloning
+        const mat = tireMarkMaterialPool[tireMarkPoolIndex];
+        tireMarkPoolIndex = (tireMarkPoolIndex + 1) % tireMarkMaterialPool.length;
+        mat.opacity = 0.5;
+        
+        const mark = new THREE.Mesh(tireMarkGeometry, mat);
         mark.rotation.x = -Math.PI / 2;
         mark.rotation.z = rotation;
         mark.position.set(
-            x + Math.cos(rotation) * wheelOffset * side,
-            0.12, // Just above ground
-            z - Math.sin(rotation) * wheelOffset * side
+            x + cosRot * wheelOffset * side,
+            0.12,
+            z - sinRot * wheelOffset * side
         );
         mark.userData = {
-            spawnTime: Date.now(),
-            lifetime: 5000 // Fade over 5 seconds
+            spawnTime: now,
+            lifetime: 5000
         };
         scene.add(mark);
         gameState.tireMarks.push(mark);

@@ -316,6 +316,10 @@ export function updateCollectibles() {
          }
     }
 
+    const playerX = playerCar ? playerCar.position.x : 0;
+    const playerZ = playerCar ? playerCar.position.z : 0;
+    const pickupRadiusSq = 400; // 20^2
+    
     for (let i = gameState.collectibles.length - 1; i >= 0; i--) {
         const coin = gameState.collectibles[i];
         coin.rotation.y += 0.05;
@@ -324,9 +328,9 @@ export function updateCollectibles() {
         coin.rotation.z = Math.PI / 2;
 
         if(!playerCar) continue;
-        const dx = playerCar.position.x - coin.position.x;
-        const dz = playerCar.position.z - coin.position.z;
-        if (Math.sqrt(dx*dx + dz*dz) < 20) {
+        const dx = playerX - coin.position.x;
+        const dz = playerZ - coin.position.z;
+        if (dx*dx + dz*dz < pickupRadiusSq) {
             scene.remove(coin);
             gameState.collectibles.splice(i, 1);
             

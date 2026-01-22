@@ -5,7 +5,7 @@ import { sharedGeometries, sharedMaterials } from './assets.js';
 import { createSmoke, createSpeedParticle, createFire } from './particles.js';
 import { playerCar, takeDamage } from './player.js';
 import { normalizeAngleRadians, clamp } from './utils.js';
-import { addMoney } from './ui.js';
+import { addMoney, showGameOver } from './ui.js';
 
 const projectileGeometry = new THREE.SphereGeometry(2, 8, 8);
 
@@ -154,15 +154,22 @@ export function updatePoliceAI(delta) {
                  policeCar.userData.speed = 0;
              }
              
-             // Smoke and fire effects - stay forever
-             const timeSinceDeath = Date.now() - policeCar.userData.deathTime;
+             // Smoke and fire effects - stay forever (throttled for performance)
+             const now = Date.now();
+             const timeSinceDeath = now - policeCar.userData.deathTime;
+             const lastParticle = policeCar.userData.lastParticleTime || 0;
              
-             // Smoke constantly
-             if (Math.random() < 0.3) createSmoke(policeCar.position);
-             
-             // Fire sparks after a bit
-             if (timeSinceDeath > 2000 && Math.random() < 0.15) {
-                 createFire(policeCar.position);
+             // Throttle particle spawning to every 100ms
+             if (now - lastParticle > 100) {
+                 policeCar.userData.lastParticleTime = now;
+                 
+                 // Smoke constantly (30% chance per tick)
+                 if (Math.random() < 0.4) createSmoke(policeCar.position);
+                 
+                 // Fire sparks after 2 seconds (25% chance per tick)
+                 if (timeSinceDeath > 2000 && Math.random() < 0.3) {
+                     createFire(policeCar.position);
+                 }
              }
              
              // Don't remove dead cars - they stay as obstacles
@@ -378,7 +385,7 @@ export function updatePoliceAI(delta) {
         if (gameState.arrestCountdown <= 0) {
             gameState.arrested = true;
             gameState.elapsedTime = (Date.now() - gameState.startTime) / 1000;
-            import('./ui.js').then(m => m.showGameOver());
+            showGameOver();
         }
     } else if (minDistance >= gameState.arrestDistance || !isMovingSlow) {
         // Reset countdown if no police is close OR player sped up above 10%
