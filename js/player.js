@@ -450,8 +450,8 @@ export function updateOtherPlayerCar(mesh, state) {
     mesh.position.x += (state.x - mesh.position.x) * lerpFactor;
     mesh.position.z += (state.z - mesh.position.z) * lerpFactor;
     
-    // Smooth rotation interpolation
-    let targetRotation = state.rotation;
+    // Smooth rotation interpolation (support both rotY and rotation field names)
+    let targetRotation = state.rotY !== undefined ? state.rotY : state.rotation;
     let currentRotation = mesh.rotation.y;
     
     // Handle rotation wraparound

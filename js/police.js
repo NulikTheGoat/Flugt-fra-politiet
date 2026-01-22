@@ -7,6 +7,7 @@ import { createSmoke, createSpeedParticle, createFire } from './particles.js';
 import { playerCar, takeDamage } from './player.js';
 import { normalizeAngleRadians, clamp } from './utils.js';
 import { addMoney, showGameOver } from './ui.js';
+import * as Network from './network.js';
 
 const projectileGeometry = new THREE.SphereGeometry(2, 8, 8);
 
@@ -505,6 +506,10 @@ export function updatePoliceAI(delta) {
             gameState.arrestCountdown = 0;
             gameState.arrestStartTime = 0;
             gameState.elapsedTime = (Date.now() - gameState.startTime) / 1000;
+            // Send arrest event in multiplayer
+            if (gameState.isMultiplayer) {
+                Network.sendGameEvent('arrested', { time: gameState.elapsedTime });
+            }
             showGameOver();
         }
         gameState.policeCars = gameState.policeCars.filter(c => !c.userData.remove);
@@ -530,6 +535,10 @@ export function updatePoliceAI(delta) {
         if (gameState.arrestCountdown <= 0) {
             gameState.arrested = true;
             gameState.elapsedTime = (Date.now() - gameState.startTime) / 1000;
+            // Send arrest event in multiplayer
+            if (gameState.isMultiplayer) {
+                Network.sendGameEvent('arrested', { time: gameState.elapsedTime });
+            }
             showGameOver();
         }
     } else if (minDistance >= gameState.arrestDistance || !isMovingSlow) {
