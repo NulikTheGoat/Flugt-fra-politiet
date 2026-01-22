@@ -219,37 +219,132 @@
             border-color: #555;
         }
 
-        /* Car Preview */
+        /* Car Preview - 3D Style */
         .car-preview-box {
-            height: 100px;
+            height: 120px;
             border-radius: 8px;
-            background: #2a2a30;
+            background: linear-gradient(180deg, #1a1a20 0%, #2a2a35 50%, #1a1a20 100%);
             position: relative;
             display: flex;
             justify-content: center;
             align-items: center;
-            box-shadow: inset 0 0 20px rgba(0,0,0,0.5);
+            box-shadow: inset 0 0 30px rgba(0,0,0,0.7);
+            perspective: 200px;
+            overflow: hidden;
         }
         
-        .car-model-icon {
-            width: 60px;
-            height: 30px;
-            border-radius: 4px;
-            box-shadow: 0 5px 15px rgba(0,0,0,0.4);
-            position: relative;
-        }
-        /* Add wheels to icon */
-        .car-model-icon::before, .car-model-icon::after {
+        /* Floor reflection */
+        .car-preview-box::after {
             content: '';
             position: absolute;
-            width: 10px;
-            height: 10px;
-            background: black;
-            bottom: -5px;
-            border-radius: 50%;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 40%;
+            background: linear-gradient(to top, rgba(255,255,255,0.05), transparent);
+            pointer-events: none;
         }
-        .car-model-icon::before { left: 5px; }
-        .car-model-icon::after { right: 5px; }
+        
+        .car-model-3d {
+            position: relative;
+            transform-style: preserve-3d;
+            transform: rotateX(15deg) rotateY(-25deg);
+            animation: carFloat 3s ease-in-out infinite;
+        }
+        
+        @keyframes carFloat {
+            0%, 100% { transform: rotateX(15deg) rotateY(-25deg) translateY(0); }
+            50% { transform: rotateX(15deg) rotateY(-25deg) translateY(-3px); }
+        }
+        
+        .car-body {
+            width: 70px;
+            height: 25px;
+            border-radius: 5px;
+            position: relative;
+            transform-style: preserve-3d;
+            box-shadow: 0 8px 20px rgba(0,0,0,0.5);
+        }
+        
+        /* Car roof/cabin */
+        .car-body::before {
+            content: '';
+            position: absolute;
+            width: 40px;
+            height: 18px;
+            background: inherit;
+            filter: brightness(0.85);
+            border-radius: 3px 3px 0 0;
+            top: -15px;
+            left: 10px;
+            transform: translateZ(2px);
+        }
+        
+        /* Windshield */
+        .car-body::after {
+            content: '';
+            position: absolute;
+            width: 35px;
+            height: 12px;
+            background: linear-gradient(135deg, rgba(100,180,255,0.6), rgba(50,100,200,0.4));
+            border-radius: 2px;
+            top: -12px;
+            left: 12px;
+        }
+        
+        /* Wheels */
+        .car-wheel {
+            position: absolute;
+            width: 14px;
+            height: 14px;
+            background: radial-gradient(circle at 30% 30%, #444, #111);
+            border-radius: 50%;
+            bottom: -7px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.5);
+            border: 2px solid #222;
+        }
+        .car-wheel.front-left { left: 5px; }
+        .car-wheel.front-right { right: 5px; }
+        .car-wheel.back-left { left: 5px; }
+        .car-wheel.back-right { right: 5px; }
+        
+        /* Headlights */
+        .car-headlight {
+            position: absolute;
+            width: 6px;
+            height: 4px;
+            background: #ffffcc;
+            border-radius: 1px;
+            top: 8px;
+            box-shadow: 0 0 8px 2px rgba(255,255,200,0.5);
+        }
+        .car-headlight.left { left: 2px; }
+        .car-headlight.right { right: 2px; }
+        
+        /* Taillights */
+        .car-taillight {
+            position: absolute;
+            width: 5px;
+            height: 3px;
+            background: #ff3333;
+            border-radius: 1px;
+            top: 8px;
+            box-shadow: 0 0 5px 1px rgba(255,50,50,0.5);
+        }
+        .car-taillight.left { left: -3px; }
+        .car-taillight.right { right: -3px; }
+        
+        /* Optional inline roof override */
+        .car-roof {
+            position: absolute;
+            width: 40px;
+            height: 18px;
+            border-radius: 3px 3px 0 0;
+            top: -15px;
+            left: 15px;
+            transform: translateZ(2px);
+            display: none; /* Using ::before instead */
+        }
 
         .carCard h3 {
             color: #fff;

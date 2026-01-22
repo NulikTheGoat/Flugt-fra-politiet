@@ -50,8 +50,22 @@ const gameState = {
     collectibles: [],
     projectiles: [],
     slowEffect: 0,
-    slowDuration: 0
+    slowDuration: 0,
+    sparks: [],
+    baseFOV: 75,
+    currentFOV: 75,
+    screenShake: 0
 };
+
+// Helper function to darken a hex color
+function darkenColor(hex, percent) {
+    const num = parseInt(hex.replace('#', ''), 16);
+    const amt = Math.round(2.55 * percent);
+    const R = Math.max(0, (num >> 16) - amt);
+    const G = Math.max(0, ((num >> 8) & 0x00FF) - amt);
+    const B = Math.max(0, (num & 0x0000FF) - amt);
+    return '#' + (0x1000000 + R * 0x10000 + G * 0x100 + B).toString(16).slice(1);
+}
 
 const enemies = {
     standard: { color: 0x0000ff, speed: 250, scale: 1, name: 'Politibil' },
@@ -160,11 +174,13 @@ const sharedMaterials = {
     coin: new THREE.MeshLambertMaterial({ color: 0xffd700 }),
     redLight: new THREE.MeshBasicMaterial({ color: 0xff0000 }),
     blueLight: new THREE.MeshBasicMaterial({ color: 0x0000ff }),
-    projectile: new THREE.MeshBasicMaterial({ color: 0xff4400, emissive: 0xff2200 })
+    projectile: new THREE.MeshBasicMaterial({ color: 0xff4400, emissive: 0xff2200 }),
+    spark: new THREE.MeshBasicMaterial({ color: 0xffaa00 })
 };
 
 // Add projectile geometry after shared materials
 const projectileGeometry = new THREE.SphereGeometry(3, 8, 8);
+const sparkGeometry = new THREE.BoxGeometry(1, 1, 3);
 
 // Create Ground
 function createGround() {
@@ -214,26 +230,29 @@ function createGround() {
 }
 
 // Create Player Car
-function createPlayerCar() {
+function createPlayerCar(color = 0xff0000) {
     const carGroup = new THREE.Group();
     carGroup.position.set(0, 0, 0);
 
     // Car body
     const bodyGeometry = new THREE.BoxGeometry(20, 12, 45);
-    const bodyMaterial = new THREE.MeshLambertMaterial({ color: 0xff0000 });
+    const bodyMaterial = new THREE.MeshLambertMaterial({ color: color });
     const body = new THREE.Mesh(bodyGeometry, bodyMaterial);
     body.position.y = 6;
     body.castShadow = true;
     body.receiveShadow = true;
+    body.name = 'carBody';
     carGroup.add(body);
 
-    // Car roof
+    // Car roof (slightly darker than body)
     const roofGeometry = new THREE.BoxGeometry(18, 8, 20);
-    const roofMaterial = new THREE.MeshLambertMaterial({ color: 0xcc0000 });
+    const roofColor = new THREE.Color(color).multiplyScalar(0.8);
+    const roofMaterial = new THREE.MeshLambertMaterial({ color: roofColor });
     const roof = new THREE.Mesh(roofGeometry, roofMaterial);
     roof.position.set(0, 16, -5);
     roof.castShadow = true;
     roof.receiveShadow = true;
+    roof.name = 'carRoof';
     carGroup.add(roof);
 
     // Windows
@@ -264,6 +283,14 @@ function createPlayerCar() {
 
     scene.add(carGroup);
     return carGroup;
+}
+
+// Update player car color
+function updatePlayerCarColor(color) {
+    const body = playerCar.getObjectByName('carBody');
+    const roof = playerCar.getObjectByName('carRoof');
+    if (body) body.material.color.setHex(color);
+    if (roof) roof.material.color.setHex(color).multiplyScalar(0.8);
 }
 
 // Create Money Collectible
@@ -700,6 +727,91 @@ if (!document.getElementById('damageFlashStyle')) {
     document.head.appendChild(style);
 }
 
+// Create spark particle
+function createSpark() {
+    const spark = new THREE.Mesh(sparkGeometry, sharedMaterials.spark);
+    
+    // Position behind the car
+    const carAngle = playerCar.rotation.y;
+    const offsetX = (Math.random() - 0.5) * 15;
+    spark.position.set(
+        playerCar.position.x - Math.sin(carAngle) * 25 + offsetX,
+        1 + Math.random() * 3,
+        playerCar.position.z - Math.cos(carAngle) * 25
+    );
+    
+    spark.userData = {
+        velocity: new THREE.Vector3(
+            (Math.random() - 0.5) * 2 - Math.sin(carAngle) * 3,
+            Math.random() * 3 + 1,
+            (Math.random() - 0.5) * 2 - Math.cos(carAngle) * 3
+        ),
+        lifetime: 500,
+        spawnTime: Date.now()
+    };
+    
+    scene.add(spark);
+    gameState.sparks.push(spark);
+}
+
+// Update sparks
+function updateSparks() {
+    const now = Date.now();
+    
+    for (let i = gameState.sparks.length - 1; i >= 0; i--) {
+        const spark = gameState.sparks[i];
+        const age = now - spark.userData.spawnTime;
+        
+        if (age > spark.userData.lifetime) {
+            scene.remove(spark);
+            gameState.sparks.splice(i, 1);
+            continue;
+        }
+        
+        // Move and apply gravity
+        spark.position.add(spark.userData.velocity);
+        spark.userData.velocity.y -= 0.15;
+        
+        // Fade out
+        spark.material.opacity = 1 - (age / spark.userData.lifetime);
+        
+        // Ground collision
+        if (spark.position.y < 0) {
+            scene.remove(spark);
+            gameState.sparks.splice(i, 1);
+        }
+    }
+}
+
+// Speed visual effects (FOV, shake, sparks)
+function updateSpeedEffects(delta) {
+    const speedRatio = Math.abs(gameState.speed) / gameState.maxSpeed;
+    
+    // Dynamic FOV - increases with speed for sense of motion
+    const targetFOV = gameState.baseFOV + speedRatio * 20;
+    gameState.currentFOV += (targetFOV - gameState.currentFOV) * 0.1;
+    camera.fov = gameState.currentFOV;
+    camera.updateProjectionMatrix();
+    
+    // Screen shake at high speeds
+    if (speedRatio > 0.8) {
+        gameState.screenShake = (speedRatio - 0.8) * 5;
+    } else {
+        gameState.screenShake *= 0.9;
+    }
+    
+    // Spawn sparks when going fast
+    if (speedRatio > 0.7 && Math.random() < speedRatio * 0.3) {
+        createSpark();
+    }
+    
+    // Limit sparks
+    while (gameState.sparks.length > 30) {
+        const oldSpark = gameState.sparks.shift();
+        scene.remove(oldSpark);
+    }
+}
+
 // Game Logic Control (Economy, Heat, Spawning)
 function updateGameLogic() {
     if (gameState.arrested) return;
@@ -929,7 +1041,18 @@ function renderShop() {
 
         carCard.innerHTML = `
             <div class="car-preview-box">
-                <div class="car-model-icon" style="background-color: ${colorHex}"></div>
+                <div class="car-model-3d">
+                    <div class="car-body" style="background: linear-gradient(135deg, ${colorHex} 0%, ${darkenColor(colorHex, 30)} 100%);">
+                        <div class="car-wheel front-left"></div>
+                        <div class="car-wheel front-right"></div>
+                        <div class="car-wheel back-left"></div>
+                        <div class="car-wheel back-right"></div>
+                        <div class="car-headlight left"></div>
+                        <div class="car-headlight right"></div>
+                        <div class="car-taillight left"></div>
+                        <div class="car-taillight right"></div>
+                    </div>
+                </div>
             </div>
             
             <h3>${car.name}</h3>
@@ -980,6 +1103,8 @@ function updateCarStats(key) {
     gameState.maxSpeed = car.maxSpeed;
     gameState.acceleration = car.acceleration;
     gameState.handling = car.handling;
+    // Update car color
+    updatePlayerCarColor(car.color);
 }
 
 function startGame() {
@@ -1003,6 +1128,16 @@ function startGame() {
     gameState.projectiles = [];
     gameState.slowEffect = 0;
     gameState.slowDuration = 0;
+    
+    gameState.sparks.forEach(s => scene.remove(s));
+    gameState.sparks = [];
+    gameState.currentFOV = gameState.baseFOV;
+    camera.fov = gameState.baseFOV;
+    camera.updateProjectionMatrix();
+    
+    // Update car color to selected car
+    const selectedCar = cars[gameState.selectedCar];
+    if (selectedCar) updatePlayerCarColor(selectedCar.color);
     
     // Spawn first police car
     spawnPoliceCar();
@@ -1075,6 +1210,12 @@ function animate() {
 
     // Update projectiles
     updateProjectiles();
+    
+    // Update sparks
+    updateSparks();
+    
+    // Speed visual effects
+    updateSpeedEffects(delta);
 
     // Update police and check arrest
     const policeDistance = updatePoliceAI();
@@ -1088,6 +1229,13 @@ function animate() {
     camera.position.x += (targetX - camera.position.x) * 0.1;
     camera.position.y = playerCar.position.y + cameraHeight;
     camera.position.z += (targetZ - camera.position.z) * 0.1;
+    
+    // Apply screen shake
+    if (gameState.screenShake > 0.01) {
+        camera.position.x += (Math.random() - 0.5) * gameState.screenShake;
+        camera.position.y += (Math.random() - 0.5) * gameState.screenShake * 0.5;
+    }
+    
     camera.lookAt(playerCar.position.x, playerCar.position.y + 10, playerCar.position.z);
 
     // Update HUD
