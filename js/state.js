@@ -41,7 +41,9 @@ export const gameState = {
     wheelAngle: 0,
     speedParticles: [],
     is2DMode: false,
-    health: 100
+    health: 100,
+    arrestCountdown: 0,
+    arrestStartTime: 0
 };
 
 // Input State

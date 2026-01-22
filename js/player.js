@@ -198,6 +198,20 @@ export function takeDamage(amount) {
 export function updatePlayer(delta, now) {
     if (!playerCar || gameState.arrested) return;
 
+    // Car cannot drive when HP is 0 or below
+    if (gameState.health <= 0) {
+        gameState.speed *= 0.95; // Slow to a stop
+        if (Math.abs(gameState.speed) < 1) gameState.speed = 0;
+        // Still update position with remaining momentum
+        playerCar.position.x += gameState.velocityX * delta * 0.5;
+        playerCar.position.z += gameState.velocityZ * delta * 0.5;
+        gameState.velocityX *= 0.95;
+        gameState.velocityZ *= 0.95;
+        // Smoke effect
+        if (Math.random() < 0.3) createSmoke(playerCar.position);
+        return;
+    }
+
     // Calculate max speed penalty based on health
     let healthFactor = Math.max(0, gameState.health) / 100;
     healthFactor = Math.min(1, healthFactor);
@@ -214,6 +228,13 @@ export function updatePlayer(delta, now) {
     let steerInput = 0;
     if (keys['a'] || keys['arrowleft']) steerInput = 1;
     if (keys['d'] || keys['arrowright']) steerInput = -1;
+    
+    // Random steering when HP is below 30 (damaged car handling)
+    if (gameState.health < 30 && gameState.health > 0) {
+        if (Math.random() < 0.05) { // 5% chance per frame
+            steerInput += (Math.random() - 0.5) * 1.5; // Random jitter
+        }
+    }
     
     // Acceleration
     if (keys['w'] || keys['arrowup']) {

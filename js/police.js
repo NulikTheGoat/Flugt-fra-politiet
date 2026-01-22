@@ -206,6 +206,58 @@ export function updatePoliceAI(delta) {
         policeCar.position.z += Math.cos(policeCar.rotation.y) * policeMove;
         policeCar.position.x += Math.sin(policeCar.rotation.y) * policeMove;
 
+        // Police vs Building Collision
+        const gridSize = gameState.chunkGridSize;
+        const px = Math.floor(policeCar.position.x / gridSize);
+        const pz = Math.floor(policeCar.position.z / gridSize);
+        
+        for(let gx = px-1; gx <= px+1; gx++) {
+            for(let gz = pz-1; gz <= pz+1; gz++) {
+                const key = `${gx},${gz}`;
+                const chunks = gameState.chunkGrid[key];
+                if(!chunks) continue;
+                
+                for(let c=0; c < chunks.length; c++) {
+                    const chunk = chunks[c];
+                    if(chunk.userData.isHit) continue;
+                    
+                    const cdx = chunk.position.x - policeCar.position.x;
+                    const cdz = chunk.position.z - policeCar.position.z;
+                    const chunkDist = Math.sqrt(cdx*cdx + cdz*cdz);
+                    
+                    if (chunkDist < 30 && Math.abs(chunk.position.y - 15) < chunk.userData.height) {
+                        // Police hit a building chunk
+                        chunk.userData.isHit = true;
+                        gameState.activeChunks.push(chunk);
+                        
+                        const policeAngle = policeCar.rotation.y;
+                        const impactSpeed = policeSpeed * 0.01;
+                        
+                        chunk.userData.velocity.set(
+                            Math.sin(policeAngle) * impactSpeed + (cdx/chunkDist) * 3,
+                            3 + Math.random() * 3,
+                            Math.cos(policeAngle) * impactSpeed + (cdz/chunkDist) * 3
+                        );
+                        
+                        chunk.userData.rotVelocity.set(
+                            (Math.random() - 0.5) * 0.3,
+                            (Math.random() - 0.5) * 0.3,
+                            (Math.random() - 0.5) * 0.3
+                        );
+                        
+                        // Damage police car
+                        policeCar.userData.health -= 15;
+                        createSmoke(chunk.position);
+                        
+                        if (policeCar.userData.health <= 0) {
+                            policeCar.userData.dead = true;
+                            policeCar.userData.deathTime = Date.now();
+                        }
+                    }
+                }
+            }
+        }
+
         // Update Health Bar
         const hpBar = policeCar.getObjectByName('hpBar');
         const hpBg = policeCar.getObjectByName('hpBg');
@@ -229,15 +281,28 @@ export function updatePoliceAI(delta) {
 
         // Check arrest condition
         const speedKmh = Math.abs(gameState.speed) * 3.6;
-        const isMovingSlow = speedKmh < 20;
+        const isMovingSlow = speedKmh < 20; // Under ~10% of typical max speed
 
         if (distance < gameState.arrestDistance && !gameState.arrested) {
             if (isMovingSlow) {
-                gameState.arrested = true;
-                gameState.elapsedTime = (Date.now() - gameState.startTime) / 1000;
-                // Import dynamically to avoid circular dependency
-                import('./ui.js').then(m => m.showGameOver());
+                // Start or continue arrest countdown
+                if (gameState.arrestStartTime === 0) {
+                    gameState.arrestStartTime = Date.now();
+                }
+                
+                const elapsed = (Date.now() - gameState.arrestStartTime) / 1000;
+                gameState.arrestCountdown = Math.max(0, 3 - elapsed);
+                
+                if (gameState.arrestCountdown <= 0) {
+                    gameState.arrested = true;
+                    gameState.elapsedTime = (Date.now() - gameState.startTime) / 1000;
+                    import('./ui.js').then(m => m.showGameOver());
+                }
             } else {
+                // Player is fast but close - do collision impact
+                gameState.arrestCountdown = 0;
+                gameState.arrestStartTime = 0;
+                
                 const now = Date.now();
                 if (now - (policeCar.userData.lastHit || 0) < 500) return;
                 policeCar.userData.lastHit = now;
@@ -261,6 +326,12 @@ export function updatePoliceAI(delta) {
                 
                 gameState.screenShake = 0.3;
                 createSmoke(playerCar.position);
+            }
+        } else {
+            // Reset countdown if police is not close
+            if (gameState.arrestCountdown > 0) {
+                gameState.arrestCountdown = 0;
+                gameState.arrestStartTime = 0;
             }
         }
 

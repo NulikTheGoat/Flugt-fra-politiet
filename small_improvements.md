@@ -46,9 +46,8 @@
 - [x] time should stop after game over
 - [x] Police should be able to crash into each other
 - [x] Player car should be slower and slower according to health
-- [ ] When police crashes into the player, and if player have slow speed eg under 10% there should start a countdown of the arrest "3 seconds"
-- [ ] Police should also crash into buildings
+- [x] When police crashes into the player, and if player have slow speed eg under 10% there should start a countdown of the arrest "3 seconds"
+- [x] Police should also crash into buildings
 - [ ] Enhace the physics and elements to have a rigid body and density
-- [ ] Car should no be able to drive when HP is below 1
-- [ ] Car randomly drives left/right when HP is below 30
-
+- [x] Car should no be able to drive when HP is below 1
+- [x] Car randomly drives left/right when HP is below 30

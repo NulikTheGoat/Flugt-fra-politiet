@@ -87,6 +87,10 @@ export function startGame() {
     gameState.slowEffect = 0;
     gameState.slowDuration = 0;
     
+    // Reset arrest countdown
+    gameState.arrestCountdown = 0;
+    gameState.arrestStartTime = 0;
+    
     gameState.sparks.forEach(s => scene.remove(s));
     gameState.sparks = [];
     gameState.currentFOV = gameState.baseFOV;

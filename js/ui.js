@@ -82,12 +82,22 @@ export function updateHUD(policeDistance) {
     if (policeDistance > 0) {
         DOM.policeDistance.textContent = Math.round(policeDistance);
         
-        if (policeDistance < gameState.arrestDistance + 100) {
+        // Arrest countdown display
+        if (gameState.arrestCountdown > 0) {
+            DOM.status.textContent = `ANHOLDELSE: ${Math.ceil(gameState.arrestCountdown)}`;
+            DOM.status.style.color = '#ff0000';
+            DOM.status.style.fontSize = '24px';
+            DOM.status.style.animation = 'pulse 0.5s infinite';
+        } else if (policeDistance < gameState.arrestDistance + 100) {
             DOM.status.textContent = 'I FARE!';
             DOM.status.style.color = '#ff0000';
+            DOM.status.style.fontSize = '';
+            DOM.status.style.animation = '';
         } else {
             DOM.status.textContent = 'Fri';
             DOM.status.style.color = '#00ff00';
+            DOM.status.style.fontSize = '';
+            DOM.status.style.animation = '';
         }
     }
 }
