@@ -200,7 +200,18 @@ export function updatePoliceAI(delta) {
         const angleDiff = normalizeAngleRadians(targetDirection - policeCar.rotation.y);
         policeCar.rotation.y += clamp(angleDiff, -0.06, 0.06) * (delta || 1);
 
-        const policeSpeed = policeCar.userData.speed || 250;
+        let policeSpeed = policeCar.userData.speed || 250;
+        
+        // Slow down police when near player and player is slow (for arrest)
+        const playerSpeedKmh = Math.abs(gameState.speed) * 3.6;
+        const maxSpeedKmh = gameState.maxSpeed * 3.6;
+        const speedThreshold = maxSpeedKmh * 0.1;
+        
+        if (distance < 150 && playerSpeedKmh < speedThreshold) {
+            // Match player speed when close and player is slow
+            const slowFactor = Math.max(0.1, distance / 150);
+            policeSpeed *= slowFactor;
+        }
 
         const policeMove = policeSpeed * 0.016 * (delta || 1);
         policeCar.position.z += Math.cos(policeCar.rotation.y) * policeMove;
@@ -279,10 +290,27 @@ export function updatePoliceAI(delta) {
             }
         }
 
-        // Check arrest condition - collision impact for fast players
+        // Solid body collision - prevent overlap between player and police
+        const collisionRadius = 25; // Combined radius of both cars
+        if (distance < collisionRadius && !policeCar.userData.dead) {
+            const overlap = collisionRadius - distance;
+            const nx = dx / distance;
+            const nz = dz / distance;
+            
+            // Push both cars apart (player more, police less)
+            playerCar.position.x += nx * overlap * 0.6;
+            playerCar.position.z += nz * overlap * 0.6;
+            policeCar.position.x -= nx * overlap * 0.4;
+            policeCar.position.z -= nz * overlap * 0.4;
+        }
+
+        // Check arrest condition - collision impact for fast players (above 10% max speed)
         if (distance < gameState.arrestDistance && !gameState.arrested) {
             const speedKmh = Math.abs(gameState.speed) * 3.6;
-            if (speedKmh >= 20) {
+            const maxSpeedKmh = gameState.maxSpeed * 3.6;
+            const speedThreshold = maxSpeedKmh * 0.1; // 10% of max speed
+            
+            if (speedKmh >= speedThreshold) {
                 // Player is fast but close - do collision impact
                 const now = Date.now();
                 if (now - (policeCar.userData.lastHit || 0) < 500) return;
@@ -302,6 +330,13 @@ export function updatePoliceAI(delta) {
                 policeCar.position.x -= nx * 15;
                 policeCar.position.z -= nz * 15;
                 
+                // Also damage police on impact
+                policeCar.userData.health -= Math.max(5, speedKmh * 0.2);
+                if (policeCar.userData.health <= 0) {
+                    policeCar.userData.dead = true;
+                    policeCar.userData.deathTime = Date.now();
+                }
+                
                 const damage = Math.max(5, speedKmh * 0.3);
                 takeDamage(damage);
                 
@@ -314,8 +349,11 @@ export function updatePoliceAI(delta) {
     });
 
     // Arrest countdown logic - check based on minimum distance (outside loop)
+    // Trigger when speed is less than 10% of max speed
+    const maxSpeedKmh = gameState.maxSpeed * 3.6;
     const speedKmh = Math.abs(gameState.speed) * 3.6;
-    const isMovingSlow = speedKmh < 20;
+    const speedThreshold = maxSpeedKmh * 0.1; // 10% of max speed
+    const isMovingSlow = speedKmh < speedThreshold;
     
     if (minDistance < gameState.arrestDistance && isMovingSlow && !gameState.arrested) {
         // Start or continue arrest countdown
@@ -331,8 +369,8 @@ export function updatePoliceAI(delta) {
             gameState.elapsedTime = (Date.now() - gameState.startTime) / 1000;
             import('./ui.js').then(m => m.showGameOver());
         }
-    } else if (minDistance >= gameState.arrestDistance || speedKmh >= 20) {
-        // Reset countdown if no police is close OR player sped up
+    } else if (minDistance >= gameState.arrestDistance || !isMovingSlow) {
+        // Reset countdown if no police is close OR player sped up above 10%
         gameState.arrestCountdown = 0;
         gameState.arrestStartTime = 0;
     }

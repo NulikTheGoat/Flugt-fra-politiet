@@ -1,146 +1,152 @@
 # 🚗 Flugt fra Politiet (Escape from the Police)
 
-A fast-paced 3D car chase game built with Three.js! Outrun the cops, collect coins, and upgrade your ride!
-
-![Game Preview](https://img.shields.io/badge/Game-Play%20Now-green)
+A fast-paced 3D car chase game! Outrun the cops, collect coins, and upgrade your ride!
 
 ---
 
 ## 🎮 How to Play
 
 ### Controls
-| Key | Action |
+| Key | What it does |
 |-----|--------|
-| `W` / `↑` | Accelerate |
-| `S` / `↓` | Brake / Reverse |
-| `A` / `←` | Turn Left |
-| `D` / `→` | Turn Right |
-| `Space` | Handbrake (Drift!) |
-| `C` | Toggle Bird's Eye View |
-| `F` | Fire (Tank only) |
+| `W` or `↑` | Go forward |
+| `S` or `↓` | Brake / Go backwards |
+| `A` or `←` | Turn Left |
+| `D` or `→` | Turn Right |
+| `Space` | Drift! (Handbrake) |
+| `C` | See map from above |
+| `F` | Shoot (only works with Tank) |
 
 ### Goal
-- 🏃 Escape from the police as long as possible
-- 💰 Collect coins to earn money
-- 🛒 Buy faster cars in the shop
-- ⚠️ Don't let your health drop to zero!
-- 🚨 If you're too slow when police are near, you'll get arrested!
+- 🏃 Run away from police as long as you can
+- 💰 Pick up coins to get money
+- 🛒 Buy cooler cars in the shop
+- ❤️ Don't let your health go to zero!
+- 🚨 If you stop when police are near = ARRESTED!
 
 ---
 
-## 🚀 How to Run the Game (Easy Guide!)
+## 🚀 How to Start the Game (Super Easy Guide for Windows!)
 
-### Option 1: Using Node.js (Recommended)
+### Step 1: Download Node.js (one time only)
 
-**Step 1:** Make sure you have Node.js installed
-- Download from: https://nodejs.org
-- Choose the "LTS" version (the big green button)
+1. Open your browser (Chrome, Edge, whatever)
+2. Go to: **https://nodejs.org**
+3. Click the big green button that says **"LTS"** (it's the recommended one)
+4. A file will download - double click it to install
+5. Just click "Next" "Next" "Next" until it's done ✅
 
-**Step 2:** Open Terminal
-- On Mac: Press `Cmd + Space`, type "Terminal", press Enter
-- On Windows: Press `Win + R`, type "cmd", press Enter
+---
 
-**Step 3:** Navigate to the game folder
-```bash
-cd path/to/Flugt-fra-politiet
+### Step 2: Open the game folder
+
+1. Find where you saved the game folder (`Flugt-fra-politiet`)
+2. Open that folder
+3. You should see files like `index.html` and a folder called `js`
+
+---
+
+### Step 3: Open Command Prompt in the game folder
+
+**Easy way:**
+1. Click in the address bar at the top of the folder (where it shows the path)
+2. Type `cmd` and press Enter
+3. A black window will open - this is Command Prompt!
+
+**Or another way:**
+1. Hold `Shift` and right-click in the folder
+2. Click "Open PowerShell window here" or "Open command window here"
+
+---
+
+### Step 4: Start the game server
+
+In the black window, type this and press Enter:
+
 ```
-(Replace `path/to/` with where you saved the game)
-
-**Step 4:** Start the server
-```bash
 npx serve
 ```
-If it asks "Ok to proceed?", type `y` and press Enter.
 
-**Step 5:** Open the game
-- Open your browser (Chrome works best!)
-- Go to: **http://localhost:3000**
+**First time only:** It might ask "Ok to proceed? (y)" - just type `y` and press Enter
 
-🎉 **That's it! Have fun!**
-
----
-
-### Option 2: Using Python
-
-If you have Python installed:
-
-```bash
-cd path/to/Flugt-fra-politiet
-python3 -m http.server 8080
+Wait a few seconds until you see something like:
+```
+Serving!
+- Local: http://localhost:3000
 ```
 
-Then open: **http://localhost:8080**
+---
+
+### Step 5: Play the game! 🎉
+
+1. Open your browser
+2. Go to: **http://localhost:3000**
+3. Have fun! 🚗💨
 
 ---
 
-### Option 3: VS Code Live Server
+### Step 6: When you're done playing
 
-1. Install the "Live Server" extension in VS Code
-2. Right-click `index.html`
-3. Click "Open with Live Server"
+Go back to the black window and press `Ctrl + C` to stop the server.
 
 ---
 
-## ❓ Troubleshooting
+## ❓ Problems? Here's how to fix them!
 
-### "Black screen when I open index.html directly"
-You MUST use a local server! The game uses JavaScript modules which don't work when opening the file directly. Follow the steps above.
+### "It says 'npx' is not recognized"
+You need to install Node.js first (go back to Step 1)
 
-### "Command not found: npx"
-You need to install Node.js first. Download it from https://nodejs.org
+### "Nothing happens when I type npx serve"
+Wait a bit! It can take 10-30 seconds the first time.
+
+### "The game is just a black screen"
+Make sure you opened `http://localhost:3000` in your browser, NOT by double-clicking the index.html file!
 
 ### "Port already in use"
-Try a different port:
-```bash
-npx serve -l 8081
+Someone else is using that port. Try:
 ```
+npx serve -l 8080
+```
+Then go to `http://localhost:8080` instead
+
+### "I closed the black window by accident"
+Just do Step 3 and 4 again!
 
 ---
 
-## 🏎️ Cars & Upgrades
+## 🏎️ Cars You Can Buy
 
-| Car | Price | Top Speed | Special |
-|-----|-------|-----------|---------|
-| Standard | Free | ⭐⭐ | - |
-| Compact | 1,500 kr | ⭐⭐⭐ | Agile |
-| Sport | 8,000 kr | ⭐⭐⭐⭐ | Fast |
-| Muscle | 15,000 kr | ⭐⭐⭐⭐ | Tough |
-| Tank | 75,000 kr | ⭐⭐ | Can shoot! |
-| UFO | Rebirth | ⭐⭐⭐⭐⭐ | Alien tech |
+| Car | Price | How Fast | Special Power |
+|-----|-------|----------|---------------|
+| Standard | Free | ⭐⭐ | Nothing special |
+| Compact | 1,500 kr | ⭐⭐⭐ | Easy to turn |
+| Sport | 8,000 kr | ⭐⭐⭐⭐ | Really fast |
+| Muscle | 15,000 kr | ⭐⭐⭐⭐ | Hard to break |
+| Tank | 75,000 kr | ⭐⭐ | Can shoot! Press F |
+| UFO | Special | ⭐⭐⭐⭐⭐ | Alien speed! |
 
 ---
 
-## 👮 Heat Levels
+## 👮 Police Levels
 
 The longer you survive, the harder it gets!
 
-1. 🟢 **Level 1** - Standard police cars
-2. 🟡 **Level 2** - Interceptors join the chase
-3. 🟠 **Level 3** - SWAT vehicles appear
-4. 🔴 **Level 4+** - Military vehicles that shoot!
+| Level | What happens |
+|-------|--------------|
+| 🟢 Level 1 | Normal police cars |
+| 🟡 Level 2 | Fast interceptors join |
+| 🟠 Level 3 | Big SWAT trucks appear |
+| 🔴 Level 4+ | Military vehicles that SHOOT at you! |
 
 ---
 
-## 🔄 Rebirth System
+## 💡 Pro Tips
 
-Once you've earned enough money, you can "Rebirth" to:
-- Reset your progress
-- Unlock special cars (like the UFO!)
-- Get 2x money multiplier
-
----
-
-## 🛠️ Built With
-
-- [Three.js](https://threejs.org/) - 3D Graphics
-- Vanilla JavaScript (ES6 Modules)
-- HTML5 & CSS3
-
----
-
-## 📝 License
-
-Made for fun! Feel free to modify and share.
+- **Drift around corners** - Hold Space while turning for sick drifts
+- **Don't stop!** - If police catch you standing still, you're arrested in 3 seconds
+- **Crash into police** - Going fast? Ram them to damage their cars!
+- **Collect coins** - More time = more money per coin
+- **Watch your health** - When it's low, your car gets slower and harder to control
 
 ---
 
