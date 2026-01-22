@@ -17,3 +17,11 @@
 - [ ] Make cars more expensive
 - [ ] Reset progress when page refreshes (no persistence)
 - [ ] Rebirth resets everything: new world, new cars, new challenges
+
+## Tech / Engine Suggestions
+- [ ] Make all movement fully delta-time based (police, projectiles, chunk gravity)
+- [ ] Clamp speed bar width to 0–100% (avoid negative UI while reversing)
+- [ ] Fix police turning near ±π (normalize angle difference)
+- [ ] Reuse geometries/materials for police cars (reduce allocations)
+- [ ] Particle optimization: pool meshes or switch to `THREE.Points`/`InstancedMesh`
+- [ ] Building chunk optimization: only update/check nearby chunks (simple spatial grid)

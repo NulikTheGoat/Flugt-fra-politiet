@@ -152,6 +152,15 @@ const cars = {
 
 const keys = {};
 
+function clamp(value, min, max) {
+    return Math.max(min, Math.min(max, value));
+}
+
+function normalizeAngleRadians(angle) {
+    // Normalize to [-PI, PI]
+    return Math.atan2(Math.sin(angle), Math.cos(angle));
+}
+
 // Cached DOM Elements (avoid repeated lookups)
 const DOM = {
     speed: document.getElementById('speed'),
@@ -588,7 +597,7 @@ window.addEventListener('keyup', (e) => {
 });
 
 // Police AI
-function updatePoliceAI() {
+function updatePoliceAI(delta) {
     let minDistance = 10000;
 
     gameState.policeCars.forEach((policeCar) => {
@@ -600,15 +609,16 @@ function updatePoliceAI() {
         const targetDirection = Math.atan2(dx, dz);
         
         // Rotate police car towards player
-        const angleDiff = targetDirection - policeCar.rotation.y;
-        policeCar.rotation.y += Math.sign(angleDiff) * 0.05;
+        const angleDiff = normalizeAngleRadians(targetDirection - policeCar.rotation.y);
+        policeCar.rotation.y += clamp(angleDiff, -0.06, 0.06) * (delta || 1);
 
         // Move police towards player with constant speed
         // Get speed from userData or default
         const policeSpeed = policeCar.userData.speed || 250;
-        
-        policeCar.position.z += Math.cos(policeCar.rotation.y) * policeSpeed * 0.016;
-        policeCar.position.x += Math.sin(policeCar.rotation.y) * policeSpeed * 0.016;
+
+        const policeMove = policeSpeed * 0.016 * (delta || 1);
+        policeCar.position.z += Math.cos(policeCar.rotation.y) * policeMove;
+        policeCar.position.x += Math.sin(policeCar.rotation.y) * policeMove;
 
         // Military vehicles shoot at player
         if (policeCar.userData.type === 'military') {
@@ -666,7 +676,7 @@ function fireProjectile(policeCar) {
 }
 
 // Update projectiles
-function updateProjectiles() {
+function updateProjectiles(delta) {
     const now = Date.now();
     const playerPos = playerCar.position;
     
@@ -674,7 +684,9 @@ function updateProjectiles() {
         const proj = gameState.projectiles[i];
         
         // Move projectile
-        proj.position.add(proj.userData.velocity);
+        proj.position.x += proj.userData.velocity.x * (delta || 1);
+        proj.position.y += proj.userData.velocity.y * (delta || 1);
+        proj.position.z += proj.userData.velocity.z * (delta || 1);
         
         // Check lifetime
         if (now - proj.userData.spawnTime > proj.userData.lifetime) {
@@ -1056,13 +1068,16 @@ function updateBuildingChunks() {
             }
         } else {
             // Update physics for hit chunks
-            chunk.position.add(chunk.userData.velocity);
+            const d = typeof window !== 'undefined' && window.__deltaForPhysics ? window.__deltaForPhysics : 1;
+            chunk.position.x += chunk.userData.velocity.x * d;
+            chunk.position.y += chunk.userData.velocity.y * d;
+            chunk.position.z += chunk.userData.velocity.z * d;
             chunk.rotation.x += chunk.userData.rotVelocity.x;
             chunk.rotation.y += chunk.userData.rotVelocity.y;
             chunk.rotation.z += chunk.userData.rotVelocity.z;
             
             // Gravity
-            chunk.userData.velocity.y -= 0.5;
+            chunk.userData.velocity.y -= 0.5 * d;
             
             // Ground bounce
             if (chunk.position.y < chunk.userData.height/2) {
@@ -1087,7 +1102,7 @@ function updateBuildingChunks() {
 function updateHUD(policeDistance) {
     const speedKmh = Math.round(gameState.speed * 3.6);
     DOM.speed.textContent = speedKmh;
-    DOM.speedFill.style.width = (gameState.speed / gameState.maxSpeed * 100) + '%';
+    DOM.speedFill.style.width = clamp((gameState.speed / gameState.maxSpeed) * 100, 0, 100) + '%';
 
     if (gameState.speed > gameState.maxSpeedWarning) {
         DOM.speedFill.style.background = 'linear-gradient(to right, #ffff00, #ff0000)';
@@ -1317,6 +1332,9 @@ function animate() {
     const delta = Math.min((now - lastTime) / 16.67, 2); // Normalize to ~60fps, cap at 2x
     lastTime = now;
 
+    // Make delta accessible to physics code that hasn't been fully refactored yet
+    window.__deltaForPhysics = delta;
+
     if (!gameState.arrested) {
         const handling = gameState.handling || 0.05;
         const absSpeed = Math.abs(gameState.speed);
@@ -1424,7 +1442,7 @@ function animate() {
     updateGameLogic();
 
     // Update projectiles
-    updateProjectiles();
+    updateProjectiles(delta);
     
     // Update sparks
     updateSparks();
@@ -1433,7 +1451,7 @@ function animate() {
     updateSpeedEffects(delta);
 
     // Update police and check arrest
-    const policeDistance = updatePoliceAI();
+    const policeDistance = updatePoliceAI(delta);
 
     // Update camera to follow player car (third person view)
     const cameraDistance = 80;
