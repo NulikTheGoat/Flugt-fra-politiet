@@ -560,5 +560,10 @@ setUICallbacks({ triggerDamageEffect, updateHealthUI });
 // Auto-start game if /start path is accessed
 if (autoStart) {
     startGame();
+} else {
+    // Show game mode selection on page load
+    setTimeout(() => {
+        gameModeModal.style.display = 'flex';
+    }, 500);
 }
 animate();
