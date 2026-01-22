@@ -62,7 +62,8 @@ const gameState = {
     driftFactor: 0,
     tireMarks: [],
     carTilt: 0,
-    wheelAngle: 0
+    wheelAngle: 0,
+    speedParticles: []
 };
 
 // Helper function to darken a hex color
@@ -873,6 +874,90 @@ function updateSpeedEffects(delta) {
     while (gameState.sparks.length > 30) {
         const oldSpark = gameState.sparks.shift();
         scene.remove(oldSpark);
+    }
+    
+    // Spawn speed particles when moving
+    if (speedRatio > 0.2) {
+        const particleCount = Math.floor(speedRatio * 3);
+        for (let i = 0; i < particleCount; i++) {
+            if (Math.random() < 0.4) createSpeedParticle();
+        }
+    }
+    
+    // Update speed particles
+    updateSpeedParticles(delta);
+}
+
+// Speed particle geometry (small streaks)
+const speedParticleGeometry = new THREE.BoxGeometry(0.5, 0.5, 3);
+const speedParticleMaterial = new THREE.MeshBasicMaterial({ 
+    color: 0xffffff, 
+    transparent: true, 
+    opacity: 0.6 
+});
+
+// Create speed particle (dust/air streak)
+function createSpeedParticle() {
+    // Limit particles for performance
+    if (gameState.speedParticles.length > 60) return;
+    
+    const particle = new THREE.Mesh(speedParticleGeometry, speedParticleMaterial.clone());
+    
+    // Spawn in front of camera, spread out
+    const spread = 150;
+    const distance = 50 + Math.random() * 100;
+    
+    // Position relative to player car, in front and to the sides
+    const angle = playerCar.rotation.y + (Math.random() - 0.5) * 1.5;
+    particle.position.set(
+        playerCar.position.x + Math.sin(angle) * distance + (Math.random() - 0.5) * spread,
+        5 + Math.random() * 40,
+        playerCar.position.z + Math.cos(angle) * distance + (Math.random() - 0.5) * spread
+    );
+    
+    // Rotate to face direction of travel (streak effect)
+    particle.rotation.y = playerCar.rotation.y;
+    
+    // Random slight color variation (white to light grey)
+    const brightness = 0.7 + Math.random() * 0.3;
+    particle.material.color.setRGB(brightness, brightness, brightness);
+    particle.material.opacity = 0.3 + Math.random() * 0.4;
+    
+    particle.userData = {
+        lifetime: 800 + Math.random() * 400,
+        spawnTime: Date.now()
+    };
+    
+    scene.add(particle);
+    gameState.speedParticles.push(particle);
+}
+
+// Update speed particles
+function updateSpeedParticles(delta) {
+    const now = Date.now();
+    const speedRatio = Math.abs(gameState.speed) / gameState.maxSpeed;
+    
+    for (let i = gameState.speedParticles.length - 1; i >= 0; i--) {
+        const particle = gameState.speedParticles[i];
+        const age = now - particle.userData.spawnTime;
+        
+        if (age > particle.userData.lifetime) {
+            scene.remove(particle);
+            gameState.speedParticles.splice(i, 1);
+            continue;
+        }
+        
+        // Move particles past the camera (opposite to car direction)
+        const moveSpeed = (gameState.speed * 1.5 + 20) * delta;
+        particle.position.x -= Math.sin(playerCar.rotation.y) * moveSpeed;
+        particle.position.z -= Math.cos(playerCar.rotation.y) * moveSpeed;
+        
+        // Stretch particle based on speed
+        particle.scale.z = 1 + speedRatio * 4;
+        
+        // Fade out
+        const lifeRatio = age / particle.userData.lifetime;
+        particle.material.opacity = (1 - lifeRatio) * (0.3 + speedRatio * 0.5);
     }
 }
 
