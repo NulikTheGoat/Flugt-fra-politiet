@@ -177,6 +177,16 @@
             border: 1px solid #ffdd44;
         }
 
+        @keyframes moneyPop {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.5); color: #fff; text-shadow: 0 0 10px #ffff00; }
+            100% { transform: scale(1); }
+        }
+
+        .money-pop {
+            animation: moneyPop 0.3s ease-out;
+        }
+
         #carList {
             display: grid;
             grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
@@ -490,6 +500,17 @@
     <div id="gameContainer"></div>
     
     <div id="hud">
+        <style>
+            @keyframes hudMoneyPop {
+                0% { transform: scale(1); }
+                50% { transform: scale(1.5); color: #ffff00; }
+                100% { transform: scale(1); }
+            }
+            .hud-money-pop {
+                display: inline-block;
+                animation: hudMoneyPop 0.3s ease-out;
+            }
+        </style>
         <div>Penge: <span id="money">0</span>kr</div>
         <div>Tid: <span id="time">0</span>s</div>
         <div>Heat Level: <span id="heatLevel">1</span></div>

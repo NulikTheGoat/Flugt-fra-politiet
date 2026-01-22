@@ -834,10 +834,35 @@ function updatePoliceAI(delta) {
         }
 
         // Check arrest condition
+        // Police only arrests if player is moving slowly (almost stopped or trapped)
+        const speedKmh = Math.abs(gameState.speed) * 3.6;
+        const isMovingSlow = speedKmh < 20;
+
         if (distance < gameState.arrestDistance && !gameState.arrested) {
-            gameState.arrested = true;
-            gameState.elapsedTime = (Date.now() - gameState.startTime) / 1000;
-            showGameOver();
+            if (isMovingSlow) {
+                // Arrested because too slow and close
+                gameState.arrested = true;
+                gameState.elapsedTime = (Date.now() - gameState.startTime) / 1000;
+                showGameOver();
+            } else {
+                // Not arrested (too fast), but collision damage!
+                // Push player away
+                const pushDirX = playerCar.position.x - policeCar.position.x;
+                const pushDirZ = playerCar.position.z - policeCar.position.z;
+                const len = Math.sqrt(pushDirX*pushDirX + pushDirZ*pushDirZ);
+                
+                if (len > 0) {
+                     // Bounce effect
+                     const bounceForce = 0.5 * (Math.abs(gameState.speed) / 50); // Scale with speed
+                     gameState.speed *= -0.5; // Reverse/Stop
+                     gameState.velocityX += (pushDirX/len) * 20;
+                     gameState.velocityZ += (pushDirZ/len) * 20;
+                }
+                
+                takeDamage(5); // Ramming damage
+                createSpark();
+                gameState.screenShake = 0.3;
+            }
         }
 
         minDistance = Math.min(minDistance, distance);
@@ -948,7 +973,7 @@ function updateProjectiles(delta) {
                     police.userData.dead = true;
                     police.userData.deathTime = now;
                     // Boost money!
-                    gameState.money += 500;
+                    addMoney(500);
                     break;
                 }
             }
@@ -1261,6 +1286,19 @@ function updateSpeedParticles(delta) {
     }
 }
 
+// Helper to add money and animate
+function addMoney(amount) {
+    if (amount <= 0) return;
+    gameState.money += amount;
+    
+    // Animate HUD money
+    DOM.money.parentElement.classList.remove('hud-money-pop');
+    void DOM.money.parentElement.offsetWidth; // Trigger reflow to restart animation
+    DOM.money.parentElement.classList.add('hud-money-pop');
+    
+    // Add floating text? (Optional, but HUD animation requested)
+}
+
 // Game Logic Control (Economy, Heat, Spawning)
 function updateGameLogic() {
     if (gameState.arrested) return;
@@ -1301,7 +1339,7 @@ function updateGameLogic() {
             const baseValue = 50;
             const timeBonus = Math.floor(time / 10) * 10; 
             const rebirthMult = (gameState.rebirthPoints || 0) + 1;
-            gameState.money += (baseValue + timeBonus) * rebirthMult;
+            addMoney((baseValue + timeBonus) * rebirthMult);
         }
     }
 }
@@ -1427,7 +1465,7 @@ function updateHUD(policeDistance) {
     // Scale passive income with heat level: 100 * level
     if (elapsedSeconds > 0 && elapsedSeconds % 10 === 0 && (Date.now() - gameState.lastMoneyCheckTime) > 500) {
         const rebirthMult = (gameState.rebirthPoints || 0) + 1;
-        gameState.money += (100 * gameState.heatLevel) * rebirthMult;
+        addMoney((100 * gameState.heatLevel) * rebirthMult);
         gameState.lastMoneyCheckTime = Date.now();
     }
 
@@ -1650,8 +1688,10 @@ function takeDamage(amount) {
 
     updateHealthUI();
 
+    // If health reaches 0, car slows down significantly (handled in animate)
     if (gameState.health <= 0) {
-        showGameOver('Din bil er ødelagt! Game Over.');
+        gameState.health = 0;
+        // Optional: Add smoke or fire effect here to indicate critical damage
     }
 }
 
@@ -1711,6 +1751,11 @@ function animate() {
     lastTime = now;
 
     if (!gameState.arrested) {
+        // Calculate max speed penalty based on health
+        let effectiveMaxSpeed = gameState.maxSpeed;
+        if (gameState.health <= 0) effectiveMaxSpeed *= 0.25; // Crawling speed
+        else if (gameState.health < 30) effectiveMaxSpeed *= 0.6; // Reduced power
+
         const handling = gameState.handling || 0.05;
         const absSpeed = Math.abs(gameState.speed);
         const speedRatio = absSpeed / gameState.maxSpeed;
@@ -1724,7 +1769,13 @@ function animate() {
         if (keys['w'] || keys['arrowup']) {
             // Traction-limited acceleration (less grip at high speed)
             const tractionFactor = 1 - (speedRatio * 0.3);
-            gameState.speed = Math.min(gameState.speed + gameState.acceleration * tractionFactor * delta, gameState.maxSpeed);
+            
+            if (gameState.speed < effectiveMaxSpeed) {
+                gameState.speed = Math.min(gameState.speed + gameState.acceleration * tractionFactor * delta, effectiveMaxSpeed);
+            } else {
+                // If speed is higher than allowed (e.g. from damage), drag slows it down
+                gameState.speed *= Math.pow(0.95, delta);
+            }
         }
         if (keys['s'] || keys['arrowdown']) {
             if (gameState.speed > 0) {
@@ -1776,6 +1827,16 @@ function animate() {
 
         // Apply slow effect if active
         const slowMultiplier = gameState.slowEffect > 0 ? (1 - gameState.slowEffect) : 1;
+        
+        // Smoke if damaged
+        if (gameState.health < 30 && Math.random() < 0.1) {
+            createSmoke(playerCar.position);
+        }
+        if (gameState.health <= 0 && Math.random() < 0.3) {
+             createSmoke(playerCar.position);
+             // Fire spark occasionally
+             if(Math.random()<0.1) createSpark(); 
+        }
 
         // Move player car using velocity
         playerCar.position.x += gameState.velocityX * delta * slowMultiplier;
