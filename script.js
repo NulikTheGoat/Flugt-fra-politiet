@@ -47,7 +47,10 @@ const gameState = {
     policeCars: [],
     chunks: [],
     heatLevel: 1,
-    collectibles: []
+    collectibles: [],
+    projectiles: [],
+    slowEffect: 0,
+    slowDuration: 0
 };
 
 const enemies = {
@@ -125,6 +128,43 @@ const cars = {
 };
 
 const keys = {};
+
+// Cached DOM Elements (avoid repeated lookups)
+const DOM = {
+    speed: document.getElementById('speed'),
+    speedFill: document.getElementById('speedFill'),
+    time: document.getElementById('time'),
+    heatLevel: document.getElementById('heatLevel'),
+    money: document.getElementById('money'),
+    policeDistance: document.getElementById('policeDistance'),
+    status: document.getElementById('status'),
+    gameOver: document.getElementById('gameOver'),
+    gameOverMessage: document.getElementById('gameOverMessage'),
+    gameOverTime: document.getElementById('gameOverTime'),
+    gameOverMoney: document.getElementById('gameOverMoney'),
+    shop: document.getElementById('shop'),
+    shopMoney: document.getElementById('shopMoney'),
+    carList: document.getElementById('carList')
+};
+
+// Shared Geometries and Materials (reduce memory and GC)
+const sharedGeometries = {
+    wheel: new THREE.CylinderGeometry(5, 5, 8, 16), // Reduced segments from 32
+    coin: new THREE.CylinderGeometry(5, 5, 2, 8),   // Reduced segments from 16
+    carBody: new THREE.BoxGeometry(20, 12, 45),
+    carRoof: new THREE.BoxGeometry(18, 8, 20)
+};
+
+const sharedMaterials = {
+    wheel: new THREE.MeshLambertMaterial({ color: 0x000000 }),
+    coin: new THREE.MeshLambertMaterial({ color: 0xffd700 }),
+    redLight: new THREE.MeshBasicMaterial({ color: 0xff0000 }),
+    blueLight: new THREE.MeshBasicMaterial({ color: 0x0000ff }),
+    projectile: new THREE.MeshBasicMaterial({ color: 0xff4400, emissive: 0xff2200 })
+};
+
+// Add projectile geometry after shared materials
+const projectileGeometry = new THREE.SphereGeometry(3, 8, 8);
 
 // Create Ground
 function createGround() {
@@ -207,10 +247,7 @@ function createPlayerCar() {
     backWindow.position.set(0, 16, -12);
     carGroup.add(backWindow);
 
-    // Wheels
-    const wheelGeometry = new THREE.CylinderGeometry(5, 5, 8, 32);
-    const wheelMaterial = new THREE.MeshPhongMaterial({ color: 0x000000 });
-
+    // Wheels (use shared geometry/material)
     const wheelPositions = [
         [-12, 5, 12],
         [12, 5, 12],
@@ -219,10 +256,9 @@ function createPlayerCar() {
     ];
 
     wheelPositions.forEach(pos => {
-        const wheel = new THREE.Mesh(wheelGeometry, wheelMaterial);
+        const wheel = new THREE.Mesh(sharedGeometries.wheel, sharedMaterials.wheel);
         wheel.rotation.z = Math.PI / 2;
         wheel.position.set(...pos);
-        wheel.castShadow = true;
         carGroup.add(wheel);
     });
 
@@ -232,9 +268,7 @@ function createPlayerCar() {
 
 // Create Money Collectible
 function createMoney() {
-    const geometry = new THREE.CylinderGeometry(5, 5, 2, 16);
-    const material = new THREE.MeshPhongMaterial({ color: 0xffd700, shininess: 100 });
-    const coin = new THREE.Mesh(geometry, material);
+    const coin = new THREE.Mesh(sharedGeometries.coin, sharedMaterials.coin);
     
     // Random position
     const mapSize = 1800;
@@ -247,7 +281,6 @@ function createMoney() {
     coin.rotation.z = Math.PI / 2;
     coin.rotation.y = Math.random() * Math.PI;
     
-    coin.castShadow = true;
     scene.add(coin);
     gameState.collectibles.push(coin);
 }
@@ -283,6 +316,27 @@ function createPoliceCar(type = 'standard') {
         const camo = new THREE.Mesh(camoGeometry, camoMaterial);
         camo.position.set(0, 8, 0);
         carGroup.add(camo);
+        
+        // Add turret for military
+        const turretBase = new THREE.Mesh(
+            new THREE.CylinderGeometry(6, 8, 5, 8),
+            new THREE.MeshLambertMaterial({ color: 0x3b4a25 })
+        );
+        turretBase.position.set(0, 15, -5);
+        carGroup.add(turretBase);
+        
+        const turretBarrel = new THREE.Mesh(
+            new THREE.CylinderGeometry(1.5, 1.5, 20, 8),
+            new THREE.MeshLambertMaterial({ color: 0x2a2a2a })
+        );
+        turretBarrel.rotation.x = Math.PI / 2;
+        turretBarrel.position.set(0, 17, 10);
+        turretBarrel.name = 'turretBarrel';
+        carGroup.add(turretBarrel);
+        
+        // Track last shot time
+        carGroup.userData.lastShotTime = 0;
+        carGroup.userData.fireRate = 2000; // ms between shots
     }
 
     // Car roof
@@ -296,20 +350,17 @@ function createPoliceCar(type = 'standard') {
     roof.castShadow = true;
     carGroup.add(roof);
 
-    // Light on roof
+    // Light on roof (use shared materials)
     const lightGeometry = new THREE.BoxGeometry(8, 3, 8);
-    const redLight = new THREE.Mesh(lightGeometry, new THREE.MeshPhongMaterial({ color: 0xff0000 }));
+    const redLight = new THREE.Mesh(lightGeometry, sharedMaterials.redLight);
     redLight.position.set(-4, 20, -8);
     carGroup.add(redLight);
 
-    const blueLight = new THREE.Mesh(lightGeometry, new THREE.MeshPhongMaterial({ color: 0x0000ff }));
+    const blueLight = new THREE.Mesh(lightGeometry, sharedMaterials.blueLight);
     blueLight.position.set(4, 20, -8);
     carGroup.add(blueLight);
 
-    // Wheels
-    const wheelGeometry = new THREE.CylinderGeometry(5, 5, 8, 32);
-    const wheelMaterial = new THREE.MeshPhongMaterial({ color: 0x000000 });
-
+    // Wheels (use shared geometry/material)
     const wheelPositions = [
         [-12, 5, 12],
         [12, 5, 12],
@@ -317,16 +368,10 @@ function createPoliceCar(type = 'standard') {
         [12, 5, -12]
     ];
 
-    if (type === 'swat') {
-        // Add extra wheels for SWAT van visuals if desired, or just make them bigger
-        wheelGroupScale = 1.2;
-    }
-
     wheelPositions.forEach(pos => {
-        const wheel = new THREE.Mesh(wheelGeometry, wheelMaterial);
+        const wheel = new THREE.Mesh(sharedGeometries.wheel, sharedMaterials.wheel);
         wheel.rotation.z = Math.PI / 2;
         wheel.position.set(...pos);
-        wheel.castShadow = true;
         carGroup.add(wheel);
     });
 
@@ -399,6 +444,9 @@ function createBuildings() {
     ];
 
     const chunkSize = 30; // Size of each block chunk
+    
+    // Shared material color map for building chunks
+    const buildingMaterials = new Map();
 
     buildingPositions.forEach(([x, z, width, depth, height]) => {
         // Calculate number of chunks in each dimension
@@ -410,7 +458,12 @@ function createBuildings() {
         const dy = height / ny;
         const dz = depth / nz;
 
+        // Use shared geometry per building (all chunks same size)
+        const chunkGeometry = new THREE.BoxGeometry(dx, dy, dz);
+        
+        const colorKey = Math.floor(Math.random() * 1000);
         const buildingColor = new THREE.Color().setHSL(Math.random() * 0.1 + 0.05, 0.6, 0.5);
+        const buildingMaterial = new THREE.MeshLambertMaterial({ color: buildingColor });
         
         // Start position (bottom-left-back corner relative to center)
         const startX = x - width / 2 + dx / 2;
@@ -420,18 +473,13 @@ function createBuildings() {
         for(let ix = 0; ix < nx; ix++) {
             for(let iy = 0; iy < ny; iy++) {
                 for(let iz = 0; iz < nz; iz++) {
-                    const geometry = new THREE.BoxGeometry(dx, dy, dz);
-                    const material = new THREE.MeshLambertMaterial({ color: buildingColor });
-                    const chunk = new THREE.Mesh(geometry, material);
+                    const chunk = new THREE.Mesh(chunkGeometry, buildingMaterial);
                     
                     chunk.position.set(
                         startX + ix * dx,
                         startY + iy * dy,
                         startZ + iz * dz
                     );
-                    
-                    chunk.castShadow = true;
-                    chunk.receiveShadow = true;
                     
                     // User data for physics
                     chunk.userData = {
@@ -451,7 +499,7 @@ function createBuildings() {
     });
 }
 
-// Create Trees
+// Create Trees (optimized with shared geometries)
 function createTrees() {
     const treePositions = [
         [-300, -1500], [300, -1500],
@@ -463,21 +511,21 @@ function createTrees() {
         [0, 2000],
     ];
 
+    // Shared geometries and materials for trees
+    const trunkGeometry = new THREE.CylinderGeometry(8, 10, 40, 6);
+    const trunkMaterial = new THREE.MeshLambertMaterial({ color: 0x8b4513 });
+    const foliageGeometry = new THREE.ConeGeometry(30, 60, 6);
+    const foliageMaterial = new THREE.MeshLambertMaterial({ color: 0x228b22 });
+
     treePositions.forEach(pos => {
         // Trunk
-        const trunkGeometry = new THREE.CylinderGeometry(8, 10, 40, 8);
-        const trunkMaterial = new THREE.MeshPhongMaterial({ color: 0x8b4513 });
         const trunk = new THREE.Mesh(trunkGeometry, trunkMaterial);
         trunk.position.set(pos[0], 20, pos[1]);
-        trunk.castShadow = true;
         scene.add(trunk);
 
         // Foliage
-        const foliageGeometry = new THREE.ConeGeometry(30, 60, 8);
-        const foliageMaterial = new THREE.MeshPhongMaterial({ color: 0x228b22 });
         const foliage = new THREE.Mesh(foliageGeometry, foliageMaterial);
         foliage.position.set(pos[0], 60, pos[1]);
-        foliage.castShadow = true;
         scene.add(foliage);
     });
 }
@@ -525,6 +573,15 @@ function updatePoliceAI() {
         policeCar.position.z += Math.cos(policeCar.rotation.y) * policeSpeed * 0.016;
         policeCar.position.x += Math.sin(policeCar.rotation.y) * policeSpeed * 0.016;
 
+        // Military vehicles shoot at player
+        if (policeCar.userData.type === 'military') {
+            const now = Date.now();
+            if (now - policeCar.userData.lastShotTime > policeCar.userData.fireRate && distance < 800) {
+                fireProjectile(policeCar);
+                policeCar.userData.lastShotTime = now;
+            }
+        }
+
         // Check arrest condition
         if (distance < gameState.arrestDistance && !gameState.arrested) {
             gameState.arrested = true;
@@ -536,6 +593,111 @@ function updatePoliceAI() {
     });
 
     return minDistance;
+}
+
+// Create projectile from military vehicle
+function fireProjectile(policeCar) {
+    const projectile = new THREE.Mesh(projectileGeometry, sharedMaterials.projectile);
+    
+    // Position at turret barrel end
+    projectile.position.copy(policeCar.position);
+    projectile.position.y = 17 * policeCar.scale.y;
+    
+    // Calculate direction towards player
+    const dx = playerCar.position.x - policeCar.position.x;
+    const dz = playerCar.position.z - policeCar.position.z;
+    const angle = Math.atan2(dx, dz);
+    
+    // Offset to barrel tip
+    projectile.position.x += Math.sin(angle) * 15 * policeCar.scale.x;
+    projectile.position.z += Math.cos(angle) * 15 * policeCar.scale.z;
+    
+    // Store velocity
+    const speed = 15;
+    projectile.userData = {
+        velocity: new THREE.Vector3(
+            Math.sin(angle) * speed,
+            0,
+            Math.cos(angle) * speed
+        ),
+        lifetime: 3000, // 3 seconds
+        spawnTime: Date.now()
+    };
+    
+    scene.add(projectile);
+    gameState.projectiles.push(projectile);
+}
+
+// Update projectiles
+function updateProjectiles() {
+    const now = Date.now();
+    const playerPos = playerCar.position;
+    
+    for (let i = gameState.projectiles.length - 1; i >= 0; i--) {
+        const proj = gameState.projectiles[i];
+        
+        // Move projectile
+        proj.position.add(proj.userData.velocity);
+        
+        // Check lifetime
+        if (now - proj.userData.spawnTime > proj.userData.lifetime) {
+            scene.remove(proj);
+            gameState.projectiles.splice(i, 1);
+            continue;
+        }
+        
+        // Check collision with player
+        const dx = playerPos.x - proj.position.x;
+        const dz = playerPos.z - proj.position.z;
+        const dist = Math.sqrt(dx * dx + dz * dz);
+        
+        if (dist < 20) {
+            // HIT! Apply slow effect
+            scene.remove(proj);
+            gameState.projectiles.splice(i, 1);
+            
+            // Apply slow: reduce speed and set slow debuff
+            gameState.speed *= 0.3;
+            gameState.slowEffect = 0.5; // 50% speed reduction
+            gameState.slowDuration = now + 3000; // 3 seconds
+            
+            // Visual feedback - flash screen red briefly
+            flashDamage();
+        }
+    }
+    
+    // Decay slow effect
+    if (gameState.slowEffect > 0 && now > gameState.slowDuration) {
+        gameState.slowEffect = 0;
+    }
+}
+
+// Flash screen red when hit
+function flashDamage() {
+    const flash = document.createElement('div');
+    flash.style.cssText = `
+        position: fixed;
+        top: 0; left: 0; right: 0; bottom: 0;
+        background: rgba(255, 0, 0, 0.4);
+        pointer-events: none;
+        z-index: 1000;
+        animation: flashFade 0.3s ease-out forwards;
+    `;
+    document.body.appendChild(flash);
+    setTimeout(() => flash.remove(), 300);
+}
+
+// Add CSS animation for flash
+if (!document.getElementById('damageFlashStyle')) {
+    const style = document.createElement('style');
+    style.id = 'damageFlashStyle';
+    style.textContent = `
+        @keyframes flashFade {
+            from { opacity: 1; }
+            to { opacity: 0; }
+        }
+    `;
+    document.head.appendChild(style);
 }
 
 // Game Logic Control (Economy, Heat, Spawning)
@@ -660,26 +822,26 @@ function updateBuildingChunks() {
     });
 }
 
-// Update HUD
+// Update HUD (optimized with cached DOM)
 function updateHUD(policeDistance) {
     const speedKmh = Math.round(gameState.speed * 3.6);
-    document.getElementById('speed').textContent = speedKmh;
-    document.getElementById('speedFill').style.width = (gameState.speed / gameState.maxSpeed * 100) + '%';
+    DOM.speed.textContent = speedKmh;
+    DOM.speedFill.style.width = (gameState.speed / gameState.maxSpeed * 100) + '%';
 
     if (gameState.speed > gameState.maxSpeedWarning) {
-        document.getElementById('speedFill').style.background = 'linear-gradient(to right, #ffff00, #ff0000)';
+        DOM.speedFill.style.background = 'linear-gradient(to right, #ffff00, #ff0000)';
     } else {
-        document.getElementById('speedFill').style.background = 'linear-gradient(to right, #00ff00, #ffff00, #ff0000)';
+        DOM.speedFill.style.background = 'linear-gradient(to right, #00ff00, #ffff00, #ff0000)';
     }
 
     // Update time and money
     const elapsedSeconds = Math.floor((Date.now() - gameState.startTime) / 1000);
-    document.getElementById('time').textContent = elapsedSeconds;
-    document.getElementById('heatLevel').textContent = gameState.heatLevel;
+    DOM.time.textContent = elapsedSeconds;
+    DOM.heatLevel.textContent = gameState.heatLevel;
     
     // Style heat level
     const heatColor = ['#00ff00', '#ffff00', '#ff8800', '#ff0000'][gameState.heatLevel - 1];
-    document.getElementById('heatLevel').style.color = heatColor;
+    DOM.heatLevel.style.color = heatColor;
 
     gameState.elapsedTime = elapsedSeconds;
 
@@ -690,17 +852,17 @@ function updateHUD(policeDistance) {
         gameState.lastMoneyCheckTime = Date.now();
     }
 
-    document.getElementById('money').textContent = gameState.money;
+    DOM.money.textContent = gameState.money;
 
     if (policeDistance > 0) {
-        document.getElementById('policeDistance').textContent = Math.round(policeDistance);
+        DOM.policeDistance.textContent = Math.round(policeDistance);
         
         if (policeDistance < gameState.arrestDistance + 100) {
-            document.getElementById('status').textContent = 'I FARE!';
-            document.getElementById('status').style.color = '#ff0000';
+            DOM.status.textContent = 'I FARE!';
+            DOM.status.style.color = '#ff0000';
         } else {
-            document.getElementById('status').textContent = 'Fri';
-            document.getElementById('status').style.color = '#00ff00';
+            DOM.status.textContent = 'Fri';
+            DOM.status.style.color = '#00ff00';
         }
     }
 }
@@ -714,24 +876,26 @@ function showGameOver() {
     // Remove collectibles
     gameState.collectibles.forEach(coin => scene.remove(coin));
     gameState.collectibles = [];
+    
+    // Remove projectiles
+    gameState.projectiles.forEach(proj => scene.remove(proj));
+    gameState.projectiles = [];
 
-    const gameOverScreen = document.getElementById('gameOver');
-    document.getElementById('gameOverMessage').textContent = 'Du blev fanget af politiet og sat i fængsel!';
-    document.getElementById('gameOverTime').textContent = Math.round(gameState.elapsedTime);
-    document.getElementById('gameOverMoney').textContent = gameState.money;
-    gameOverScreen.style.display = 'block';
+    DOM.gameOverMessage.textContent = 'Du blev fanget af politiet og sat i fængsel!';
+    DOM.gameOverTime.textContent = Math.round(gameState.elapsedTime);
+    DOM.gameOverMoney.textContent = gameState.money;
+    DOM.gameOver.style.display = 'block';
 }
 
 function goToShop() {
     gameState.totalMoney += gameState.money;
-    document.getElementById('shop').style.display = 'flex';
+    DOM.shop.style.display = 'flex';
     renderShop();
 }
 
 function renderShop() {
-    document.getElementById('shopMoney').textContent = gameState.totalMoney;
-    const carList = document.getElementById('carList');
-    carList.innerHTML = '';
+    DOM.shopMoney.textContent = gameState.totalMoney;
+    DOM.carList.innerHTML = '';
 
     Object.entries(cars).forEach(([key, car]) => {
         const owned = localStorage.getItem(`car_${key}`) === 'true' || key === 'standard';
@@ -807,7 +971,7 @@ function renderShop() {
             }
         });
 
-        carList.appendChild(carCard);
+        DOM.carList.appendChild(carCard);
     });
 }
 
@@ -819,8 +983,8 @@ function updateCarStats(key) {
 }
 
 function startGame() {
-    document.getElementById('shop').style.display = 'none';
-    document.getElementById('gameOver').style.display = 'none';
+    DOM.shop.style.display = 'none';
+    DOM.gameOver.style.display = 'none';
     gameState.speed = 0;
     gameState.money = 0;
     gameState.heatLevel = 1;
@@ -835,6 +999,11 @@ function startGame() {
     gameState.collectibles.forEach(coin => scene.remove(coin));
     gameState.collectibles = [];
     
+    gameState.projectiles.forEach(proj => scene.remove(proj));
+    gameState.projectiles = [];
+    gameState.slowEffect = 0;
+    gameState.slowDuration = 0;
+    
     // Spawn first police car
     spawnPoliceCar();
 }
@@ -846,9 +1015,15 @@ window.addEventListener('resize', () => {
     renderer.setSize(window.innerWidth, window.innerHeight);
 });
 
-// Game loop
+// Game loop with delta time
+let lastTime = performance.now();
+
 function animate() {
     requestAnimationFrame(animate);
+    
+    const now = performance.now();
+    const delta = Math.min((now - lastTime) / 16.67, 2); // Normalize to ~60fps, cap at 2x
+    lastTime = now;
 
     if (!gameState.arrested) {
         // Player controls
@@ -869,11 +1044,15 @@ function animate() {
         }
 
         // Apply friction
-        gameState.speed *= gameState.friction;
+        gameState.speed *= Math.pow(gameState.friction, delta);
 
-        // Move player car
-        playerCar.position.z += Math.cos(playerCar.rotation.y) * gameState.speed;
-        playerCar.position.x += Math.sin(playerCar.rotation.y) * gameState.speed;
+        // Apply slow effect if active
+        const slowMultiplier = gameState.slowEffect > 0 ? (1 - gameState.slowEffect) : 1;
+
+        // Move player car (apply delta for consistent speed)
+        const moveAmount = gameState.speed * delta * slowMultiplier;
+        playerCar.position.z += Math.cos(playerCar.rotation.y) * moveAmount;
+        playerCar.position.x += Math.sin(playerCar.rotation.y) * moveAmount;
 
         // Boundaries
         const boundary = 2000;
@@ -893,6 +1072,9 @@ function animate() {
 
     // Game Logic
     updateGameLogic();
+
+    // Update projectiles
+    updateProjectiles();
 
     // Update police and check arrest
     const policeDistance = updatePoliceAI();
