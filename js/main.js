@@ -17,7 +17,6 @@ const autoStart = window.location.pathname === '/start' || window.location.pathn
 
 // DOM elements for multiplayer
 const multiplayerLobby = document.getElementById('multiplayerLobby');
-const multiplayerBtn = document.getElementById('multiplayerBtn');
 const lobbyCloseBtn = document.getElementById('lobbyCloseBtn');
 const hostGameBtn = document.getElementById('hostGameBtn');
 const joinGameBtn = document.getElementById('joinGameBtn');
@@ -35,25 +34,53 @@ const waitingMessage = document.getElementById('waitingMessage');
 const startMultiplayerBtn = document.getElementById('startMultiplayerBtn');
 const otherPlayersHUD = document.getElementById('otherPlayersHUD');
 
+// Game Mode Modal elements
+const gameModeModal = document.getElementById('gameModeModal');
+const soloModeBtn = document.getElementById('soloModeBtn');
+const hostModeBtn = document.getElementById('hostModeBtn');
+const joinModeBtn = document.getElementById('joinModeBtn');
+
 // Player colors for multiplayer
 const playerColors = [0xff0000, 0x0066ff, 0x00ff00, 0xffaa00];
 
-// UI Event Listeners
+// UI Event Listeners - Show game mode selection when clicking Play
 if (DOM.playBtn) {
     DOM.playBtn.addEventListener('click', () => {
+        gameModeModal.style.display = 'flex';
+    });
+}
+
+// Solo mode - just start the game
+if (soloModeBtn) {
+    soloModeBtn.addEventListener('click', () => {
+        gameModeModal.style.display = 'none';
         startGame();
     });
 }
 
-if (DOM.gameOverShopBtn) {
-    DOM.gameOverShopBtn.addEventListener('click', () => {
-        goToShop();
+// Host multiplayer - open lobby in host mode
+if (hostModeBtn) {
+    hostModeBtn.addEventListener('click', async () => {
+        gameModeModal.style.display = 'none';
+        multiplayerLobby.style.display = 'flex';
+        lobbyError.textContent = '';
+        
+        try {
+            await Network.connect();
+            // Auto-host after connecting
+            const name = playerNameInput.value.trim() || 'Spiller';
+            const carKey = gameState.selectedCar || 'standard';
+            Network.hostGame(name, carKey, playerColors[0]);
+        } catch (e) {
+            lobbyError.textContent = 'Kunne ikke forbinde til server. Kører serveren?';
+        }
     });
 }
 
-// Multiplayer UI Listeners
-if (multiplayerBtn) {
-    multiplayerBtn.addEventListener('click', async () => {
+// Join multiplayer - open lobby in join mode
+if (joinModeBtn) {
+    joinModeBtn.addEventListener('click', async () => {
+        gameModeModal.style.display = 'none';
         multiplayerLobby.style.display = 'flex';
         lobbyError.textContent = '';
         
@@ -65,6 +92,31 @@ if (multiplayerBtn) {
     });
 }
 
+if (DOM.gameOverShopBtn) {
+    DOM.gameOverShopBtn.addEventListener('click', () => {
+        goToShop();
+    });
+}
+
+// Close game mode modal when clicking outside
+if (gameModeModal) {
+    gameModeModal.addEventListener('click', (e) => {
+        if (e.target === gameModeModal) {
+            gameModeModal.style.display = 'none';
+        }
+    });
+}
+
+// Escape key closes modals
+document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') {
+        if (gameModeModal && gameModeModal.style.display === 'flex') {
+            gameModeModal.style.display = 'none';
+        }
+    }
+});
+
+// Multiplayer UI Listeners
 if (lobbyCloseBtn) {
     lobbyCloseBtn.addEventListener('click', () => {
         multiplayerLobby.style.display = 'none';

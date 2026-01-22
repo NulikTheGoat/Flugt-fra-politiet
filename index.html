@@ -305,6 +305,101 @@
             z-index: 100;
         }
 
+        /* Game Mode Selection Modal */
+        #gameModeModal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(10, 10, 20, 0.95);
+            z-index: 450;
+            display: none;
+            justify-content: center;
+            align-items: center;
+            backdrop-filter: blur(10px);
+        }
+
+        .gamemode-content {
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            border: 2px solid #00ff00;
+            border-radius: 15px;
+            padding: 30px 40px;
+            min-width: 350px;
+            text-align: center;
+            box-shadow: 0 0 50px rgba(0, 255, 0, 0.2);
+        }
+
+        .gamemode-content h2 {
+            color: #00ff00;
+            margin-bottom: 10px;
+            font-size: 24px;
+            text-shadow: 0 0 20px rgba(0, 255, 0, 0.5);
+        }
+
+        .gamemode-content p {
+            color: #888;
+            margin-bottom: 25px;
+            font-size: 14px;
+        }
+
+        .gamemode-buttons {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .gamemode-btn {
+            padding: 15px 25px;
+            border: none;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+        }
+
+        .gamemode-btn.solo {
+            background: linear-gradient(135deg, #444, #333);
+            color: #fff;
+            border: 2px solid #666;
+        }
+
+        .gamemode-btn.solo:hover {
+            background: linear-gradient(135deg, #555, #444);
+            transform: scale(1.02);
+        }
+
+        .gamemode-btn.host {
+            background: linear-gradient(135deg, #00aa00, #008800);
+            color: #fff;
+        }
+
+        .gamemode-btn.host:hover {
+            background: linear-gradient(135deg, #00cc00, #00aa00);
+            transform: scale(1.02);
+            box-shadow: 0 0 20px rgba(0, 255, 0, 0.3);
+        }
+
+        .gamemode-btn.join {
+            background: linear-gradient(135deg, #0066ff, #0044cc);
+            color: #fff;
+        }
+
+        .gamemode-btn.join:hover {
+            background: linear-gradient(135deg, #0088ff, #0066ff);
+            transform: scale(1.02);
+            box-shadow: 0 0 20px rgba(0, 102, 255, 0.3);
+        }
+
+        .gamemode-btn span.icon {
+            font-size: 20px;
+        }
+
         .other-player-card {
             background: rgba(0, 0, 0, 0.7);
             border: 2px solid #0066ff;
@@ -950,7 +1045,6 @@
             <div id="shopHeader">
                 <h1>Garage & Shop</h1>
                 <div style="display: flex; gap: 15px; align-items: center;">
-                    <button id="multiplayerBtn" style="background: #0066ff; border: 1px solid #0088ff; color: #fff; padding: 8px 16px; border-radius: 5px; cursor: pointer; font-size: 14px;">🌐 Multiplayer</button>
                     <a href="/config" style="background: #333; border: 1px solid #666; color: #fff; padding: 8px 16px; border-radius: 5px; cursor: pointer; text-decoration: none; font-size: 14px;">⚙️ Server Config</a>
                     <div id="moneyDisplay"><span id="shopMoney">0</span> KR</div>
                 </div>
@@ -958,6 +1052,25 @@
             <div id="carList"></div>
             <div style="text-align: center; margin-top: 20px;">
                  <button id="playBtn">KØR NU</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Game Mode Selection Modal -->
+    <div id="gameModeModal">
+        <div class="gamemode-content">
+            <h2>🎮 VÆLG SPILTYPE</h2>
+            <p>Vil du spille alene eller med venner?</p>
+            <div class="gamemode-buttons">
+                <button id="soloModeBtn" class="gamemode-btn solo">
+                    <span class="icon">🚗</span> SOLO
+                </button>
+                <button id="hostModeBtn" class="gamemode-btn host">
+                    <span class="icon">🌐</span> HOST MULTIPLAYER
+                </button>
+                <button id="joinModeBtn" class="gamemode-btn join">
+                    <span class="icon">🔗</span> JOIN MULTIPLAYER
+                </button>
             </div>
         </div>
     </div>
