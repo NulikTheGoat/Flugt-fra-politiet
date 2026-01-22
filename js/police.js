@@ -279,30 +279,11 @@ export function updatePoliceAI(delta) {
             }
         }
 
-        // Check arrest condition
-        const speedKmh = Math.abs(gameState.speed) * 3.6;
-        const isMovingSlow = speedKmh < 20; // Under ~10% of typical max speed
-
+        // Check arrest condition - collision impact for fast players
         if (distance < gameState.arrestDistance && !gameState.arrested) {
-            if (isMovingSlow) {
-                // Start or continue arrest countdown
-                if (gameState.arrestStartTime === 0) {
-                    gameState.arrestStartTime = Date.now();
-                }
-                
-                const elapsed = (Date.now() - gameState.arrestStartTime) / 1000;
-                gameState.arrestCountdown = Math.max(0, 3 - elapsed);
-                
-                if (gameState.arrestCountdown <= 0) {
-                    gameState.arrested = true;
-                    gameState.elapsedTime = (Date.now() - gameState.startTime) / 1000;
-                    import('./ui.js').then(m => m.showGameOver());
-                }
-            } else {
+            const speedKmh = Math.abs(gameState.speed) * 3.6;
+            if (speedKmh >= 20) {
                 // Player is fast but close - do collision impact
-                gameState.arrestCountdown = 0;
-                gameState.arrestStartTime = 0;
-                
                 const now = Date.now();
                 if (now - (policeCar.userData.lastHit || 0) < 500) return;
                 policeCar.userData.lastHit = now;
@@ -327,16 +308,34 @@ export function updatePoliceAI(delta) {
                 gameState.screenShake = 0.3;
                 createSmoke(playerCar.position);
             }
-        } else {
-            // Reset countdown if police is not close
-            if (gameState.arrestCountdown > 0) {
-                gameState.arrestCountdown = 0;
-                gameState.arrestStartTime = 0;
-            }
         }
 
         minDistance = Math.min(minDistance, distance);
     });
+
+    // Arrest countdown logic - check based on minimum distance (outside loop)
+    const speedKmh = Math.abs(gameState.speed) * 3.6;
+    const isMovingSlow = speedKmh < 20;
+    
+    if (minDistance < gameState.arrestDistance && isMovingSlow && !gameState.arrested) {
+        // Start or continue arrest countdown
+        if (gameState.arrestStartTime === 0) {
+            gameState.arrestStartTime = Date.now();
+        }
+        
+        const elapsed = (Date.now() - gameState.arrestStartTime) / 1000;
+        gameState.arrestCountdown = Math.max(0, 3 - elapsed);
+        
+        if (gameState.arrestCountdown <= 0) {
+            gameState.arrested = true;
+            gameState.elapsedTime = (Date.now() - gameState.startTime) / 1000;
+            import('./ui.js').then(m => m.showGameOver());
+        }
+    } else if (minDistance >= gameState.arrestDistance || speedKmh >= 20) {
+        // Reset countdown if no police is close OR player sped up
+        gameState.arrestCountdown = 0;
+        gameState.arrestStartTime = 0;
+    }
 
     gameState.policeCars = gameState.policeCars.filter(c => !c.userData.remove);
 
