@@ -117,6 +117,11 @@ export function updateHUD(policeDistance) {
 export function addMoney(amount) {
     if (amount <= 0) return;
     if (gameState.arrested) return; // Stop money gain when arrested/game over
+    
+    // No points when speed is below 5% of max speed
+    const speedPercent = Math.abs(gameState.speed) / gameState.maxSpeed;
+    if (speedPercent < 0.05) return;
+    
     gameState.money += amount;
     
     // Animate HUD money
@@ -140,6 +145,18 @@ export function showGameOver(customMessage) {
 
     DOM.gameOverMessage.textContent = customMessage || 'Du blev fanget af politiet og sat i fængsel!';
     DOM.gameOver.style.display = 'block';
+    
+    // Show/hide rejoin button based on multiplayer state
+    const rejoinBtn = document.getElementById('gameOverRejoinBtn');
+    if (rejoinBtn) {
+        rejoinBtn.style.display = gameState.isMultiplayer ? 'inline-block' : 'none';
+    }
+    
+    // Show multiplayer shop button
+    const mpShopBtn = document.getElementById('gameOverMpShopBtn');
+    if (mpShopBtn) {
+        mpShopBtn.style.display = gameState.isMultiplayer ? 'inline-block' : 'none';
+    }
     
     // Animated counting for stats
     const finalTime = Math.round(gameState.elapsedTime);
@@ -182,44 +199,134 @@ function animateCount(element, target, duration) {
     requestAnimationFrame(update);
 }
 
-export function goToShop() {
+// Track if we're in multiplayer shop mode (for respawn with new car)
+let multiplayerShopMode = false;
+let onMultiplayerCarSelected = null;
+
+export function setMultiplayerShopCallback(cb) {
+    onMultiplayerCarSelected = cb;
+}
+
+export function goToShop(isMultiplayerRespawn = false) {
+    multiplayerShopMode = isMultiplayerRespawn;
     gameState.totalMoney += gameState.money;
     DOM.shop.style.display = 'flex';
+    
+    // Show/hide respawn notice
+    const respawnNotice = document.getElementById('respawnNotice');
+    if (respawnNotice) {
+        respawnNotice.style.display = isMultiplayerRespawn ? 'block' : 'none';
+    }
+    
+    // Update play button text for multiplayer
+    if (DOM.playBtn) {
+        if (isMultiplayerRespawn || gameState.isMultiplayer) {
+            DOM.playBtn.textContent = '🚀 SPAWN';
+        } else {
+            DOM.playBtn.textContent = '🚀 KØR NU';
+        }
+    }
+    
+    initShopTabs();
     renderShop();
 }
 
+export function isInMultiplayerShopMode() {
+    return multiplayerShopMode;
+}
+
+// Shop category filter
+let currentShopCategory = 'all';
+
+function getCarCategory(key, car) {
+    if (car.type === 'tank' || car.type === 'ufo' || car.reqRebirth) return 'special';
+    if (car.price >= 50000) return 'premium';
+    if (car.price >= 5000) return 'sport';
+    if (car.price < 5000) return 'budget';
+    return 'all';
+}
+
+function initShopTabs() {
+    const tabs = document.querySelectorAll('.shop-tab');
+    tabs.forEach(tab => {
+        tab.addEventListener('click', () => {
+            tabs.forEach(t => t.classList.remove('active'));
+            tab.classList.add('active');
+            currentShopCategory = tab.dataset.category;
+            renderShop();
+        });
+    });
+}
+
+function updateTabCounts() {
+    let counts = { all: 0, budget: 0, sport: 0, premium: 0, special: 0 };
+    
+    Object.entries(cars).forEach(([key, car]) => {
+        if (car.reqRebirth && (gameState.rebirthPoints || 0) < car.reqRebirth) return;
+        counts.all++;
+        const cat = getCarCategory(key, car);
+        if (counts[cat] !== undefined) counts[cat]++;
+    });
+    
+    Object.entries(counts).forEach(([cat, count]) => {
+        const el = document.getElementById(`tabCount${cat.charAt(0).toUpperCase() + cat.slice(1)}`);
+        if (el) el.textContent = count;
+    });
+}
+
 export function renderShop() {
-    DOM.shopMoney.textContent = gameState.totalMoney;
+    DOM.shopMoney.textContent = gameState.totalMoney.toLocaleString();
     DOM.carList.innerHTML = '';
+    
+    updateTabCounts();
 
     // Rebirth Button logic
-    if (gameState.heatLevel >= 6 && gameState.totalMoney >= 200000 && (gameState.rebirthPoints || 0) < 5) {
-        const rebirthBtn = document.createElement('div');
-        rebirthBtn.className = 'carCard'; // Reusing style
-        rebirthBtn.style.background = 'linear-gradient(45deg, #FF00FF, #00FFFF)';
-        rebirthBtn.innerHTML = `
-            <h3>REBIRTH SYSTEM</h3>
-            <p>Req: Heat 6 + 200k Money</p>
-            <p>Reward: Special Cars + 2x Money Payout</p>
-            <div class="card-footer">
-                <span class="action-indicator">REBIRTH NOW</span>
-            </div>
-        `;
-        rebirthBtn.addEventListener('click', () => {
-             if (confirm('Are you sure? This will reset your cars and money but unlock new content!')) {
-                 performRebirth();
-             }
-        });
-        DOM.carList.appendChild(rebirthBtn);
+    if (currentShopCategory === 'all' || currentShopCategory === 'special') {
+        if (gameState.heatLevel >= 6 && gameState.totalMoney >= 200000 && (gameState.rebirthPoints || 0) < 5) {
+            const rebirthBtn = document.createElement('div');
+            rebirthBtn.className = 'carCard';
+            rebirthBtn.style.background = 'linear-gradient(135deg, rgba(255,0,255,0.2) 0%, rgba(0,255,255,0.2) 100%)';
+            rebirthBtn.style.borderColor = 'rgba(255,0,255,0.5)';
+            rebirthBtn.innerHTML = `
+                <div class="car-preview-box" style="background: linear-gradient(135deg, #1a0a1a 0%, #0a1a1a 100%);">
+                    <div style="font-size: 48px; animation: pulse 2s infinite;">✨</div>
+                </div>
+                <div class="card-content">
+                    <h3>REBIRTH SYSTEM <span class="car-type-badge special">PRESTIGE</span></h3>
+                    <div class="stats-container" style="text-align: center; color: #aaa;">
+                        <p style="margin: 5px 0;">🔥 Kræver: Heat 6 + 200.000 kr</p>
+                        <p style="margin: 5px 0;">🎁 Belønning: Special biler + 2x Penge</p>
+                        <p style="margin: 5px 0; color: #ff00ff;">Rebirth Points: ${gameState.rebirthPoints || 0}/5</p>
+                    </div>
+                </div>
+                <div class="card-footer">
+                    <span class="price-tag" style="color: #ff00ff;">200.000 kr</span>
+                    <span class="action-indicator" style="background: linear-gradient(135deg, #ff00ff, #00ffff); color: #000;">REBIRTH NU</span>
+                </div>
+            `;
+            rebirthBtn.addEventListener('click', () => {
+                 if (confirm('Er du sikker? Dette nulstiller dine biler og penge, men låser op for nyt indhold!')) {
+                     performRebirth();
+                 }
+            });
+            DOM.carList.appendChild(rebirthBtn);
+        }
     }
 
     Object.entries(cars).forEach(([key, car]) => {
         // Filter Rebirth Cars
         if (car.reqRebirth && (gameState.rebirthPoints || 0) < car.reqRebirth) return;
+        
+        // Filter by category
+        const carCategory = getCarCategory(key, car);
+        if (currentShopCategory !== 'all' && carCategory !== currentShopCategory) return;
 
         const owned = gameState.ownedCars && gameState.ownedCars[key] || key === 'standard';
         const isSelected = gameState.selectedCar === key;
         const canAfford = gameState.totalMoney >= car.price;
+        
+        // In multiplayer respawn mode, only show owned cars
+        if (multiplayerShopMode && !owned) return;
         
         const carCard = document.createElement('div');
         
@@ -234,22 +341,33 @@ export function renderShop() {
         carCard.className = classes.join(' ');
 
         // Visualizing Stats (normalized approx)
-        const maxSpeedPct = Math.min((car.maxSpeed / 160) * 100, 100); 
-        const accelPct = Math.min((car.acceleration / 0.8) * 100, 100);
-        const handlePct = Math.min((car.handling / 0.15) * 100, 100);
+        const maxSpeedPct = Math.min((car.maxSpeed / 200) * 100, 100); 
+        const accelPct = Math.min((car.acceleration / 1.5) * 100, 100);
+        const handlePct = Math.min((car.handling / 0.2) * 100, 100);
+        const healthPct = Math.min((car.health || 100) / 500 * 100, 100);
         
         const colorHex = '#' + car.color.toString(16).padStart(6, '0');
+        const darkerColor = darkenColor(colorHex, 40);
 
         let actionText = '';
-        if (isSelected) actionText = 'VALGT';
-        else if (owned) actionText = 'VÆLG';
-        else if (canAfford) actionText = 'KØB';
-        else actionText = 'LÅST';
+        let actionIcon = '';
+        if (isSelected) { actionText = 'VALGT'; actionIcon = '✓'; }
+        else if (owned) { actionText = 'VÆLG'; actionIcon = '→'; }
+        else if (canAfford) { actionText = 'KØB'; actionIcon = '🛒'; }
+        else { actionText = 'LÅST'; actionIcon = '🔒'; }
+        
+        // Category badge
+        let categoryBadge = '';
+        const badgeClass = carCategory === 'special' ? 'special' : '';
+        if (carCategory === 'special') categoryBadge = `<span class="car-type-badge ${badgeClass}">SPECIAL</span>`;
+        else if (carCategory === 'premium') categoryBadge = `<span class="car-type-badge">PREMIUM</span>`;
+        else if (carCategory === 'sport') categoryBadge = `<span class="car-type-badge">SPORT</span>`;
 
         carCard.innerHTML = `
             <div class="car-preview-box">
+                <div class="floor-grid"></div>
                 <div class="car-model-3d">
-                    <div class="car-body" style="background: linear-gradient(135deg, ${colorHex} 0%, ${darkenColor(colorHex, 30)} 100%);">
+                    <div class="car-body" style="background: linear-gradient(135deg, ${colorHex} 0%, ${darkerColor} 100%);">
                         <div class="car-wheel front-left"></div>
                         <div class="car-wheel front-right"></div>
                         <div class="car-wheel back-left"></div>
@@ -262,30 +380,40 @@ export function renderShop() {
                 </div>
             </div>
             
-            <h3>${car.name}</h3>
-            
-            <div class="stats-container">
-                <div class="stat-row">
-                    <span class="stat-label">Fart</span>
-                    <div class="stat-bar-bg"><div class="stat-bar-fill" style="width: ${maxSpeedPct}%"></div></div>
-                </div>
-                <div class="stat-row">
-                    <span class="stat-label">Acc</span>
-                    <div class="stat-bar-bg"><div class="stat-bar-fill" style="width: ${accelPct}%"></div></div>
-                </div>
-                <div class="stat-row">
-                    <span class="stat-label">Styr</span>
-                    <div class="stat-bar-bg"><div class="stat-bar-fill" style="width: ${handlePct}%"></div></div>
-                </div>
-                <div class="stat-row">
-                    <span class="stat-label">HP</span>
-                    <div class="stat-bar-bg"><div class="stat-bar-fill" style="width: ${Math.min(100, (car.health || 100) / 3)}%"></div></div>
+            <div class="card-content">
+                <h3>${car.name} ${categoryBadge}</h3>
+                
+                <div class="stats-container">
+                    <div class="stat-row">
+                        <span class="stat-icon">⚡</span>
+                        <span class="stat-label">Fart</span>
+                        <div class="stat-bar-bg"><div class="stat-bar-fill speed" style="width: ${maxSpeedPct}%"></div></div>
+                        <span class="stat-value">${Math.round(car.maxSpeed * 3.6)}</span>
+                    </div>
+                    <div class="stat-row">
+                        <span class="stat-icon">🚀</span>
+                        <span class="stat-label">Acc</span>
+                        <div class="stat-bar-bg"><div class="stat-bar-fill accel" style="width: ${accelPct}%"></div></div>
+                        <span class="stat-value">${(car.acceleration * 10).toFixed(1)}</span>
+                    </div>
+                    <div class="stat-row">
+                        <span class="stat-icon">🎯</span>
+                        <span class="stat-label">Styr</span>
+                        <div class="stat-bar-bg"><div class="stat-bar-fill handle" style="width: ${handlePct}%"></div></div>
+                        <span class="stat-value">${(car.handling * 100).toFixed(0)}</span>
+                    </div>
+                    <div class="stat-row">
+                        <span class="stat-icon">❤️</span>
+                        <span class="stat-label">HP</span>
+                        <div class="stat-bar-bg"><div class="stat-bar-fill health" style="width: ${healthPct}%"></div></div>
+                        <span class="stat-value">${car.health || 100}</span>
+                    </div>
                 </div>
             </div>
 
             <div class="card-footer">
-                <span class="price-tag">${car.price > 0 ? car.price + ' kr' : 'GRATIS'}</span>
-                <span class="action-indicator">${actionText}</span>
+                <span class="price-tag">${car.price > 0 ? car.price.toLocaleString() + ' kr' : 'GRATIS'}</span>
+                <span class="action-indicator">${actionIcon} ${actionText}</span>
             </div>
         `;
 
@@ -294,8 +422,13 @@ export function renderShop() {
                 gameState.selectedCar = key;
                 updateCarStats(key);
                 renderShop();
+                
+                // If in multiplayer shop mode, trigger respawn with this car
+                if (multiplayerShopMode && onMultiplayerCarSelected) {
+                    onMultiplayerCarSelected(key);
+                }
             } else if (canAfford) {
-                if(confirm(`Køb ${car.name} for ${car.price}kr?`)) {
+                if(confirm(`Køb ${car.name} for ${car.price.toLocaleString()} kr?`)) {
                     gameState.totalMoney -= car.price;
                     // Mark as owned in memory (resets on page refresh)
                     if (!gameState.ownedCars) gameState.ownedCars = {};
@@ -303,6 +436,11 @@ export function renderShop() {
                     gameState.selectedCar = key;
                     updateCarStats(key);
                     renderShop();
+                    
+                    // If in multiplayer shop mode, trigger respawn with newly purchased car
+                    if (multiplayerShopMode && onMultiplayerCarSelected) {
+                        onMultiplayerCarSelected(key);
+                    }
                 }
             }
         });

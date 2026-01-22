@@ -1,6 +1,6 @@
 # 🚗 Flugt fra Politiet (Escape from the Police)
 
-A fast-paced 3D car chase game! Outrun the cops, collect coins, and upgrade your ride!
+A fast-paced 3D car chase game! Outrun the cops, collect coins, upgrade your ride, and play with friends on LAN!
 
 ---
 
@@ -26,9 +26,11 @@ A fast-paced 3D car chase game! Outrun the cops, collect coins, and upgrade your
 
 ---
 
-## 🚀 How to Start the Game (Super Easy Guide for Windows!)
+## 🚀 How to Start the Game
 
-### Step 1: Download Node.js (one time only)
+### Option 1: Single Player (Quick Start)
+
+#### Step 1: Download Node.js (one time only)
 
 1. Open your browser (Chrome, Edge, whatever)
 2. Go to: **https://nodejs.org**
@@ -36,17 +38,13 @@ A fast-paced 3D car chase game! Outrun the cops, collect coins, and upgrade your
 4. A file will download - double click it to install
 5. Just click "Next" "Next" "Next" until it's done ✅
 
----
-
-### Step 2: Open the game folder
+#### Step 2: Open the game folder
 
 1. Find where you saved the game folder (`Flugt-fra-politiet`)
 2. Open that folder
 3. You should see files like `index.html` and a folder called `js`
 
----
-
-### Step 3: Open Command Prompt in the game folder
+#### Step 3: Open Command Prompt in the game folder
 
 **Easy way:**
 1. Click in the address bar at the top of the folder (where it shows the path)
@@ -57,9 +55,7 @@ A fast-paced 3D car chase game! Outrun the cops, collect coins, and upgrade your
 1. Hold `Shift` and right-click in the folder
 2. Click "Open PowerShell window here" or "Open command window here"
 
----
-
-### Step 4: Start the game server
+#### Step 4: Start the game server
 
 In the black window, type this and press Enter:
 
@@ -75,19 +71,81 @@ Serving!
 - Local: http://localhost:3000
 ```
 
----
-
-### Step 5: Play the game! 🎉
+#### Step 5: Play the game! 🎉
 
 1. Open your browser
 2. Go to: **http://localhost:3000**
-3. Click "Start" in the shop to begin!
-
-**Pro tip:** Go to **http://localhost:3000/start** to skip the shop and start playing immediately!
+3. Click "KØR NU" (Play Now) and choose **SOLO** to play alone!
 
 ---
 
-### Step 6: When you're done playing
+### Option 2: 🌐 Multiplayer (Play with Friends on LAN!)
+
+Want to play with friends on the same network? Here's how:
+
+#### Step 1: Install dependencies (one time only)
+
+In the game folder, open Command Prompt and run:
+```
+npm install
+```
+
+#### Step 2: Start the multiplayer server
+
+```
+npm start
+```
+
+You'll see something like:
+```
+╔════════════════════════════════════════════════════════╗
+║     🚔  FLUGT FRA POLITIET - MULTIPLAYER SERVER  🚔    ║
+╠════════════════════════════════════════════════════════╣
+║  Local:    http://localhost:3000                       ║
+║  Network:  http://192.168.1.100:3000                   ║
+║  WebSocket: ws://192.168.1.100:3001                    ║
+╚════════════════════════════════════════════════════════╝
+```
+
+#### Step 3: Share the Network URL
+
+Give the **Network URL** (like `http://192.168.1.100:3000`) to your friends on the same WiFi/LAN.
+
+#### Step 4: Host creates a room
+
+**On the HOST computer (the one running the server):**
+1. Open browser and go to `http://localhost:3000`
+2. Click "KØR NU" (Play Now)
+3. Choose **HOST MULTIPLAYER**
+4. You'll see a **6-letter room code** (like `ABC123`)
+5. Tell your friends the room code!
+
+#### Step 5: Friends join the room
+
+**On EACH FRIEND'S computer:**
+1. Open browser and go to the **Network URL** (e.g. `http://192.168.1.100:3000`)
+   - ⚠️ NOT localhost! Use the IP address the host shared with you
+2. Click "KØR NU" (Play Now)
+3. Choose **JOIN MULTIPLAYER**
+4. Enter your name
+5. Type the **room code** the host gave you
+6. Click **JOIN SPIL**
+
+#### Step 6: Start the game
+
+Once everyone has joined:
+- Host sees all players in the lobby
+- Host clicks **START SPIL** to begin!
+
+#### Multiplayer Features:
+- 👥 Up to 4 players per room
+- 🎨 Each player gets a unique color
+- 🚔 Police chase all players (host controls the AI)
+- 📍 See other players on the map in real-time
+
+---
+
+## ⏹️ When you're done playing
 
 Go back to the black window and press `Ctrl + C` to stop the server.
 
@@ -112,7 +170,16 @@ npx serve -l 8080
 Then go to `http://localhost:8080` instead
 
 ### "I closed the black window by accident"
-Just do Step 3 and 4 again!
+Just do the Command Prompt steps again!
+
+### "Multiplayer: Can't connect to server"
+- Make sure you ran `npm start` (not `npx serve`) for multiplayer
+- Check that port 3000 and 3001 aren't blocked by firewall
+- All players must be on the same WiFi/LAN network
+
+### "Multiplayer: Room code doesn't work"
+- Make sure the host's server is still running
+- Double-check you typed the code correctly (6 letters)
 
 ---
 
