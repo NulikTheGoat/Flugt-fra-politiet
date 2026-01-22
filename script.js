@@ -45,7 +45,16 @@ const gameState = {
     lastMoneyCheckTime: 0,
     lastPoliceSpawnTime: 0,
     policeCars: [],
-    chunks: []
+    chunks: [],
+    heatLevel: 1,
+    collectibles: []
+};
+
+const enemies = {
+    standard: { color: 0x0000ff, speed: 250, scale: 1, name: 'Politibil' },
+    interceptor: { color: 0x111111, speed: 300, scale: 1, name: 'Interceptor' },
+    swat: { color: 0x333333, speed: 220, scale: 1.5, name: 'SWAT' },
+    military: { color: 0x556b2f, speed: 350, scale: 1.2, name: 'Militær' }
 };
 
 const cars = {
@@ -221,29 +230,67 @@ function createPlayerCar() {
     return carGroup;
 }
 
-// Create Police Car
-function createPoliceCar() {
+// Create Money Collectible
+function createMoney() {
+    const geometry = new THREE.CylinderGeometry(5, 5, 2, 16);
+    const material = new THREE.MeshPhongMaterial({ color: 0xffd700, shininess: 100 });
+    const coin = new THREE.Mesh(geometry, material);
+    
+    // Random position
+    const mapSize = 1800;
+    coin.position.set(
+        (Math.random() - 0.5) * mapSize * 2,
+        5,
+        (Math.random() - 0.5) * mapSize * 2
+    );
+    
+    coin.rotation.z = Math.PI / 2;
+    coin.rotation.y = Math.random() * Math.PI;
+    
+    coin.castShadow = true;
+    scene.add(coin);
+    gameState.collectibles.push(coin);
+}
+
+// Create Police Car with Type
+function createPoliceCar(type = 'standard') {
+    const config = enemies[type];
     const carGroup = new THREE.Group();
     carGroup.position.set(0, 0, -500);
+    
+    // Scale the car group
+    carGroup.scale.set(config.scale, config.scale, config.scale);
+    carGroup.userData = { type: type, speed: config.speed };
 
     // Car body
     const bodyGeometry = new THREE.BoxGeometry(20, 12, 45);
-    const bodyMaterial = new THREE.MeshLambertMaterial({ color: 0x0000ff });
+    const bodyMaterial = new THREE.MeshLambertMaterial({ color: config.color });
     const body = new THREE.Mesh(bodyGeometry, bodyMaterial);
     body.position.y = 6;
     body.castShadow = true;
     carGroup.add(body);
 
-    // White stripe
-    const stripeGeometry = new THREE.BoxGeometry(20, 2, 45);
-    const stripeMaterial = new THREE.MeshLambertMaterial({ color: 0xffffff });
-    const stripe = new THREE.Mesh(stripeGeometry, stripeMaterial);
-    stripe.position.set(0, 12.5, 0);
-    carGroup.add(stripe);
+    // White stripe (only for police/interceptor)
+    if (type === 'standard' || type === 'interceptor') {
+        const stripeGeometry = new THREE.BoxGeometry(20, 2, 45);
+        const stripeMaterial = new THREE.MeshLambertMaterial({ color: 0xffffff });
+        const stripe = new THREE.Mesh(stripeGeometry, stripeMaterial);
+        stripe.position.set(0, 12.5, 0);
+        carGroup.add(stripe);
+    } else if (type === 'military') {
+        const camoGeometry = new THREE.BoxGeometry(18, 5, 40);
+        const camoMaterial = new THREE.MeshLambertMaterial({ color: 0x3b4a25 }); // Darker camo spot
+        const camo = new THREE.Mesh(camoGeometry, camoMaterial);
+        camo.position.set(0, 8, 0);
+        carGroup.add(camo);
+    }
 
     // Car roof
     const roofGeometry = new THREE.BoxGeometry(18, 8, 20);
-    const roofMaterial = new THREE.MeshLambertMaterial({ color: 0x0000aa });
+    const roofMaterial = new THREE.MeshLambertMaterial({ color: config.color });
+    // Make roof slightly darker
+    roofMaterial.color.multiplyScalar(0.8);
+    
     const roof = new THREE.Mesh(roofGeometry, roofMaterial);
     roof.position.set(0, 16, -5);
     roof.castShadow = true;
@@ -270,6 +317,11 @@ function createPoliceCar() {
         [12, 5, -12]
     ];
 
+    if (type === 'swat') {
+        // Add extra wheels for SWAT van visuals if desired, or just make them bigger
+        wheelGroupScale = 1.2;
+    }
+
     wheelPositions.forEach(pos => {
         const wheel = new THREE.Mesh(wheelGeometry, wheelMaterial);
         wheel.rotation.z = Math.PI / 2;
@@ -282,13 +334,28 @@ function createPoliceCar() {
     return carGroup;
 }
 
-// Spawn new police car
+// Spawn new police car based on Heat Level
 function spawnPoliceCar() {
-    const policeCar = createPoliceCar();
+    let type = 'standard';
+    const rand = Math.random();
+    
+    if (gameState.heatLevel >= 2 && rand > 0.6) type = 'interceptor';
+    if (gameState.heatLevel >= 3 && rand > 0.7) type = 'swat';
+    if (gameState.heatLevel >= 4 && rand > 0.8) type = 'military';
+
+    const policeCar = createPoliceCar(type);
+    
     // Spawn at random locations on the map
     const mapSize = 1800;
-    policeCar.position.x = (Math.random() - 0.5) * mapSize * 2;
-    policeCar.position.z = (Math.random() - 0.5) * mapSize * 2;
+    // Ensure spawning somewhat away from player
+    let x, z;
+    do {
+        x = (Math.random() - 0.5) * mapSize * 2;
+        z = (Math.random() - 0.5) * mapSize * 2;
+    } while (Math.abs(x - playerCar.position.x) < 300 && Math.abs(z - playerCar.position.z) < 300);
+
+    policeCar.position.x = x;
+    policeCar.position.z = z;
     gameState.policeCars.push(policeCar);
     return policeCar;
 }
@@ -452,7 +519,9 @@ function updatePoliceAI() {
         policeCar.rotation.y += Math.sign(angleDiff) * 0.05;
 
         // Move police towards player with constant speed
-        const policeSpeed = 250;
+        // Get speed from userData or default
+        const policeSpeed = policeCar.userData.speed || 250;
+        
         policeCar.position.z += Math.cos(policeCar.rotation.y) * policeSpeed * 0.016;
         policeCar.position.x += Math.sin(policeCar.rotation.y) * policeSpeed * 0.016;
 
@@ -467,6 +536,48 @@ function updatePoliceAI() {
     });
 
     return minDistance;
+}
+
+// Game Logic Control (Economy, Heat, Spawning)
+function updateGameLogic() {
+    if (gameState.arrested) return;
+
+    const time = gameState.elapsedTime;
+
+    // Heat Level Logic
+    if (time < 60) gameState.heatLevel = 1;
+    else if (time < 120) gameState.heatLevel = 2;
+    else if (time < 180) gameState.heatLevel = 3;
+    else gameState.heatLevel = 4;
+
+    // Money Spawning
+    if (Math.random() < 0.02) { // approx 1 per second
+         createMoney();
+         // Limit max collectibles
+         if (gameState.collectibles.length > 50) {
+             const oldCoin = gameState.collectibles.shift();
+             scene.remove(oldCoin);
+         }
+    }
+
+    // Money Collection & Animation
+    for (let i = gameState.collectibles.length - 1; i >= 0; i--) {
+        const coin = gameState.collectibles[i];
+        coin.rotation.y += 0.05;
+
+        const dx = playerCar.position.x - coin.position.x;
+        const dz = playerCar.position.z - coin.position.z;
+        if (Math.sqrt(dx*dx + dz*dz) < 20) {
+            // Collected!
+            scene.remove(coin);
+            gameState.collectibles.splice(i, 1);
+            
+            // Dynamic value
+            const baseValue = 50;
+            const timeBonus = Math.floor(time / 10) * 10; 
+            gameState.money += baseValue + timeBonus;
+        }
+    }
 }
 
 // Update chunks physics and collision
@@ -564,11 +675,18 @@ function updateHUD(policeDistance) {
     // Update time and money
     const elapsedSeconds = Math.floor((Date.now() - gameState.startTime) / 1000);
     document.getElementById('time').textContent = elapsedSeconds;
+    document.getElementById('heatLevel').textContent = gameState.heatLevel;
+    
+    // Style heat level
+    const heatColor = ['#00ff00', '#ffff00', '#ff8800', '#ff0000'][gameState.heatLevel - 1];
+    document.getElementById('heatLevel').style.color = heatColor;
+
     gameState.elapsedTime = elapsedSeconds;
 
-    // Give money every 10 seconds without being arrested
+    // Give money every 10 seconds without being arrested (Passive)
+    // Scale passive income with heat level: 100 * level
     if (elapsedSeconds > 0 && elapsedSeconds % 10 === 0 && (Date.now() - gameState.lastMoneyCheckTime) > 500) {
-        gameState.money += 100;
+        gameState.money += 100 * gameState.heatLevel;
         gameState.lastMoneyCheckTime = Date.now();
     }
 
@@ -592,6 +710,10 @@ function showGameOver() {
     // Remove all police cars
     gameState.policeCars.forEach(car => scene.remove(car));
     gameState.policeCars = [];
+    
+    // Remove collectibles
+    gameState.collectibles.forEach(coin => scene.remove(coin));
+    gameState.collectibles = [];
 
     const gameOverScreen = document.getElementById('gameOver');
     document.getElementById('gameOverMessage').textContent = 'Du blev fanget af politiet og sat i fængsel!';
@@ -617,6 +739,8 @@ function renderShop() {
         
         const carCard = document.createElement('div');
         carCard.className = `carCard ${owned ? 'owned' : ''} ${isSelected ? 'owned' : ''}`;
+        
+        // Adjust prices if needed based on new economy, or just keep as is for now
         carCard.innerHTML = `
             <h3>${car.name}</h3>
             <p>Max hastighed: ${car.maxSpeed} km/t</p>
@@ -652,11 +776,17 @@ function startGame() {
     document.getElementById('gameOver').style.display = 'none';
     gameState.speed = 0;
     gameState.money = 0;
+    gameState.heatLevel = 1;
     gameState.arrested = false;
     gameState.startTime = Date.now();
     gameState.lastMoneyCheckTime = Date.now();
     gameState.lastPoliceSpawnTime = Date.now();
+    
+    gameState.policeCars.forEach(car => scene.remove(car));
     gameState.policeCars = [];
+    
+    gameState.collectibles.forEach(coin => scene.remove(coin));
+    gameState.collectibles = [];
     
     // Spawn first police car
     spawnPoliceCar();
@@ -713,6 +843,9 @@ function animate() {
 
     // Generate chunks for buildings
     updateBuildingChunks();
+
+    // Game Logic
+    updateGameLogic();
 
     // Update police and check arrest
     const policeDistance = updatePoliceAI();
