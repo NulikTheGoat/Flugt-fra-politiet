@@ -30,3 +30,8 @@
 - - [x] by pressing 'C'
 - [x] add a tank in the shop, that is able to shoot and crash heat level 1 police cars (Press 'F' to shoot when driving Tank)
 - [x] crashed deactivated cars should smoke
+- [x] the road is still flikering, maybe elevate it a bit, and make thiker
+- [x] make wheels move a bit up and down
+- [x] implement car health
+- [ ] every time money increse - make it flash a bit, and animate ( "bigger and then the same size again") to create awareness of earning money, that should add to the retention and gamification feeling
+- - [ ] search couple of articles about this and implement best practices

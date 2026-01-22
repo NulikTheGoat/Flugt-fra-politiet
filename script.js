@@ -65,7 +65,8 @@ const gameState = {
     carTilt: 0,
     wheelAngle: 0,
     speedParticles: [],
-    is2DMode: false
+    is2DMode: false,
+    health: 100
 };
 
 // Helper function to darken a hex color
@@ -199,7 +200,9 @@ const DOM = {
     shop: document.getElementById('shop'),
     shopMoney: document.getElementById('shopMoney'),
     carList: document.getElementById('carList'),
-    driftIndicator: document.getElementById('driftIndicator')
+    driftIndicator: document.getElementById('driftIndicator'),
+    healthValue: document.getElementById('healthValue'),
+    healthFill: document.getElementById('healthFill')
 };
 
 // Shared Geometries and Materials (reduce memory and GC)
@@ -233,19 +236,17 @@ function createGround() {
     scene.add(ground);
 
     // Main Road - Horizontal
-    const roadGeometry = new THREE.PlaneGeometry(300, 10000);
+    const roadGeometry = new THREE.BoxGeometry(300, 0.4, 10000);
     const roadMaterial = new THREE.MeshLambertMaterial({ color: 0x222222 });
     const road = new THREE.Mesh(roadGeometry, roadMaterial);
-    road.rotation.x = -Math.PI / 2;
-    road.position.y = 0.1;
+    road.position.set(0, 0.2, 0); // Raised slightly
     road.receiveShadow = true;
     scene.add(road);
 
     // Main Road - Vertical
     const roadVertical = new THREE.Mesh(roadGeometry, roadMaterial);
-    roadVertical.rotation.x = -Math.PI / 2;
-    roadVertical.rotation.z = Math.PI / 2;
-    roadVertical.position.y = 0.1;
+    roadVertical.rotation.y = Math.PI / 2;
+    roadVertical.position.set(0, 0.2, 0);
     roadVertical.receiveShadow = true;
     scene.add(roadVertical);
 
@@ -255,7 +256,7 @@ function createGround() {
     for (let i = -2500; i < 2500; i += 300) {
         const marking = new THREE.Mesh(markingGeometry, markingMaterial);
         marking.rotation.x = -Math.PI / 2;
-        marking.position.set(0, 0.2, i);
+        marking.position.set(0, 0.45, i); // Raised above road
         marking.receiveShadow = true;
         scene.add(marking);
     }
@@ -264,7 +265,7 @@ function createGround() {
     for (let i = -2500; i < 2500; i += 300) {
         const marking = new THREE.Mesh(markingGeometry, markingMaterial);
         marking.rotation.x = -Math.PI / 2;
-        marking.position.set(i, 0.2, 0);
+        marking.position.set(i, 0.45, 0); // Raised above road
         marking.receiveShadow = true;
         scene.add(marking);
     }
@@ -387,7 +388,7 @@ function createPlayerCar(color = 0xff0000, type = 'standard') {
         backWindow.position.set(0, 16, -12);
         carGroup.add(backWindow);
 
-        // Wheels
+        // Wheels with Animation Support
         const wheelPositions = [
             [-12, 5, 12],
             [12, 5, 12],
@@ -395,10 +396,18 @@ function createPlayerCar(color = 0xff0000, type = 'standard') {
             [12, 5, -12]
         ];
 
-        wheelPositions.forEach(pos => {
+        carGroup.userData.wheels = []; // Store references for animation
+
+        wheelPositions.forEach((pos, index) => {
             const wheel = new THREE.Mesh(sharedGeometries.wheel, sharedMaterials.wheel);
             wheel.rotation.z = Math.PI / 2;
             wheel.position.set(...pos);
+            
+            // Store base Y position and offset for random wobble
+            wheel.userData.baseY = pos[1];
+            wheel.userData.wobbleOffset = index * Math.PI / 2; 
+
+            carGroup.userData.wheels.push(wheel);
             carGroup.add(wheel);
         });
     }
@@ -955,14 +964,11 @@ function updateProjectiles(delta) {
             const dist = Math.sqrt(dx * dx + dz * dz);
             
             if (dist < 20) {
-                // HIT! Tank shot causes arrest (or damage?)
-                // User said "Tanks can shoot at you - if hit, you get arrested" -> Done.
+                // HIT! Tank shot causes damage
                 scene.remove(proj);
                 gameState.projectiles.splice(i, 1);
                 
-                gameState.arrested = true;
-                gameState.elapsedTime = (Date.now() - gameState.startTime) / 1000;
-                showGameOver('Du blev ramt af en tank!');
+                takeDamage(34); // 3 hits to kill
             }
         }
     }
@@ -1349,6 +1355,7 @@ function updateBuildingChunks(delta) {
 
                          // Slow down car slightly
                          gameState.speed *= 0.95; 
+                         takeDamage(Math.floor(Math.abs(carSpeed) * 0.1) + 5);
                      }
                 }
             }
@@ -1614,12 +1621,48 @@ function performRebirth() {
     }
 }
 
+// Update Health UI
+function updateHealthUI() {
+    if (DOM.healthValue) DOM.healthValue.textContent = Math.ceil(gameState.health);
+    if (DOM.healthFill) {
+        DOM.healthFill.style.width = Math.max(0, gameState.health) + '%';
+        DOM.healthFill.style.background = gameState.health < 30 ? '#ff0000' : (gameState.health < 60 ? '#ffa500' : '#00ff00');
+    }
+}
+
+// Player Take Damage
+function takeDamage(amount) {
+    if (gameState.arrested) return;
+    
+    // Reduce damage for tank
+    if (gameState.selectedCar === 'tank') amount *= 0.2;
+    // Reduce damage for UFO
+    if (gameState.selectedCar === 'ufo') amount *= 0.5;
+
+    gameState.health -= amount;
+    
+    // Flash status red
+    DOM.status.style.color = 'red';
+    setTimeout(() => { if (!gameState.arrested) DOM.status.style.color = '#00ff00'; }, 200);
+
+    // Screen flash
+    if (typeof flashDamage === 'function') flashDamage();
+
+    updateHealthUI();
+
+    if (gameState.health <= 0) {
+        showGameOver('Din bil er ødelagt! Game Over.');
+    }
+}
+
 function startGame() {
     DOM.shop.style.display = 'none';
     DOM.gameOver.style.display = 'none';
     gameState.speed = 0;
     gameState.money = 0;
     gameState.heatLevel = 1;
+    gameState.health = 100;
+    updateHealthUI();
     gameState.arrested = false;
     gameState.startTime = Date.now();
     gameState.lastMoneyCheckTime = Date.now();
@@ -1753,6 +1796,18 @@ function animate() {
         
         // Update tire marks
         updateTireMarks(delta);
+
+        // Wheel Animation (Suspension Effect)
+        if (playerCar.userData.wheels) {
+            playerCar.userData.wheels.forEach(wheel => {
+                 // Wobbly movement based on speed
+                 const wobble = Math.sin(now * 0.05 + wheel.userData.wobbleOffset) * 0.3;
+                 // More jitter at high speeds
+                 const jitter = absSpeed > 30 ? (Math.random() - 0.5) * (absSpeed / 100) : 0;
+                 
+                 wheel.position.y = wheel.userData.baseY + wobble + jitter;
+            });
+        }
 
         // Boundaries
         const boundary = 4000;
