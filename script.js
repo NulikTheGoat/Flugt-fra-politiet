@@ -35,7 +35,7 @@ const gameState = {
     friction: 0.97,
     brakePower: 0.88,
     maxSpeedWarning: 70,
-    arrestDistance: 100,
+    arrestDistance: 30,
     arrested: false,
     startTime: Date.now(),
     elapsedTime: 0,
@@ -148,6 +148,16 @@ const cars = {
         acceleration: 0.7,
         handling: 0.15,
         color: 0xff00ff
+    },
+    tank: {
+        name: 'Tank',
+        price: 75000,
+        maxSpeed: 85,
+        acceleration: 0.3,
+        handling: 0.04,
+        color: 0x4b5320,
+        canShoot: true,
+        type: 'tank'
     }
 };
 
@@ -250,59 +260,118 @@ function createGround() {
 }
 
 // Create Player Car
-function createPlayerCar(color = 0xff0000) {
+function createPlayerCar(color = 0xff0000, type = 'standard') {
     const carGroup = new THREE.Group();
     carGroup.position.set(0, 0, 0);
 
-    // Car body
-    const bodyGeometry = new THREE.BoxGeometry(20, 12, 45);
-    const bodyMaterial = new THREE.MeshLambertMaterial({ color: color });
-    const body = new THREE.Mesh(bodyGeometry, bodyMaterial);
-    body.position.y = 6;
-    body.castShadow = true;
-    body.receiveShadow = true;
-    body.name = 'carBody';
-    carGroup.add(body);
+    if (type === 'tank') {
+        // Tank Body
+        const bodyGeo = new THREE.BoxGeometry(26, 14, 50);
+        const bodyMat = new THREE.MeshLambertMaterial({ color: color });
+        const body = new THREE.Mesh(bodyGeo, bodyMat);
+        body.position.y = 7;
+        body.castShadow = true;
+        body.receiveShadow = true;
+        body.name = 'carBody';
+        carGroup.add(body);
 
-    // Car roof (slightly darker than body)
-    const roofGeometry = new THREE.BoxGeometry(18, 8, 20);
-    const roofColor = new THREE.Color(color).multiplyScalar(0.8);
-    const roofMaterial = new THREE.MeshLambertMaterial({ color: roofColor });
-    const roof = new THREE.Mesh(roofGeometry, roofMaterial);
-    roof.position.set(0, 16, -5);
-    roof.castShadow = true;
-    roof.receiveShadow = true;
-    roof.name = 'carRoof';
-    carGroup.add(roof);
+        // Turret
+        const turretGeo = new THREE.BoxGeometry(16, 8, 20);
+        const turretColor = new THREE.Color(color).multiplyScalar(0.8);
+        const turretMat = new THREE.MeshLambertMaterial({ color: turretColor });
+        const turret = new THREE.Mesh(turretGeo, turretMat);
+        turret.position.set(0, 18, 0);
+        turret.castShadow = true;
+        turret.receiveShadow = true;
+        turret.name = 'carRoof'; // Naming as carRoof so color updates work
+        carGroup.add(turret);
 
-    // Windows
-    const windowGeometry = new THREE.BoxGeometry(16, 6, 8);
-    const windowMaterial = new THREE.MeshPhongMaterial({ color: 0x4488ff, transparent: true, opacity: 0.5 });
-    const frontWindow = new THREE.Mesh(windowGeometry, windowMaterial);
-    frontWindow.position.set(0, 16, 5);
-    carGroup.add(frontWindow);
+        // Barrel
+        const barrelGeo = new THREE.CylinderGeometry(2, 2, 30, 16);
+        const barrelMat = new THREE.MeshLambertMaterial({ color: 0x333333 });
+        const barrel = new THREE.Mesh(barrelGeo, barrelMat);
+        barrel.rotation.x = -Math.PI / 2;
+        barrel.position.set(0, 18, 20); 
+        barrel.castShadow = true;
+        carGroup.add(barrel);
 
-    const backWindow = new THREE.Mesh(windowGeometry, windowMaterial);
-    backWindow.position.set(0, 16, -12);
-    carGroup.add(backWindow);
+        // Tracks
+        const trackGeo = new THREE.BoxGeometry(6, 12, 48);
+        const trackMat = new THREE.MeshLambertMaterial({ color: 0x111111 });
+        
+        const leftTrack = new THREE.Mesh(trackGeo, trackMat);
+        leftTrack.position.set(-14, 6, 0);
+        carGroup.add(leftTrack);
 
-    // Wheels (use shared geometry/material)
-    const wheelPositions = [
-        [-12, 5, 12],
-        [12, 5, 12],
-        [-12, 5, -12],
-        [12, 5, -12]
-    ];
+        const rightTrack = new THREE.Mesh(trackGeo, trackMat);
+        rightTrack.position.set(14, 6, 0);
+        carGroup.add(rightTrack);
 
-    wheelPositions.forEach(pos => {
-        const wheel = new THREE.Mesh(sharedGeometries.wheel, sharedMaterials.wheel);
-        wheel.rotation.z = Math.PI / 2;
-        wheel.position.set(...pos);
-        carGroup.add(wheel);
-    });
+    } else {
+        // Car body
+        const bodyGeometry = new THREE.BoxGeometry(20, 12, 45);
+        const bodyMaterial = new THREE.MeshLambertMaterial({ color: color });
+        const body = new THREE.Mesh(bodyGeometry, bodyMaterial);
+        body.position.y = 6;
+        body.castShadow = true;
+        body.receiveShadow = true;
+        body.name = 'carBody';
+        carGroup.add(body);
+
+        // Car roof (slightly darker than body)
+        const roofGeometry = new THREE.BoxGeometry(18, 8, 20);
+        const roofColor = new THREE.Color(color).multiplyScalar(0.8);
+        const roofMaterial = new THREE.MeshLambertMaterial({ color: roofColor });
+        const roof = new THREE.Mesh(roofGeometry, roofMaterial);
+        roof.position.set(0, 16, -5);
+        roof.castShadow = true;
+        roof.receiveShadow = true;
+        roof.name = 'carRoof';
+        carGroup.add(roof);
+
+        // Windows
+        const windowGeometry = new THREE.BoxGeometry(16, 6, 8);
+        const windowMaterial = new THREE.MeshPhongMaterial({ color: 0x4488ff, transparent: true, opacity: 0.5 });
+        const frontWindow = new THREE.Mesh(windowGeometry, windowMaterial);
+        frontWindow.position.set(0, 16, 5);
+        carGroup.add(frontWindow);
+
+        const backWindow = new THREE.Mesh(windowGeometry, windowMaterial);
+        backWindow.position.set(0, 16, -12);
+        carGroup.add(backWindow);
+
+        // Wheels
+        const wheelPositions = [
+            [-12, 5, 12],
+            [12, 5, 12],
+            [-12, 5, -12],
+            [12, 5, -12]
+        ];
+
+        wheelPositions.forEach(pos => {
+            const wheel = new THREE.Mesh(sharedGeometries.wheel, sharedMaterials.wheel);
+            wheel.rotation.z = Math.PI / 2;
+            wheel.position.set(...pos);
+            carGroup.add(wheel);
+        });
+    }
 
     scene.add(carGroup);
     return carGroup;
+}
+
+// Update player car model logic
+function rebuildPlayerCar() {
+    if (playerCar) {
+        scene.remove(playerCar);
+    }
+    const carData = cars[gameState.selectedCar];
+    playerCar = createPlayerCar(carData.color, carData.type);
+    
+    // Position needs to be preserved? No, resetGame usually resets it.
+    // But if called during shop switch... 
+    // Usually shop updates happen in resetGame or shop preview.
+    // The shop PREVIEW uses 'updateShopPreview'.
 }
 
 // Update player car color
@@ -628,6 +697,16 @@ window.addEventListener('keydown', (e) => {
     if (e.key === 'c' || e.key === 'C') {
         gameState.is2DMode = !gameState.is2DMode;
     }
+    if ((e.key === 'f' || e.key === 'F')) {
+        const currentCar = cars[gameState.selectedCar];
+        if (currentCar && currentCar.type === 'tank') {
+             const now = Date.now();
+             if (now - (gameState.lastPlayerShot || 0) > 800) { // 0.8s cooldown
+                  firePlayerProjectile();
+                  gameState.lastPlayerShot = now;
+             }
+        }
+    }
     if (e.key === ' ') e.preventDefault();
 });
 
@@ -640,9 +719,39 @@ function updatePoliceAI(delta) {
     let minDistance = 10000;
 
     gameState.policeCars.forEach((policeCar) => {
+        // Handle Dead/Deactivated Cars
+        if (policeCar.userData.dead) {
+             policeCar.userData.speed *= Math.pow(0.95, delta || 1);
+             const move = policeCar.userData.speed * 0.016 * (delta || 1);
+             policeCar.position.x += Math.sin(policeCar.rotation.y) * move;
+             policeCar.position.z += Math.cos(policeCar.rotation.y) * move;
+             
+             // Smoke effect
+             if (Math.random() < 0.2) createSmoke(policeCar.position);
+
+             // Mark for removal if too old
+             if (Date.now() - policeCar.userData.deathTime > 10000) {
+                 policeCar.userData.remove = true;
+                 scene.remove(policeCar);
+             }
+             return;
+        }
+
         const dx = playerCar.position.x - policeCar.position.x;
         const dz = playerCar.position.z - policeCar.position.z;
         const distance = Math.sqrt(dx * dx + dz * dz);
+
+        // Tank Ramming Logic
+        const currentCar = cars[gameState.selectedCar];
+        if (currentCar && currentCar.type === 'tank' && distance < 50) {
+             // Crush the police car
+             policeCar.userData.dead = true;
+             policeCar.userData.deathTime = Date.now();
+             // Add impact impulse
+             createSmoke(policeCar.position);
+             gameState.screenShake = 0.5;
+             return; // Skip arrest
+        }
 
         // Police follows player
         const targetDirection = Math.atan2(dx, dz);
@@ -678,8 +787,42 @@ function updatePoliceAI(delta) {
         minDistance = Math.min(minDistance, distance);
     });
 
+    // Clean up dead cars
+    gameState.policeCars = gameState.policeCars.filter(c => !c.userData.remove);
+
     return minDistance;
 }
+
+// Fire projectile from player tank
+function firePlayerProjectile() {
+    if (gameState.arrested) return;
+
+    const projectile = new THREE.Mesh(projectileGeometry, sharedMaterials.projectile);
+    
+    const angle = playerCar.rotation.y;
+    projectile.position.copy(playerCar.position);
+    projectile.position.y = 18;
+    projectile.position.x += Math.sin(angle) * 35;
+    projectile.position.z += Math.cos(angle) * 35;
+    
+    projectile.userData = {
+        velocity: new THREE.Vector3(
+            Math.sin(angle) * 60,
+            0,
+            Math.cos(angle) * 60
+        ),
+        lifetime: 2000,
+        spawnTime: Date.now(),
+        isPlayerShot: true
+    };
+    
+    scene.add(projectile);
+    gameState.projectiles.push(projectile);
+    
+    // Recoil
+    gameState.speed -= 2;
+}
+
 
 // Create projectile from military vehicle
 function fireProjectile(policeCar) {
@@ -733,21 +876,50 @@ function updateProjectiles(delta) {
             gameState.projectiles.splice(i, 1);
             continue;
         }
-        
-        // Check collision with player
-        const dx = playerPos.x - proj.position.x;
-        const dz = playerPos.z - proj.position.z;
-        const dist = Math.sqrt(dx * dx + dz * dz);
-        
-        if (dist < 20) {
-            // HIT! Tank shot causes arrest
-            scene.remove(proj);
-            gameState.projectiles.splice(i, 1);
+
+        if (proj.userData.isPlayerShot) {
+            // Check collision with police
+            let hit = false;
+            for (let j = 0; j < gameState.policeCars.length; j++) {
+                const police = gameState.policeCars[j];
+                if (police.userData.dead) continue;
+                
+                const dx = police.position.x - proj.position.x;
+                const dz = police.position.z - proj.position.z;
+                // Collision radius checks
+                if (dx*dx + dz*dz < 600) { // Approx 25 unit radius squared
+                    hit = true;
+                    police.userData.dead = true;
+                    police.userData.deathTime = now;
+                    // Boost money!
+                    gameState.money += 500;
+                    break;
+                }
+            }
+            if (hit) {
+                scene.remove(proj);
+                gameState.projectiles.splice(i, 1);
+                continue;
+            }
+        } else {
+            // Check collision with player
+            const dx = playerPos.x - proj.position.x;
+            const dz = playerPos.z - proj.position.z;
+            const dist = Math.sqrt(dx * dx + dz * dz);
             
-            // Arrested by tank!
-            gameState.arrested = true;
-            gameState.elapsedTime = (Date.now() - gameState.startTime) / 1000;
-            showGameOver('Du blev ramt af en tank!');
+            if (dist < 20) {
+                // HIT! Tank shot causes arrest (or damage?)
+                // User said "Tanks can shoot at you - if hit, you get arrested" -> Done.
+                scene.remove(proj);
+                gameState.projectiles.splice(i, 1);
+                
+                gameState.arrested = true;
+                gameState.elapsedTime = (Date.now() - gameState.startTime) / 1000;
+                showGameOver('Du blev ramt af en tank!');
+            }
+        }
+    }
+}
             
             // Visual feedback - flash screen red briefly
             flashDamage();
@@ -864,39 +1036,74 @@ function createSpark() {
             (Math.random() - 0.5) * 2 - Math.cos(carAngle) * 3
         ),
         lifetime: 500,
-        spawnTime: Date.now()
+        spawnTime: Date.now(),
+        type: 'spark'
     };
     
     scene.add(spark);
     gameState.sparks.push(spark);
 }
 
-// Update sparks
+// Create smoke for dead cars
+function createSmoke(position) {
+    if (gameState.sparks.length > 300) return; // Limit total particles
+    
+    const smokeGeo = new THREE.BoxGeometry(3, 3, 3);
+    const smokeMat = new THREE.MeshBasicMaterial({ color: 0x333333, transparent: true, opacity: 0.6 });
+    const smoke = new THREE.Mesh(smokeGeo, smokeMat);
+    
+    smoke.position.copy(position);
+    smoke.position.y += 5 + Math.random() * 5;
+    
+    smoke.userData = {
+        velocity: new THREE.Vector3(
+             (Math.random() - 0.5) * 2,
+             Math.random() * 3 + 2, // Rise up
+             (Math.random() - 0.5) * 2
+        ),
+        lifetime: 2000,
+        spawnTime: Date.now(),
+        type: 'smoke'
+    };
+    
+    scene.add(smoke);
+    gameState.sparks.push(smoke);
+}
+
+// Update sparks and smoke
 function updateSparks() {
     const now = Date.now();
     
     for (let i = gameState.sparks.length - 1; i >= 0; i--) {
-        const spark = gameState.sparks[i];
-        const age = now - spark.userData.spawnTime;
+        const particle = gameState.sparks[i];
+        const age = now - particle.userData.spawnTime;
         
-        if (age > spark.userData.lifetime) {
-            scene.remove(spark);
+        if (age > particle.userData.lifetime) {
+            scene.remove(particle);
             gameState.sparks.splice(i, 1);
             continue;
         }
         
-        // Move and apply gravity
-        spark.position.add(spark.userData.velocity);
-        spark.userData.velocity.y -= 0.15;
+        // Move
+        particle.position.add(particle.userData.velocity);
+        
+        if (particle.userData.type === 'spark') {
+             // Spark gravity
+             particle.userData.velocity.y -= 0.15;
+             // Ground collision
+            if (particle.position.y < 0) {
+                scene.remove(particle);
+                gameState.sparks.splice(i, 1);
+                continue;
+            }
+        } else if (particle.userData.type === 'smoke') {
+             // Smoke expands and slows
+             particle.scale.multiplyScalar(1.02);
+             particle.userData.velocity.multiplyScalar(0.95);
+        }
         
         // Fade out
-        spark.material.opacity = 1 - (age / spark.userData.lifetime);
-        
-        // Ground collision
-        if (spark.position.y < 0) {
-            scene.remove(spark);
-            gameState.sparks.splice(i, 1);
-        }
+        particle.material.opacity = (1 - (age / particle.userData.lifetime)) * (particle.userData.type === 'smoke' ? 0.6 : 1);
     }
 }
 
@@ -1353,9 +1560,8 @@ function startGame() {
     camera.fov = gameState.baseFOV;
     camera.updateProjectionMatrix();
     
-    // Update car color to selected car
-    const selectedCar = cars[gameState.selectedCar];
-    if (selectedCar) updatePlayerCarColor(selectedCar.color);
+    // Update car model and color
+    rebuildPlayerCar();
     
     // Spawn first police car
     spawnPoliceCar();
