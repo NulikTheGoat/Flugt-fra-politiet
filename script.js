@@ -1016,8 +1016,9 @@ function updateGameLogic() {
 }
 
 // Update chunks physics and collision
-function updateBuildingChunks() {
+function updateBuildingChunks(delta) {
     if(!playerCar || gameState.chunks.length === 0) return;
+    const d = delta || 1;
 
     // Player car bounding sphere radius approx
     const carRadius = 15; 
@@ -1068,13 +1069,12 @@ function updateBuildingChunks() {
             }
         } else {
             // Update physics for hit chunks
-            const d = typeof window !== 'undefined' && window.__deltaForPhysics ? window.__deltaForPhysics : 1;
             chunk.position.x += chunk.userData.velocity.x * d;
             chunk.position.y += chunk.userData.velocity.y * d;
             chunk.position.z += chunk.userData.velocity.z * d;
-            chunk.rotation.x += chunk.userData.rotVelocity.x;
-            chunk.rotation.y += chunk.userData.rotVelocity.y;
-            chunk.rotation.z += chunk.userData.rotVelocity.z;
+            chunk.rotation.x += chunk.userData.rotVelocity.x * d;
+            chunk.rotation.y += chunk.userData.rotVelocity.y * d;
+            chunk.rotation.z += chunk.userData.rotVelocity.z * d;
             
             // Gravity
             chunk.userData.velocity.y -= 0.5 * d;
@@ -1083,10 +1083,12 @@ function updateBuildingChunks() {
             if (chunk.position.y < chunk.userData.height/2) {
                 chunk.position.y = chunk.userData.height/2;
                 chunk.userData.velocity.y *= -0.5; // bounce with damping
-                chunk.userData.velocity.x *= 0.8; // friction
-                chunk.userData.velocity.z *= 0.8;
+                // Frame-rate independent friction: friction^delta
+                const frictionFactor = Math.pow(0.8, d);
+                chunk.userData.velocity.x *= frictionFactor;
+                chunk.userData.velocity.z *= frictionFactor;
                 
-                chunk.userData.rotVelocity.multiplyScalar(0.8);
+                chunk.userData.rotVelocity.multiplyScalar(frictionFactor);
 
                 // Stop logic
                 if (Math.abs(chunk.userData.velocity.y) < 0.5 && chunk.userData.velocity.lengthSq() < 1) {
@@ -1332,9 +1334,6 @@ function animate() {
     const delta = Math.min((now - lastTime) / 16.67, 2); // Normalize to ~60fps, cap at 2x
     lastTime = now;
 
-    // Make delta accessible to physics code that hasn't been fully refactored yet
-    window.__deltaForPhysics = delta;
-
     if (!gameState.arrested) {
         const handling = gameState.handling || 0.05;
         const absSpeed = Math.abs(gameState.speed);
@@ -1436,7 +1435,7 @@ function animate() {
     }
 
     // Generate chunks for buildings
-    updateBuildingChunks();
+    updateBuildingChunks(delta);
 
     // Game Logic
     updateGameLogic();
