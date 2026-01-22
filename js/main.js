@@ -168,6 +168,12 @@ async function connectToSelectedServer() {
 
 // Back to server list button
 document.addEventListener('DOMContentLoaded', () => {
+    // Load saved player name from localStorage
+    const savedName = localStorage.getItem('playerName');
+    if (savedName && playerNameInput) {
+        playerNameInput.value = savedName;
+    }
+    
     const backToServersBtn = document.getElementById('backToServersBtn');
     const rescanBtn = document.getElementById('rescanBtn');
     const rescanBtnEmpty = document.getElementById('rescanBtnEmpty');
@@ -315,6 +321,9 @@ if (joinGameBtn) {
     joinGameBtn.addEventListener('click', async () => {
         const name = playerNameInput.value.trim() || 'Spiller';
         const car = gameState.selectedCar || 'standard';
+        
+        // Save player name for next time
+        localStorage.setItem('playerName', name);
         
         joinGameBtn.disabled = true;
         lobbyError.textContent = 'Forbinder...';
