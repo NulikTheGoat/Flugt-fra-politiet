@@ -24,7 +24,7 @@
 - [x] Fix police turning near ±π (normalize angle difference)
 - [x] Reuse geometries/materials for police cars (reduce allocations)
 - [x] Particle optimization: pool meshes or switch to `THREE.Points`/`InstancedMesh`
-- [ ] Building chunk optimization: only update/check nearby chunks (simple spatial grid)
+- [x] Building chunk optimization: only update/check nearby chunks (simple spatial grid)
 - [x] Police proximity is too big, the police car should crash to you in order to catch you, currently it catches you when its near (Reduced distance to 30)
 - [x] add possiblity to switch to 2d mode, high up in the air, to be able to controll the car watching whole map
 - - [x] by pressing 'C'
@@ -37,11 +37,11 @@
 - [x] police catches you if you are driving super slow and its very close to you
 - - [x] so the concept is to bring your health down to drive slower to catch you
 - [x] various cars should have different level of strength
-- [ ] police should have HP health - small indicator on top, ofcourse diff heat levels with different HP levels
-- [ ] police should be able to crash into the player, and that will decrease player health
-- [ ] police car will stop and smoke if health level is on 0
-- [ ] police vihechle body is rigid body
-- [ ] police cars should also stop after game over
-- [ ] money: player should not get money after game over, antil respawn
-- [ ] time should stop after game over
+- [x] police should have HP health - small indicator on top, ofcourse diff heat levels with different HP levels
+- [x] police should be able to crash into the player, and that will decrease player health
+- [x] police car will stop and smoke if health level is on 0
+- [x] police vihechle body is rigid body
+- [x] police cars should also stop after game over
+- [x] money: player should not get money after game over, antil respawn
+- [x] time should stop after game over
 

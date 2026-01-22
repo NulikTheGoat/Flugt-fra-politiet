@@ -46,7 +46,10 @@ const gameState = {
     lastMoneyCheckTime: 0,
     lastPoliceSpawnTime: 0,
     policeCars: [],
-    chunks: [],
+    chunks: [], // Deprecated in favor of spatial grid? Or just unused static list.
+    chunkGrid: {}, // Spatial hash for static chunks
+    activeChunks: [], // Moving chunks (physics)
+    chunkGridSize: 200,
     heatLevel: 1,
     collectibles: [],
     projectiles: [],
@@ -735,6 +738,13 @@ function createBuildings() {
                     
                     scene.add(chunk);
                     gameState.chunks.push(chunk);
+
+                    // Add to spatial grid
+                    const gridX = Math.floor(chunk.position.x / gameState.chunkGridSize);
+                    const gridZ = Math.floor(chunk.position.z / gameState.chunkGridSize);
+                    const key = `${gridX},${gridZ}`;
+                    if (!gameState.chunkGrid[key]) gameState.chunkGrid[key] = [];
+                    gameState.chunkGrid[key].push(chunk);
                 }
             }
         }
@@ -1484,88 +1494,105 @@ function updateGameLogic() {
 
 // Update chunks physics and collision
 function updateBuildingChunks(delta) {
-    if(!playerCar || gameState.chunks.length === 0) return;
+    if(!playerCar) return;
     const d = delta || 1;
 
+    // 1. Update Active Physics Chunks (Falling buildings)
+    for (let i = gameState.activeChunks.length - 1; i >= 0; i--) {
+        const chunk = gameState.activeChunks[i];
+        
+        chunk.position.x += chunk.userData.velocity.x * d;
+        chunk.position.y += chunk.userData.velocity.y * d;
+        chunk.position.z += chunk.userData.velocity.z * d;
+        chunk.rotation.x += chunk.userData.rotVelocity.x * d;
+        chunk.rotation.y += chunk.userData.rotVelocity.y * d;
+        chunk.rotation.z += chunk.userData.rotVelocity.z * d;
+        
+        // Gravity
+        chunk.userData.velocity.y -= 0.5 * d;
+        
+        // Ground bounce
+        if (chunk.position.y < chunk.userData.height/2) {
+            chunk.position.y = chunk.userData.height/2;
+            chunk.userData.velocity.y *= -0.5; // bounce with damping
+            
+            // Friction
+            const frictionFactor = Math.pow(0.8, d);
+            chunk.userData.velocity.x *= frictionFactor;
+            chunk.userData.velocity.z *= frictionFactor;
+            chunk.userData.rotVelocity.multiplyScalar(frictionFactor);
+        }
+        
+        // Remove from active list if stopped (optimization)
+        if (Math.abs(chunk.userData.velocity.y) < 0.1 && 
+            Math.abs(chunk.userData.velocity.x) < 0.1 && 
+            Math.abs(chunk.userData.velocity.z) < 0.1 &&
+            chunk.position.y <= chunk.userData.height/2 + 0.1) {
+             gameState.activeChunks.splice(i, 1);
+        }
+    }
+
+    // 2. Check collisions with static chunks (Spatial Grid)
+    const carPos = playerCar.position;
     // Player car bounding sphere radius approx
     const carRadius = 15; 
-    const carPos = playerCar.position;
-
-    gameState.chunks.forEach(chunk => {
-        if (!chunk.userData.isHit) {
-            // Check collision with car
-            // Optimization: first check Manhattan distance or squared distance
-            if (Math.abs(chunk.position.x - carPos.x) < 40 && Math.abs(chunk.position.z - carPos.z) < 40) {
-                // More precise check
-                const dx = chunk.position.x - carPos.x;
-                const dz = chunk.position.z - carPos.z;
-                const distSq = dx*dx + dz*dz;
+    
+    const gridSize = gameState.chunkGridSize;
+    const px = Math.floor(carPos.x / gridSize);
+    const pz = Math.floor(carPos.z / gridSize);
+    
+    // Check 3x3 grid around player
+    for(let x = px-1; x <= px+1; x++) {
+        for(let z = pz-1; z <= pz+1; z++) {
+            const key = `${x},${z}`;
+            const chunks = gameState.chunkGrid[key];
+            if(!chunks) continue;
+            
+            for(let i=0; i< chunks.length; i++) {
+                const chunk = chunks[i];
+                if(chunk.userData.isHit) continue; // Already physics-simulated
                 
-                // Collision radius check (car radius + chunk approx radius)
-                if (distSq < (carRadius + chunk.userData.width/2 + 5)**2) {
-                     // Check vertical overlap (car is at y=6 approx, chunk at varying height)
-                     // Car height is approx 12-20
-                     if (Math.abs(chunk.position.y - carPos.y) < (chunk.userData.height/2 + 10)) {
-                         // HIT!
-                         chunk.userData.isHit = true;
-                         
-                         // Calculate impact velocity based on car movement
-                         const carSpeed = gameState.speed;
-                         // Car direction
-                         const carAngle = playerCar.rotation.y;
-                         
-                         // Direction from car to chunk
-                         const angleToChunk = Math.atan2(dx, dz);
-                         
-                         chunk.userData.velocity.set(
-                            Math.sin(carAngle) * carSpeed * 0.2 + (Math.sin(angleToChunk) * 5),
-                            Math.abs(carSpeed) * 0.1 + 5 + Math.random() * 5,
-                            Math.cos(carAngle) * carSpeed * 0.2 + (Math.cos(angleToChunk) * 5)
-                         );
-                         
-                         chunk.userData.rotVelocity.set(
-                            (Math.random() - 0.5) * 0.5,
-                            (Math.random() - 0.5) * 0.5,
-                            (Math.random() - 0.5) * 0.5
-                         );
+                // Simple AABB check first
+                if (Math.abs(chunk.position.x - carPos.x) < 40 && Math.abs(chunk.position.z - carPos.z) < 40) {
+                     // Detailed check
+                     const dx = chunk.position.x - carPos.x;
+                     const dz = chunk.position.z - carPos.z;
+                     const distSq = dx*dx + dz*dz;
+                     
+                     if (distSq < (carRadius + chunk.userData.width/2 + 5)**2) {
+                         if (Math.abs(chunk.position.y - carPos.y) < (chunk.userData.height/2 + 10)) {
+                             // HIT!
+                             chunk.userData.isHit = true;
+                             gameState.activeChunks.push(chunk);
+                             
+                             // Calculate impact velocity based on car movement
+                             const carSpeed = gameState.speed;
+                             const carAngle = playerCar.rotation.y;
+                             const angleToChunk = Math.atan2(dx, dz);
+                             
+                             chunk.userData.velocity.set(
+                                Math.sin(carAngle) * carSpeed * 0.2 + (Math.sin(angleToChunk) * 5),
+                                Math.abs(carSpeed) * 0.1 + 5 + Math.random() * 5,
+                                Math.cos(carAngle) * carSpeed * 0.2 + (Math.cos(angleToChunk) * 5)
+                             );
+                             
+                             chunk.userData.rotVelocity.set(
+                                (Math.random() - 0.5) * 0.5,
+                                (Math.random() - 0.5) * 0.5,
+                                (Math.random() - 0.5) * 0.5
+                             );
 
-                         // Slow down car slightly
-                         gameState.speed *= 0.95; 
-                         takeDamage(Math.floor(Math.abs(carSpeed) * 0.1) + 5);
+                             // Slow down car slightly
+                             gameState.speed *= 0.95; 
+                             takeDamage(Math.floor(Math.abs(carSpeed) * 0.1) + 5);
+                             gameState.screenShake = 0.3;
+                             createSmoke(chunk.position);
+                         }
                      }
                 }
             }
-        } else {
-            // Update physics for hit chunks
-            chunk.position.x += chunk.userData.velocity.x * d;
-            chunk.position.y += chunk.userData.velocity.y * d;
-            chunk.position.z += chunk.userData.velocity.z * d;
-            chunk.rotation.x += chunk.userData.rotVelocity.x * d;
-            chunk.rotation.y += chunk.userData.rotVelocity.y * d;
-            chunk.rotation.z += chunk.userData.rotVelocity.z * d;
-            
-            // Gravity
-            chunk.userData.velocity.y -= 0.5 * d;
-            
-            // Ground bounce
-            if (chunk.position.y < chunk.userData.height/2) {
-                chunk.position.y = chunk.userData.height/2;
-                chunk.userData.velocity.y *= -0.5; // bounce with damping
-                // Frame-rate independent friction: friction^delta
-                const frictionFactor = Math.pow(0.8, d);
-                chunk.userData.velocity.x *= frictionFactor;
-                chunk.userData.velocity.z *= frictionFactor;
-                
-                chunk.userData.rotVelocity.multiplyScalar(frictionFactor);
-
-                // Stop logic
-                if (Math.abs(chunk.userData.velocity.y) < 0.5 && chunk.userData.velocity.lengthSq() < 1) {
-                    chunk.userData.velocity.set(0,0,0);
-                    chunk.userData.rotVelocity.set(0,0,0);
-                }
-            }
         }
-    });
+    }
 }
 
 // Update HUD (optimized with cached DOM)
@@ -1589,7 +1616,12 @@ function updateHUD(policeDistance) {
     }
 
     // Update time and money
-    const elapsedSeconds = Math.floor((Date.now() - gameState.startTime) / 1000);
+    let elapsedSeconds;
+    if (gameState.arrested && gameState.elapsedTime) {
+         elapsedSeconds = Math.floor(gameState.elapsedTime);
+    } else {
+         elapsedSeconds = Math.floor((Date.now() - gameState.startTime) / 1000);
+    }
     DOM.time.textContent = elapsedSeconds;
     DOM.heatLevel.textContent = gameState.heatLevel;
     
