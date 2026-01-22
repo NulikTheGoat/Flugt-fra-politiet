@@ -503,13 +503,13 @@
         </div>
 
         <div class="actions">
-            <button class="btn-back" onclick="window.location.href='/'">← Back to Game</button>
+            <button class="btn-back" id="backBtn">← Back to Game</button>
             <button class="btn-reset" id="resetBtn">Reset Defaults</button>
             <button class="btn-save" id="saveBtn">💾 Save Config</button>
         </div>
 
         <footer>
-            <p>Flugt fra Politiet — <a href="/">Play Game</a> | <a href="/start">Quick Start</a></p>
+            <p>Flugt fra Politiet — <a href="#" id="playLink">Play Game</a> | <a href="#" id="quickStartLink">Quick Start</a></p>
         </footer>
     </div>
 
@@ -638,6 +638,18 @@
         
         // Listen for Touch Arrest toggle changes
         document.getElementById('touchArrest').addEventListener('change', updateTouchArrestUI);
+
+        // Dynamic back links - preserve the current server (IP/port)
+        function getBaseUrl() {
+            return window.location.origin; // e.g., http://192.168.0.194:3000
+        }
+        
+        document.getElementById('backBtn').addEventListener('click', () => {
+            window.location.href = getBaseUrl() + '/';
+        });
+        
+        document.getElementById('playLink').href = getBaseUrl() + '/';
+        document.getElementById('quickStartLink').href = getBaseUrl() + '/start';
 
         // Initialize
         loadFormValues();
