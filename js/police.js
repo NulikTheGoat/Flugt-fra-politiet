@@ -1,4 +1,5 @@
 import { gameState } from './state.js';
+import { gameConfig } from './config.js';
 import { scene, camera } from './core.js';
 import { enemies, cars } from './constants.js';
 import { sharedGeometries, sharedMaterials } from './assets.js';
@@ -309,6 +310,7 @@ export function updatePoliceAI(delta) {
         }
 
         // Solid body collision - prevent overlap between player and police
+        // BOTH cars take damage on collision
         const collisionRadius = 25; // Combined radius of both cars
         if (distance < collisionRadius && !policeCar.userData.dead) {
             const overlap = collisionRadius - distance;
@@ -320,6 +322,29 @@ export function updatePoliceAI(delta) {
             playerCar.position.z += nz * overlap * 0.6;
             policeCar.position.x -= nx * overlap * 0.4;
             policeCar.position.z -= nz * overlap * 0.4;
+            
+            // Damage both cars on collision (throttled)
+            const now = Date.now();
+            if (now - (policeCar.userData.lastCollisionDamage || 0) > 300) {
+                policeCar.userData.lastCollisionDamage = now;
+                const speedKmh = Math.abs(gameState.speed) * 3.6;
+                
+                // Damage to player
+                const playerDamage = Math.max(gameConfig.minCrashDamage, speedKmh * gameConfig.playerCrashDamageMultiplier);
+                takeDamage(playerDamage);
+                
+                // Damage to police
+                const policeDamage = Math.max(gameConfig.minCrashDamage, speedKmh * gameConfig.policeCrashDamageMultiplier);
+                policeCar.userData.health -= policeDamage;
+                
+                if (policeCar.userData.health <= 0) {
+                    policeCar.userData.dead = true;
+                    policeCar.userData.deathTime = now;
+                }
+                
+                createSmoke(playerCar.position);
+                gameState.screenShake = 0.2;
+            }
         }
 
         // Check arrest condition - collision impact for fast players (above 10% max speed)
@@ -367,10 +392,10 @@ export function updatePoliceAI(delta) {
     });
 
     // Arrest countdown logic - check based on minimum distance (outside loop)
-    // Trigger when speed is less than 10% of max speed
+    // Trigger when speed is less than configured threshold of max speed
     const maxSpeedKmh = gameState.maxSpeed * 3.6;
     const speedKmh = Math.abs(gameState.speed) * 3.6;
-    const speedThreshold = maxSpeedKmh * 0.1; // 10% of max speed
+    const speedThreshold = maxSpeedKmh * gameConfig.arrestSpeedThreshold;
     const isMovingSlow = speedKmh < speedThreshold;
     
     if (minDistance < gameState.arrestDistance && isMovingSlow && !gameState.arrested) {
@@ -380,7 +405,7 @@ export function updatePoliceAI(delta) {
         }
         
         const elapsed = (Date.now() - gameState.arrestStartTime) / 1000;
-        gameState.arrestCountdown = Math.max(0, 3 - elapsed);
+        gameState.arrestCountdown = Math.max(0, gameConfig.arrestCountdownTime - elapsed);
         
         if (gameState.arrestCountdown <= 0) {
             gameState.arrested = true;

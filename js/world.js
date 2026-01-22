@@ -1,4 +1,5 @@
 import { gameState } from './state.js';
+import { gameConfig } from './config.js';
 import { scene } from './core.js';
 import { sharedGeometries, sharedMaterials } from './assets.js';
 import { playerCar, takeDamage } from './player.js';
@@ -335,7 +336,7 @@ export function updateCollectibles() {
             gameState.collectibles.splice(i, 1);
             
             const time = (gameState.arrested ? gameState.elapsedTime : (Date.now() - gameState.startTime) / 1000) || 0;
-            const baseValue = 50;
+            const baseValue = gameConfig.coinBaseValue;
             const timeBonus = Math.floor(time / 10) * 10; 
             const rebirthMult = (gameState.rebirthPoints || 0) + 1;
             addMoney((baseValue + timeBonus) * rebirthMult);

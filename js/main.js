@@ -1,4 +1,5 @@
 import { gameState, keys } from './state.js';
+import { gameConfig } from './config.js';
 import { scene, camera, renderer } from './core.js';
 import { cars } from './constants.js';
 import { createPlayerCar, rebuildPlayerCar, updatePlayer, playerCar, setUICallbacks } from './player.js';
@@ -120,11 +121,20 @@ function animate() {
         // Player Physics
         updatePlayer(delta, now);
 
-        // Spawn Police
+        // Spawn Police based on config interval
         const elapsedSeconds = Math.floor((Date.now() - gameState.startTime) / 1000);
-        if (elapsedSeconds > 0 && elapsedSeconds % 10 === 0 && (Date.now() - gameState.lastPoliceSpawnTime) > 500) {
+        if (elapsedSeconds > 0 && elapsedSeconds % gameConfig.policeSpawnInterval === 0 && (Date.now() - gameState.lastPoliceSpawnTime) > 500) {
             spawnPoliceCar();
             gameState.lastPoliceSpawnTime = Date.now();
+        }
+        
+        // Increase heat level every configured interval (default: 60 seconds = 1 minute)
+        const targetHeatLevel = Math.min(
+            gameConfig.maxHeatLevel,
+            1 + Math.floor(elapsedSeconds / gameConfig.heatIncreaseInterval)
+        );
+        if (targetHeatLevel > gameState.heatLevel) {
+            gameState.heatLevel = targetHeatLevel;
         }
 
         // Chunks

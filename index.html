@@ -561,13 +561,89 @@
         <div id="shopContent">
             <div id="shopHeader">
                 <h1>Garage & Shop</h1>
-                <div id="moneyDisplay"><span id="shopMoney">0</span> KR</div>
+                <div style="display: flex; gap: 15px; align-items: center;">
+                    <button id="configBtn" style="background: #333; border: 1px solid #666; color: #fff; padding: 8px 16px; border-radius: 5px; cursor: pointer;">⚙️ Indstillinger</button>
+                    <div id="moneyDisplay"><span id="shopMoney">0</span> KR</div>
+                </div>
             </div>
             <div id="carList"></div>
             <div style="text-align: center; margin-top: 20px;">
                  <button id="playBtn">KØR NU</button>
             </div>
         </div>
+        
+        <!-- Configuration Panel -->
+        <div id="configPanel" style="display: none; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: #1a1a24; border: 2px solid #00ff00; border-radius: 15px; padding: 30px; z-index: 1000; min-width: 400px; max-height: 80vh; overflow-y: auto;">
+            <h2 style="color: #00ff00; margin-bottom: 20px; text-align: center;">⚙️ Spil Indstillinger</h2>
+            
+            <div style="display: flex; flex-direction: column; gap: 15px;">
+                <div class="config-group" style="background: #252530; padding: 15px; border-radius: 8px;">
+                    <h3 style="color: #ffdd44; margin-bottom: 10px; font-size: 14px;">🔥 Heat Level</h3>
+                    <label style="display: flex; justify-content: space-between; align-items: center; color: #ccc; margin-bottom: 8px;">
+                        <span>Øges hvert (sekunder):</span>
+                        <input type="number" id="configHeatInterval" min="10" max="300" value="60" style="width: 80px; padding: 5px; background: #333; border: 1px solid #555; color: #fff; border-radius: 4px;">
+                    </label>
+                    <label style="display: flex; justify-content: space-between; align-items: center; color: #ccc;">
+                        <span>Max heat level:</span>
+                        <input type="number" id="configMaxHeat" min="1" max="10" value="6" style="width: 80px; padding: 5px; background: #333; border: 1px solid #555; color: #fff; border-radius: 4px;">
+                    </label>
+                </div>
+                
+                <div class="config-group" style="background: #252530; padding: 15px; border-radius: 8px;">
+                    <h3 style="color: #ff4444; margin-bottom: 10px; font-size: 14px;">🚔 Anholdelse</h3>
+                    <label style="display: flex; justify-content: space-between; align-items: center; color: #ccc; margin-bottom: 8px;">
+                        <span>Nedtælling (sekunder):</span>
+                        <input type="number" id="configArrestTime" min="0.5" max="10" step="0.5" value="1" style="width: 80px; padding: 5px; background: #333; border: 1px solid #555; color: #fff; border-radius: 4px;">
+                    </label>
+                    <label style="display: flex; justify-content: space-between; align-items: center; color: #ccc;">
+                        <span>Hastigheds-grænse (%):</span>
+                        <input type="number" id="configArrestSpeed" min="5" max="50" value="10" style="width: 80px; padding: 5px; background: #333; border: 1px solid #555; color: #fff; border-radius: 4px;">
+                    </label>
+                </div>
+                
+                <div class="config-group" style="background: #252530; padding: 15px; border-radius: 8px;">
+                    <h3 style="color: #ff8844; margin-bottom: 10px; font-size: 14px;">💥 Kollisions Skade</h3>
+                    <label style="display: flex; justify-content: space-between; align-items: center; color: #ccc; margin-bottom: 8px;">
+                        <span>Spiller skade multiplier:</span>
+                        <input type="number" id="configPlayerDamage" min="0.1" max="2" step="0.1" value="0.3" style="width: 80px; padding: 5px; background: #333; border: 1px solid #555; color: #fff; border-radius: 4px;">
+                    </label>
+                    <label style="display: flex; justify-content: space-between; align-items: center; color: #ccc; margin-bottom: 8px;">
+                        <span>Politi skade multiplier:</span>
+                        <input type="number" id="configPoliceDamage" min="0.1" max="2" step="0.1" value="0.4" style="width: 80px; padding: 5px; background: #333; border: 1px solid #555; color: #fff; border-radius: 4px;">
+                    </label>
+                    <label style="display: flex; justify-content: space-between; align-items: center; color: #ccc;">
+                        <span>Minimum skade:</span>
+                        <input type="number" id="configMinDamage" min="1" max="20" value="5" style="width: 80px; padding: 5px; background: #333; border: 1px solid #555; color: #fff; border-radius: 4px;">
+                    </label>
+                </div>
+                
+                <div class="config-group" style="background: #252530; padding: 15px; border-radius: 8px;">
+                    <h3 style="color: #44ff44; margin-bottom: 10px; font-size: 14px;">💰 Økonomi</h3>
+                    <label style="display: flex; justify-content: space-between; align-items: center; color: #ccc; margin-bottom: 8px;">
+                        <span>Politi spawn interval (sek):</span>
+                        <input type="number" id="configPoliceSpawn" min="5" max="60" value="10" style="width: 80px; padding: 5px; background: #333; border: 1px solid #555; color: #fff; border-radius: 4px;">
+                    </label>
+                    <label style="display: flex; justify-content: space-between; align-items: center; color: #ccc; margin-bottom: 8px;">
+                        <span>Passiv indkomst interval (sek):</span>
+                        <input type="number" id="configIncomeInterval" min="5" max="60" value="10" style="width: 80px; padding: 5px; background: #333; border: 1px solid #555; color: #fff; border-radius: 4px;">
+                    </label>
+                    <label style="display: flex; justify-content: space-between; align-items: center; color: #ccc; margin-bottom: 8px;">
+                        <span>Passiv indkomst base:</span>
+                        <input type="number" id="configIncomeBase" min="10" max="500" value="100" style="width: 80px; padding: 5px; background: #333; border: 1px solid #555; color: #fff; border-radius: 4px;">
+                    </label>
+                    <label style="display: flex; justify-content: space-between; align-items: center; color: #ccc;">
+                        <span>Mønt værdi:</span>
+                        <input type="number" id="configCoinValue" min="10" max="200" value="50" style="width: 80px; padding: 5px; background: #333; border: 1px solid #555; color: #fff; border-radius: 4px;">
+                    </label>
+                </div>
+            </div>
+            
+            <div style="display: flex; justify-content: space-between; margin-top: 25px; gap: 10px;">
+                <button id="configReset" style="background: #ff4444; border: none; color: #fff; padding: 10px 20px; border-radius: 5px; cursor: pointer; flex: 1;">Nulstil</button>
+                <button id="configSave" style="background: #00ff00; border: none; color: #000; padding: 10px 20px; border-radius: 5px; cursor: pointer; font-weight: bold; flex: 2;">Gem & Luk</button>
+            </div>
+        </div>
+        <div id="configOverlay" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); z-index: 999;"></div>
     </div>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
