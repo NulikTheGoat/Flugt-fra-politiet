@@ -1,5 +1,5 @@
 import { gameState } from './state.js';
-import { scene, camera } from './core.js';
+import { scene, camera, THREE } from './core.js';
 import { getParticleFromPool, returnParticleToPool, sharedGeometries, sharedMaterials } from './assets.js';
 import { playerCar } from './player.js'; // Will be created
 
@@ -75,7 +75,7 @@ export function createSmoke(position, scale = 1) {
 export function createFire(position) {
     if (gameState.sparks.length > 300) return;
     
-    const fire = getParticleFromPool('smoke', sharedGeometries.spark, sharedMaterials.fire);
+    const fire = getParticleFromPool('fire', sharedGeometries.spark, sharedMaterials.fire);
     
     fire.position.copy(position);
     fire.position.x += (Math.random() - 0.5) * 10;
@@ -110,7 +110,8 @@ export function updateSparks() {
         const age = now - particle.userData.spawnTime;
         
         if (age > particle.userData.lifetime) {
-            returnParticleToPool(particle, particle.userData.type);
+            const poolType = particle.userData.type === 'fire' ? 'fire' : particle.userData.type;
+            returnParticleToPool(particle, poolType);
             gameState.sparks.splice(i, 1);
             continue;
         }
@@ -230,8 +231,10 @@ export function updateSpeedEffects(delta) {
     // Dynamic FOV - increases with speed for sense of motion
     const targetFOV = gameState.baseFOV + speedRatio * 20;
     gameState.currentFOV += (targetFOV - gameState.currentFOV) * 0.1;
-    camera.fov = gameState.currentFOV;
-    camera.updateProjectionMatrix();
+    if (Math.abs(camera.fov - gameState.currentFOV) > 0.01) {
+        camera.fov = gameState.currentFOV;
+        camera.updateProjectionMatrix();
+    }
     
     // Screen shake at high speeds
     if (speedRatio > 0.8) {
@@ -245,10 +248,21 @@ export function updateSpeedEffects(delta) {
         createSpark();
     }
     
-    // Limit sparks
-    while (gameState.sparks.length > 30) {
-        const oldSpark = gameState.sparks.shift();
-        scene.remove(oldSpark);
+    // Limit sparks (bulk-remove oldest to avoid repeated shift())
+    if (gameState.sparks.length > 30) {
+        const excess = gameState.sparks.length - 30;
+        for (let i = 0; i < excess; i++) {
+            const oldSpark = gameState.sparks[i];
+            if (!oldSpark) continue;
+            const type = oldSpark.userData && oldSpark.userData.type;
+            const poolType = type === 'fire' ? 'fire' : type;
+            if (poolType === 'spark' || poolType === 'smoke' || poolType === 'fire') {
+                returnParticleToPool(oldSpark, poolType);
+            } else {
+                scene.remove(oldSpark);
+            }
+        }
+        gameState.sparks.splice(0, excess);
     }
     
     // Spawn speed particles when moving
@@ -285,10 +299,16 @@ for (let i = 0; i < 20; i++) {
 let tireMarkPoolIndex = 0;
 
 export function createTireMark(x, z, rotation) {
-    // Limit tire marks for performance
-    if (gameState.tireMarks.length > 100) {
-        const oldMark = gameState.tireMarks.shift();
-        scene.remove(oldMark);
+    // Limit tire marks for performance (keep oldest removal without shift())
+    const maxMarks = 100;
+    const marksToAdd = 2;
+    const overflow = (gameState.tireMarks.length + marksToAdd) - maxMarks;
+    if (overflow > 0) {
+        for (let i = 0; i < overflow; i++) {
+            const oldMark = gameState.tireMarks[i];
+            if (oldMark) scene.remove(oldMark);
+        }
+        gameState.tireMarks.splice(0, overflow);
     }
     
     // Create two marks for rear wheels
@@ -297,7 +317,7 @@ export function createTireMark(x, z, rotation) {
     const sinRot = Math.sin(rotation);
     const now = Date.now();
     
-    [-1, 1].forEach(side => {
+    for (let side = -1; side <= 1; side += 2) {
         // Reuse material from pool instead of cloning
         const mat = tireMarkMaterialPool[tireMarkPoolIndex];
         tireMarkPoolIndex = (tireMarkPoolIndex + 1) % tireMarkMaterialPool.length;
@@ -317,7 +337,7 @@ export function createTireMark(x, z, rotation) {
         };
         scene.add(mark);
         gameState.tireMarks.push(mark);
-    });
+    }
 }
 
 export function updateTireMarks() {

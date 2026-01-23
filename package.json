@@ -2,10 +2,14 @@
   "name": "flugt-fra-politiet",
   "version": "1.0.0",
   "description": "A fast-paced 3D car chase game! Outrun the cops, collect coins, and upgrade your ride!",
-  "main": "script_backup.js",
+  "main": "server.js",
+  "type": "module",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
-    "start": "node server.js"
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "server": "node server.js",
+    "start": "concurrently \"npm run server\" \"npm run dev\""
   },
   "repository": {
     "type": "git",
@@ -14,12 +18,16 @@
   "keywords": [],
   "author": "",
   "license": "ISC",
-  "type": "commonjs",
   "bugs": {
     "url": "https://github.com/NulikTheGoat/Flugt-fra-politiet/issues"
   },
   "homepage": "https://github.com/NulikTheGoat/Flugt-fra-politiet#readme",
   "dependencies": {
     "ws": "^8.19.0"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2",
+    "three": "^0.160.0",
+    "vite": "^5.0.0"
   }
 }

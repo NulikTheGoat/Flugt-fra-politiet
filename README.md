@@ -28,7 +28,7 @@ A fast-paced 3D car chase game! Outrun the cops, collect coins, upgrade your rid
 
 ## 🚀 How to Start the Game
 
-### Option 1: Single Player (Quick Start)
+### Option 1: Single Player (Quick Start with Vite)
 
 #### Step 1: Download Node.js (one time only)
 
@@ -55,26 +55,25 @@ A fast-paced 3D car chase game! Outrun the cops, collect coins, upgrade your rid
 1. Hold `Shift` and right-click in the folder
 2. Click "Open PowerShell window here" or "Open command window here"
 
-#### Step 4: Start the game server
+#### Step 4: Install dependencies and start the game
 
-In the black window, type this and press Enter:
+In the black window, run these commands:
 
+```bash
+npm install      # First time only - installs dependencies
+npm run dev      # Start the development server
 ```
-npx serve
-```
 
-**First time only:** It might ask "Ok to proceed? (y)" - just type `y` and press Enter
-
-Wait a few seconds until you see something like:
+Wait a few seconds until you see:
 ```
-Serving!
-- Local: http://localhost:3000
+VITE ready in 500 ms
+➜  Local:   http://localhost:5173/
 ```
 
 #### Step 5: Play the game! 🎉
 
 1. Open your browser
-2. Go to: **http://localhost:3000**
+2. Go to: **http://localhost:5173**
 3. Click "KØR NU" (Play Now) and choose **SOLO** to play alone!
 
 ---

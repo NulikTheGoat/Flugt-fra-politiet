@@ -1,8 +1,11 @@
 import { gameState, keys } from './state.js';
-import { scene } from './core.js';
+import { scene, THREE } from './core.js';
 import { cars } from './constants.js';
 import { sharedGeometries, sharedMaterials } from './assets.js';
 import { createSmoke, createSpark, createTireMark, updateTireMarks } from './particles.js';
+
+// Reusable Vector3 to avoid allocations in hot path
+const _smokePos = new THREE.Vector3();
 
 let uiCallbacks = {
     triggerDamageEffect: () => {},
@@ -258,15 +261,21 @@ export function updatePlayer(delta, now) {
     // Handbrake
     const isHandbraking = keys[' '];
     if (isHandbraking) {
-        gameState.speed *= Math.pow(gameState.brakePower, delta);
-        gameState.driftFactor = Math.min(gameState.driftFactor + 0.1 * delta, 0.9);
+        // Softer slowdown to allow sideways drift instead of full stop
+        const handbrakeBrake = absSpeed > 30 ? 0.985 : 0.97;
+        gameState.speed *= Math.pow(handbrakeBrake, delta);
+        const driftBoost = absSpeed > 15 ? 0.2 : 0.08;
+        gameState.driftFactor = Math.min(gameState.driftFactor + driftBoost * delta, 0.95);
     } else {
-        gameState.driftFactor = Math.max(gameState.driftFactor - 0.05 * delta, 0);
+        gameState.driftFactor = Math.max(gameState.driftFactor - 0.06 * delta, 0);
     }
     
     // Steering physics
-    const steerStrength = handling * (1 - speedRatio * 0.4) * (1 + gameState.driftFactor * 0.5);
-    const targetAngularVelocity = steerInput * steerStrength * (absSpeed / 20);
+    // Steering: more agile at low speed, less agile at high speed
+    const agility = Math.max(0.25, 1.4 - speedRatio * 1.1);
+    const speedFactor = 0.25 + Math.min(absSpeed, 50) / 50; // maintain turning at low speed
+    const steerStrength = handling * agility * (1 + gameState.driftFactor * 0.8);
+    const targetAngularVelocity = steerInput * steerStrength * speedFactor;
     
     gameState.angularVelocity += (targetAngularVelocity - gameState.angularVelocity) * 0.15 * delta;
     gameState.angularVelocity *= 0.92;
@@ -277,9 +286,27 @@ export function updatePlayer(delta, now) {
     const forwardX = Math.sin(playerCar.rotation.y);
     const forwardZ = Math.cos(playerCar.rotation.y);
     
-    const grip = 1 - gameState.driftFactor;
-    const targetVelX = forwardX * gameState.speed;
-    const targetVelZ = forwardZ * gameState.speed;
+    const grip = 1 - Math.min(0.95, gameState.driftFactor + (isHandbraking ? 0.15 : 0));
+    let targetVelX = forwardX * gameState.speed;
+    let targetVelZ = forwardZ * gameState.speed;
+    
+    // Add sideways slip when drifting/handbraking at speed
+    if (gameState.driftFactor > 0.1 && absSpeed > 10) {
+        const rightX = Math.cos(playerCar.rotation.y);
+        const rightZ = -Math.sin(playerCar.rotation.y);
+        const lateralSlip = gameState.driftFactor * steerInput * absSpeed * 0.35;
+        targetVelX += rightX * lateralSlip;
+        targetVelZ += rightZ * lateralSlip;
+        
+        if (isHandbraking && Math.random() < 0.25) {
+            _smokePos.set(
+                playerCar.position.x - forwardX * 12,
+                playerCar.position.y + 2,
+                playerCar.position.z - forwardZ * 12
+            );
+            createSmoke(_smokePos, 0.6);
+        }
+    }
     
     gameState.velocityX += (targetVelX - gameState.velocityX) * (0.1 + grip * 0.15) * delta;
     gameState.velocityZ += (targetVelZ - gameState.velocityZ) * (0.1 + grip * 0.15) * delta;
@@ -312,7 +339,7 @@ export function updatePlayer(delta, now) {
     playerCar.rotation.z = gameState.carTilt;
     
     // Tire marks
-    if (gameState.driftFactor > 0.3 && absSpeed > 20) {
+    if (gameState.driftFactor > 0.2 && absSpeed > 10) {
         createTireMark(playerCar.position.x, playerCar.position.z, playerCar.rotation.y);
     }
     updateTireMarks(delta);

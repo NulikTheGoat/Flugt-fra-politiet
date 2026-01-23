@@ -2,10 +2,13 @@ import { gameState } from './state.js';
 import { gameConfig } from './config.js';
 import { clamp, darkenColor } from './utils.js';
 import { cars } from './constants.js';
-import { scene, renderer } from './core.js';
+import { scene, renderer, THREE } from './core.js';
 import { updateCarStats } from './player.js';
 
 let startGameCallback = null;
+let shopTabsInitialized = false;
+let damageFlashEl = null;
+let damageFlashHideTimer = null;
 
 export function setStartGameCallback(cb) {
     startGameCallback = cb;
@@ -59,17 +62,21 @@ export function updateHUD(policeDistance) {
     }
 
     // Update time and money
+    const now = Date.now();
     let elapsedSeconds;
     if (gameState.arrested && gameState.elapsedTime) {
-         elapsedSeconds = Math.floor(gameState.elapsedTime);
+        elapsedSeconds = Math.floor(gameState.elapsedTime);
     } else {
-         elapsedSeconds = Math.floor((Date.now() - gameState.startTime) / 1000);
+        elapsedSeconds = Math.floor((now - gameState.startTime) / 1000);
     }
     DOM.time.textContent = elapsedSeconds;
     DOM.heatLevel.textContent = gameState.heatLevel;
     
     // Count active and dead police cars
-    const deadCount = gameState.policeCars.filter(c => c.userData.dead).length;
+    let deadCount = 0;
+    for (let i = 0; i < gameState.policeCars.length; i++) {
+        if (gameState.policeCars[i].userData.dead) deadCount++;
+    }
     const activeCount = gameState.policeCars.length - deadCount;
     DOM.policeCount.textContent = activeCount;
     DOM.deadPoliceCount.textContent = deadCount;
@@ -82,10 +89,10 @@ export function updateHUD(policeDistance) {
 
     // Give money every configured interval without being arrested (Passive)
     // Scale passive income with heat level: base * level
-    if (elapsedSeconds > 0 && elapsedSeconds % gameConfig.passiveIncomeInterval === 0 && (Date.now() - gameState.lastMoneyCheckTime) > 500) {
+    if (elapsedSeconds > 0 && elapsedSeconds % gameConfig.passiveIncomeInterval === 0 && (now - gameState.lastMoneyCheckTime) > 500) {
         const rebirthMult = (gameState.rebirthPoints || 0) + 1;
         addMoney((gameConfig.passiveIncomeBase * gameState.heatLevel) * rebirthMult);
-        gameState.lastMoneyCheckTime = Date.now();
+        gameState.lastMoneyCheckTime = now;
     }
 
     DOM.money.textContent = gameState.money;
@@ -247,6 +254,8 @@ function getCarCategory(key, car) {
 }
 
 function initShopTabs() {
+    if (shopTabsInitialized) return;
+    shopTabsInitialized = true;
     const tabs = document.querySelectorAll('.shop-tab');
     tabs.forEach(tab => {
         tab.addEventListener('click', () => {
@@ -492,17 +501,33 @@ export function triggerDamageEffect() {
 }
 
 export function flashDamage() {
-    const flash = document.createElement('div');
-    flash.style.cssText = `
-        position: fixed;
-        top: 0; left: 0; right: 0; bottom: 0;
-        background: rgba(255, 0, 0, 0.4);
-        pointer-events: none;
-        z-index: 1000;
-        animation: flashFade 0.3s ease-out forwards;
-    `;
-    document.body.appendChild(flash);
-    setTimeout(() => flash.remove(), 300);
+    if (!damageFlashEl) {
+        damageFlashEl = document.createElement('div');
+        damageFlashEl.style.cssText = `
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(255, 0, 0, 0.4);
+            pointer-events: none;
+            z-index: 1000;
+            display: none;
+        `;
+        document.body.appendChild(damageFlashEl);
+    }
+
+    if (damageFlashHideTimer) {
+        clearTimeout(damageFlashHideTimer);
+        damageFlashHideTimer = null;
+    }
+
+    damageFlashEl.style.display = 'block';
+    damageFlashEl.style.animation = 'none';
+    void damageFlashEl.offsetWidth; // restart animation
+    damageFlashEl.style.animation = 'flashFade 0.3s ease-out forwards';
+
+    damageFlashHideTimer = setTimeout(() => {
+        if (damageFlashEl) damageFlashEl.style.display = 'none';
+        damageFlashHideTimer = null;
+    }, 300);
 }
 
 // Add CSS animation for flash
