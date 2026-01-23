@@ -283,7 +283,32 @@ for (let i = 0; i < 20; i++) {
     }));
 }
 let tireMarkPoolIndex = 0;
+export function createMoneyExplosion(position) {
+    const count = 15;
+    for (let i = 0; i < count; i++) {
+        // Reuse spark geometry but use coin material for gold color
+        const particle = new THREE.Mesh(sharedGeometries.spark, sharedMaterials.coin);
+        particle.position.copy(position);
+        particle.position.y += 5; // Start slightly above
 
+        const angle = Math.random() * Math.PI * 2;
+        const speed = 5 + Math.random() * 10;
+        
+        particle.userData = {
+            velocity: new THREE.Vector3(
+                Math.sin(angle) * speed,
+                10 + Math.random() * 10, // Upward burst
+                Math.cos(angle) * speed
+            ),
+            lifetime: 60, // Short lifetime
+            type: 'money'
+        };
+        
+        scene.add(particle);
+        // Using sparks array for now as it handles simple physics
+        gameState.sparks.push(particle);
+    }
+}
 export function createTireMark(x, z, rotation) {
     // Limit tire marks for performance
     if (gameState.tireMarks.length > 100) {

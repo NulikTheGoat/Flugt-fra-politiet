@@ -39,6 +39,101 @@ export const DOM = {
     gameOverShopBtn: document.getElementById('gameOverShopBtn')
 };
 
+// ==========================================
+// HIGH SCORE SYSTEM
+// ==========================================
+
+function getHighScores() {
+    try {
+        const stored = localStorage.getItem('flugt_highscores');
+        return stored ? JSON.parse(stored) : [];
+    } catch (e) {
+        console.error("Failed to load highscores", e);
+        return [];
+    }
+}
+
+function saveHighScore(time) {
+    if (!time || time < 1) return;
+    
+    let scores = getHighScores();
+    
+    // Check if score qualifies for top 5
+    const qualifies = scores.length < 5 || time > scores[scores.length - 1].time;
+    
+    if (qualifies) {
+        // Simple prompt for name
+        let playerName = prompt("NY REKORD! Indtast dit navn:", "Anonym");
+        if (!playerName || playerName.trim() === "") playerName = "Anonym";
+        
+        // Format date as DD/MM
+        const date = new Date().toLocaleDateString('da-DK', { day: '2-digit', month: '2-digit' });
+        
+        scores.push({ name: playerName.substring(0, 10), time, date });
+        
+        // Sort descending by time
+        scores.sort((a, b) => b.time - a.time);
+        
+        // Keep top 5
+        scores = scores.slice(0, 5);
+        
+        localStorage.setItem('flugt_highscores', JSON.stringify(scores));
+        updateHighScoreDisplay();
+    }
+}
+
+function formatTime(seconds) {
+    const m = Math.floor(seconds / 60);
+    const s = Math.floor(seconds % 60);
+    return `${m}:${s.toString().padStart(2, '0')}`;
+}
+
+function updateHighScoreDisplay() {
+    let container = document.getElementById('highscoreContainer');
+    if (!container) {
+        container = document.createElement('div');
+        container.id = 'highscoreContainer';
+        container.style.cssText = `
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: rgba(0, 0, 0, 0.7);
+            color: #fff;
+            padding: 10px 15px;
+            border-radius: 8px;
+            font-family: 'Courier New', monospace;
+            z-index: 1000;
+            border: 1px solid #444;
+            min-width: 280px;
+            pointer-events: none;
+        `;
+        document.body.appendChild(container);
+    }
+
+    const scores = getHighScores();
+    if (scores.length === 0) {
+        container.innerHTML = `<div style="text-align:center;color:#aaa;font-size:12px;">INGEN REKORDER</div>`;
+        return;
+    }
+
+    let html = `<div style="text-align:center;font-weight:bold;margin-bottom:8px;border-bottom:1px solid #666;padding-bottom:4px;font-size:18px;color:#f1c40f;">TOP 5 TIDER</div>`;
+    
+    scores.forEach((score, index) => {
+        const color = index === 0 ? '#ffd700' : (index === 1 ? '#c0c0c0' : (index === 2 ? '#cd7f32' : '#fff'));
+        const name = score.name || 'Spiller';
+        html += `
+            <div style="display:flex;justify-content:space-between;align-items:center;font-size:14px;margin-bottom:4px;color:${color};font-weight:bold;">
+                <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:160px;">${index + 1}. ${name}</span>
+                <span>${formatTime(score.time)}</span>
+            </div>
+        `;
+    });
+
+    container.innerHTML = html;
+}
+
+// Initial display load
+document.addEventListener('DOMContentLoaded', updateHighScoreDisplay);
 
 export function updateHUD(policeDistance) {
     const speedKmh = Math.round(gameState.speed * 3.6);
@@ -112,6 +207,94 @@ export function updateHUD(policeDistance) {
             DOM.status.style.animation = '';
         }
     }
+}
+
+
+export function showFloatingMoney(amount, worldPosition, camera) {
+    if (!amount || amount <= 0) return;
+    
+    // Create container
+    const floatingEl = document.createElement('div');
+    floatingEl.innerHTML = `
+        <span style="font-size: 1.5em; vertical-align: middle;">💸</span> 
+        <span>+${amount}</span>
+    `;
+    
+    // Assertive Design: Big, Bold, Gold & Black
+    Object.assign(floatingEl.style, {
+        position: 'absolute',
+        fontFamily: '"Arial Black", "Impact", sans-serif',
+        color: '#FFD700', // Gold
+        webkitTextStroke: '1.5px black', // Thick outline
+        textShadow: '3px 3px 0px rgba(0,0,0,0.5)', // Hard drop shadow
+        fontWeight: '900',
+        fontSize: '42px', // Much bigger
+        pointerEvents: 'none',
+        zIndex: '2000', // Very top
+        transform: 'translate(-50%, -50%) scale(0)', // Start invisible/small
+        transition: 'none', // We manage transitions manually or via animation
+        whiteSpace: 'nowrap'
+    });
+
+    let startX = window.innerWidth / 2;
+    let startY = window.innerHeight / 2;
+
+    // Project world position
+    if (worldPosition && camera) {
+        const vector = worldPosition.clone();
+        // Slightly offset upwards from the car wreck
+        vector.y += 5;
+        vector.project(camera);
+        startX = (vector.x * 0.5 + 0.5) * window.innerWidth;
+        startY = (-(vector.y * 0.5) + 0.5) * window.innerHeight;
+    }
+    
+    floatingEl.style.left = startX + 'px';
+    floatingEl.style.top = startY + 'px';
+    document.body.appendChild(floatingEl);
+    
+    // Animation Phase 1: THE IMPACT (Boom!)
+    requestAnimationFrame(() => {
+        // Force Reflow
+        void floatingEl.offsetWidth;
+        
+        floatingEl.style.transition = 'transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275)'; // Overshoot "Spring" easing
+        // Random tilt for dynamic look
+        const tilt = (Math.random() - 0.5) * 30; 
+        floatingEl.style.transform = `translate(-50%, -50%) scale(1.5) rotate(${tilt}deg)`;
+        
+        // Add a "Shockwave" flash behind if possible, or just keep it simple text for now.
+    });
+
+    // Animation Phase 2: THE COLLECTION (Swoosh to HUD)
+    // Wait for user to register the "Boom" (400ms)
+    setTimeout(() => {
+        const moneyRect = DOM.money.getBoundingClientRect();
+        // Target center of money counter
+        const targetX = moneyRect.left + moneyRect.width / 2;
+        const targetY = moneyRect.top + moneyRect.height / 2;
+        
+        // Calculate deltas
+        // We use transition for this movement
+        floatingEl.style.transition = 'all 0.6s cubic-bezier(0.6, -0.28, 0.735, 0.045)'; // Back-in / Anticipation easing? maybe too complex. 
+        // Let's use Ease-In (accelerate away)
+        floatingEl.style.transition = 'top 0.5s ease-in, left 0.5s ease-in, transform 0.5s ease-in, opacity 0.5s ease-in';
+        
+        floatingEl.style.left = targetX + 'px';
+        floatingEl.style.top = targetY + 'px';
+        floatingEl.style.transform = 'translate(-50%, -50%) scale(0.3) rotate(0deg)'; // Shrink into the wallet
+        floatingEl.style.opacity = '0.5';
+
+    }, 500);
+    
+    // Cleanup
+    setTimeout(() => {
+        floatingEl.remove();
+        // Trigger HUD bump exactly when it arrives
+        DOM.money.parentElement.classList.remove('hud-money-pop');
+        void DOM.money.parentElement.offsetWidth;
+        DOM.money.parentElement.classList.add('hud-money-pop');
+    }, 1000);
 }
 
 // Helper to add money and animate
@@ -207,6 +390,9 @@ export function showGameOver(customMessage) {
     const finalKilled = gameState.policeKilled || 0;
     const finalHeat = gameState.heatLevel;
     
+    // Save High Score
+    saveHighScore(finalTime);
+
     // Reset values for animation
     DOM.gameOverTime.textContent = '0';
     DOM.gameOverMoney.textContent = '0';

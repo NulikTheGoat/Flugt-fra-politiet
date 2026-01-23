@@ -4,11 +4,12 @@ import { scene, camera, renderer } from './core.js';
 import { cars } from './constants.js';
 import { createPlayerCar, rebuildPlayerCar, updatePlayer, playerCar, setUICallbacks, createOtherPlayerCar, updateOtherPlayerCar, removeOtherPlayerCar } from './player.js';
 import { spawnPoliceCar, updatePoliceAI, updateProjectiles, firePlayerProjectile, syncPoliceFromNetwork, getPoliceStateForNetwork, resetPoliceNetworkIds } from './police.js';
-import { createGround, createTrees, createBuildings, updateBuildingChunks, updateCollectibles, cleanupSmallDebris } from './world.js';
+import { createGround, createTrees, createBuildings, updateBuildingChunks, updateCollectibles, cleanupSmallDebris, createSky, createDistantCityscape, createHotdogStands } from './world.js';
 import { updateHUD, updateHealthUI, DOM, goToShop, showGameOver, setStartGameCallback, triggerDamageEffect, setMultiplayerShopCallback } from './ui.js';
 import { updateSpeedEffects, updateSparks, updateTireMarks } from './particles.js';
 import * as Network from './network.js';
 import { updateCommentary, resetCommentary, logEvent, EVENTS } from './commentary.js';
+import { initLevelEditor, openLevelEditor } from './levelEditor.js';
 
 
 // Initialize - attach renderer to gameContainer
@@ -16,6 +17,9 @@ document.getElementById('gameContainer').appendChild(renderer.domElement);
 
 // Check if URL path is /start to auto-start the game
 const autoStart = window.location.pathname === '/start' || window.location.pathname === '/start/';
+
+// Check if URL path is /editor to auto-open level editor
+const autoEditor = window.location.pathname === '/editor' || window.location.pathname === '/editor/';
 
 // DOM elements for multiplayer
 const multiplayerLobby = document.getElementById('multiplayerLobby');
@@ -629,10 +633,16 @@ window.addEventListener('keyup', (e) => {
 });
 
 // Create World
+createSky();
+createDistantCityscape();
 createGround();
 createBuildings();
+createHotdogStands();
 createTrees();
 createPlayerCar();
+
+// Initialize Level Editor (Press F2 to open)
+initLevelEditor();
 
 export function startGame() {
     DOM.shop.style.display = 'none';
@@ -897,6 +907,11 @@ setUICallbacks({ triggerDamageEffect, updateHealthUI });
 // Auto-start game if /start path is accessed
 if (autoStart) {
     startGame();
+} else if (autoEditor) {
+    // Auto-open level editor if /editor path is accessed
+    setTimeout(() => {
+        openLevelEditor();
+    }, 500);
 } else {
     // Show game mode selection on page load
     setTimeout(() => {

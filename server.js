@@ -198,6 +198,7 @@ const httpServer = http.createServer(async (req, res) => {
     if (filePath === './') filePath = './index.html';
     if (filePath === './start' || filePath === './start/') filePath = './index.html';
     if (filePath === './config' || filePath === './config/') filePath = './config.html';
+    if (filePath === './editor' || filePath === './editor/') filePath = './index.html';
     
     const extname = path.extname(filePath);
     const contentTypes = {

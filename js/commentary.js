@@ -3,6 +3,7 @@
 
 import { gameState } from './state.js';
 import { camera } from './core.js';
+import { playerCar } from './player.js';
 
 // Event types
 export const EVENTS = {
@@ -681,38 +682,60 @@ export function updateCommentary() {
 }
 
 function updateBubblePositions() {
+    // 1. Police Scanner Bubble (Updated to handle Sheriff or just active police)
     const bubble = document.getElementById('policeScannerBubble');
-    if (!bubble || bubble.style.opacity === '0') return;
-
-    // Look for active Sheriff
-    const sheriff = gameState.policeCars.find(p => p.userData.type === 'sheriff' && !p.userData.dead);
     
-    if (sheriff && camera) {
-        // Project 3D position to 2D screen
-        const vector = sheriff.position.clone();
-        vector.y += 30; // Float above car
+    if (bubble && bubble.style.opacity !== '0') {
+        // Look for active Sheriff
+        const sheriff = gameState.policeCars.find(p => p.userData.type === 'sheriff' && !p.userData.dead);
+        
+        if (sheriff && camera) {
+            // Project 3D position to 2D screen
+            const vector = sheriff.position.clone();
+            vector.y += 30; // Float above car
+            vector.project(camera);
+
+            const x = (vector.x * .5 + .5) * window.innerWidth;
+            const y = (-(vector.y * .5) + .5) * window.innerHeight;
+
+            // Check if car is in front of camera
+            if (vector.z < 1) {
+                bubble.style.position = 'fixed'; 
+                bubble.style.left = `${x}px`;
+                bubble.style.top = `${y}px`;
+                bubble.style.bottom = 'auto'; // Clear default
+                bubble.style.transform = 'translate(-50%, -100%)'; // Center above
+                
+                // Add a "tail" style dynamically if needed
+                bubble.style.borderBottomLeftRadius = '0';
+            } else {
+                // Behind camera? Hide or fallback? fallback to corner
+                resetScannerPosition(bubble);
+            }
+        } else {
+            // Fallback to corner if no Sheriff
+            resetScannerPosition(bubble);
+        }
+    }
+
+    // 2. Boss Prompt Bubble (Attached to Player Car)
+    const bossBubble = document.getElementById('bossMessageContainer');
+    if (bossBubble && bossBubble.style.opacity !== '0' && playerCar && camera) {
+        const vector = playerCar.position.clone();
+        vector.y += 25; // Float above player car
         vector.project(camera);
 
         const x = (vector.x * .5 + .5) * window.innerWidth;
         const y = (-(vector.y * .5) + .5) * window.innerHeight;
 
-        // Check if car is in front of camera
         if (vector.z < 1) {
-            bubble.style.position = 'fixed'; // Use fixed to ignore scroll if any, though canvas handles it
-            bubble.style.left = `${x}px`;
-            bubble.style.top = `${y}px`;
-            bubble.style.bottom = 'auto'; // Clear default
-            bubble.style.transform = 'translate(-50%, -100%)'; // Center above
-            
-            // Add a "tail" style dynamically if needed
-            bubble.style.borderBottomLeftRadius = '0';
+             bossBubble.style.left = `${x - 120}px`; // Shifted left
+             bossBubble.style.top = `${y}px`;
+             // Ensure it stays centered above the point
+             bossBubble.style.transform = 'translate(-50%, -100%)';
         } else {
-            // Behind camera? Hide or fallback? fallback to corner
-            resetScannerPosition(bubble);
+             // Off screen processing (optional)
         }
-    } else {
-        // Fallback to corner if no Sheriff
-        resetScannerPosition(bubble);
     }
 }
 
@@ -1012,69 +1035,135 @@ function useBossFallback(type) { // type: 'NEW' or 'COMPLETE'
 
 function showBossMessage(text, isSuccess = false) {
     let container = document.getElementById('bossMessageContainer');
-    if (!container) {
-        container = document.createElement('div');
-        container.id = 'bossMessageContainer';
-        container.style.cssText = `
-            position: fixed;
-            top: 80px;
-            left: 20px;
-            width: 250px;
-            z-index: 9997;
-            pointer-events: none;
-            font-family: 'Helvetica Neue', Arial, sans-serif;
-            display: flex;
-            flex-direction: column;
-            gap: 10px;
-        `;
-        document.body.appendChild(container);
-    }
+    if (container) container.remove();
     
-    const msg = document.createElement('div');
-    msg.className = 'boss-sms';
-    msg.style.cssText = `
-        background: #e5e5ea;
-        color: #000;
-        padding: 12px 16px;
-        border-radius: 18px;
-        border-bottom-left-radius: 4px; /* Message from others style */
-        box-shadow: 0 2px 10px rgba(0,0,0,0.2);
-        font-size: 14px;
-        opacity: 0;
-        transform: translateY(20px);
-        transition: all 0.5s ease;
+    container = document.createElement('div');
+    container.id = 'bossMessageContainer';
+    // Wrapper for positioning (managed by updateBubblePositions)
+    // We keep it 0x0 so the 'centered' transform logic works nicely on the child
+    container.style.cssText = `
+        position: fixed;
+        z-index: 9997;
+        pointer-events: none;
+        width: 0; min-height: 0;
+        display: flex;
+        justify-content: center; /* Helps align child */
+        /* Left/Top/Transform managed by loop */
+    `;
+
+    // Colors
+    const bgColor = isSuccess ? '#2ecc71' : '#1e1e1e';
+    const textColor = '#ffffff';
+    const accentColor = isSuccess ? '#27ae60' : '#f1c40f'; // Gold or Dark Green
+    
+    // Inner Visual Bubble
+    const bubble = document.createElement('div');
+    bubble.style.cssText = `
         position: relative;
+        bottom: 20px; /* Offset from anchor point */
+        width: 820px;
+        background: ${bgColor};
+        color: ${textColor};
+        padding: 16px 20px;
+        border-radius: 24px;
+        border-bottom-right-radius: 4px; /* Callout style */
+        box-shadow: 0 10px 30px rgba(0,0,0,0.5), 0 0 0 1px rgba(255,255,255,0.1);
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+        transform: scale(0.5);
+        opacity: 0;
+        transform-origin: bottom right; /* Pop from the tail */
+        transition: transform 0.5s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.3s ease;
+    `;
+
+    // Header: Icon + Title
+    const header = document.createElement('div');
+    header.style.cssText = "display: flex; align-items: center; gap: 8px; margin-bottom: 2px;";
+    
+    const icon = document.createElement('span');
+    icon.textContent = isSuccess ? '✅' : '🕶️';
+    icon.style.filter = "grayscale(100%)"; // Subtle icon
+    icon.style.fontSize = "16px";
+    
+    const title = document.createElement('span');
+    title.textContent = "THE BOSS";
+    title.style.cssText = `
+        font-size: 11px;
+        font-weight: 800;
+        letter-spacing: 2px;
+        color: ${accentColor};
+        text-transform: uppercase;
     `;
     
-    if (isSuccess) {
-        msg.style.background = "#34c759"; // Green for success
-        msg.style.color = "#fff";
-    }
+    header.appendChild(icon);
+    header.appendChild(title);
+    
+    // Message Content
+    const message = document.createElement('div');
+    message.style.cssText = `
+        font-size: 16px;
+        line-height: 1.4;
+        font-weight: 600;
+        letter-spacing: 0.3px;
+        text-shadow: 0 1px 2px rgba(0,0,0,0.2);
+    `;
+    
+    // Callout Tail (Triangle)
+    const tail = document.createElement('div');
+    tail.style.cssText = `
+        position: absolute;
+        bottom: -8px;
+        right: 0;
+        width: 0; 
+        height: 0; 
+        border-style: solid;
+        border-width: 8px 0 0 8px;
+        border-color: ${bgColor} transparent transparent transparent;
+    `;
 
-    // Avatar / Sender Name
-    const sender = document.createElement('div');
-    sender.textContent = "The Boss";
-    sender.style.cssText = "font-size: 10px; color: #888; margin-bottom: 4px; font-weight: bold; text-transform: uppercase;";
-    if (isSuccess) sender.style.color = "#e0ffe0";
-    msg.appendChild(sender);
+    bubble.appendChild(header);
+    bubble.appendChild(message);
+    bubble.appendChild(tail);
+    
+    container.appendChild(bubble);
+    document.body.appendChild(container);
 
-    const content = document.createElement('div');
-    content.textContent = text;
-    msg.appendChild(content);
+    // Initial positioning
+    updateBubblePositions();
 
-    container.appendChild(msg);
+    // Trigger Exit
+    const removeBubble = () => {
+        if (container.parentNode) {
+            bubble.style.transform = "scale(0.8) translateY(10px)";
+            bubble.style.opacity = "0";
+            setTimeout(() => {
+                if (container.parentNode) container.remove();
+            }, 300);
+        }
+    };
 
-    // Animate in
+    // Animate In (Next frame)
     requestAnimationFrame(() => {
-        msg.style.opacity = "1";
-        msg.style.transform = "translateY(0)";
+        bubble.style.opacity = "1";
+        bubble.style.transform = "scale(1)";
+        
+        // Typewriter Effect
+        let i = 0;
+        const typeSpeed = 25;
+        const interval = setInterval(() => {
+            if (i < text.length) {
+                message.textContent += text.charAt(i);
+                // Simple sound effect simulation could go here
+                i++;
+            } else {
+                clearInterval(interval);
+                // Auto dismiss after reading time (min 3s, + time per char)
+                setTimeout(removeBubble, 5000 + (text.length * 50));
+            }
+        }, typeSpeed);
     });
-
-    // Remove after time
-    setTimeout(() => {
-        msg.style.opacity = "0";
-        setTimeout(() => msg.remove(), 500);
-    }, 8000);
 }
 
 // Update Mission Progress

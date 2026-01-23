@@ -1499,6 +1499,7 @@
             <div id="shopHeader">
                 <h1>🏎️ Garage & Shop</h1>
                 <div style="display: flex; gap: 15px; align-items: center;">
+                    <a href="/editor" class="config-link" style="background: linear-gradient(135deg, #00aaff, #0066cc);">🏗️ Editor</a>
                     <a href="/config" class="config-link">⚙️ Config</a>
                     <div id="moneyDisplay"><span id="shopMoney">0</span> KR</div>
                 </div>
@@ -1618,6 +1619,194 @@
             </div>
         </div>
     </div>
+
+    <!-- Level Editor -->
+    <div id="levelEditor" style="display: none;">
+        <div id="editorToolbar">
+            <h2>🏗️ Level Editor</h2>
+            <div class="editor-section">
+                <label>Objekt Type:</label>
+                <select id="editorObjectType">
+                    <option value="building">🏢 Bygning</option>
+                    <option value="hotdog">🌭 Pølsevogn</option>
+                    <option value="tree">🌲 Træ</option>
+                </select>
+            </div>
+            <div class="editor-section" id="buildingOptions">
+                <label>Bygningstype:</label>
+                <select id="editorBuildingType">
+                    <option value="GENERIC">Generisk</option>
+                    <option value="SHOP">Butik</option>
+                    <option value="BANK">Bank</option>
+                    <option value="PIZZERIA">Pizzeria</option>
+                    <option value="RESIDENTIAL">Bolig</option>
+                    <option value="OFFICE">Kontor</option>
+                    <option value="WAREHOUSE">Lager</option>
+                    <option value="POLICE_STATION">Politistation</option>
+                </select>
+            </div>
+            <div class="editor-section">
+                <label>Bredde: <span id="widthVal">100</span></label>
+                <input type="range" id="editorWidth" min="50" max="200" value="100">
+            </div>
+            <div class="editor-section">
+                <label>Dybde: <span id="depthVal">80</span></label>
+                <input type="range" id="editorDepth" min="50" max="150" value="80">
+            </div>
+            <div class="editor-section">
+                <label>Højde: <span id="heightVal">150</span></label>
+                <input type="range" id="editorHeight" min="50" max="300" value="150">
+            </div>
+            <div class="editor-buttons">
+                <button id="editorDeleteMode" class="editor-btn">🗑️ Slet Mode</button>
+                <button id="editorUndo" class="editor-btn">↩️ Fortryd</button>
+                <button id="editorClear" class="editor-btn danger">🧹 Ryd Alt</button>
+            </div>
+            <div class="editor-buttons">
+                <button id="editorSave" class="editor-btn save">💾 Gem Level</button>
+                <button id="editorLoad" class="editor-btn">📂 Indlæs</button>
+                <button id="editorExport" class="editor-btn">📋 Eksporter</button>
+            </div>
+            <div class="editor-section">
+                <label>Objekter: <span id="objectCount">0</span></label>
+            </div>
+            <button id="editorClose" class="editor-btn close">✖ Luk Editor</button>
+        </div>
+        <div id="editorPreview"></div>
+        <div id="editorCoords">X: 0, Z: 0</div>
+        <input type="file" id="editorFileInput" accept=".json" style="display: none;">
+    </div>
+
+    <style>
+        #levelEditor {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 500;
+            pointer-events: none;
+        }
+        
+        #editorToolbar {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            width: 280px;
+            background: rgba(20, 20, 40, 0.95);
+            border: 2px solid #00aaff;
+            border-radius: 12px;
+            padding: 20px;
+            pointer-events: auto;
+            box-shadow: 0 0 30px rgba(0, 170, 255, 0.3);
+        }
+        
+        #editorToolbar h2 {
+            color: #00aaff;
+            text-align: center;
+            margin-bottom: 20px;
+            font-size: 22px;
+        }
+        
+        .editor-section {
+            margin-bottom: 15px;
+        }
+        
+        .editor-section label {
+            display: block;
+            color: #aaa;
+            font-size: 13px;
+            margin-bottom: 5px;
+        }
+        
+        .editor-section select,
+        .editor-section input[type="range"] {
+            width: 100%;
+            padding: 8px;
+            background: #1a1a2e;
+            border: 1px solid #444;
+            border-radius: 6px;
+            color: #fff;
+            font-size: 14px;
+        }
+        
+        .editor-section input[type="range"] {
+            padding: 0;
+            height: 8px;
+            cursor: pointer;
+        }
+        
+        .editor-buttons {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 10px;
+            flex-wrap: wrap;
+        }
+        
+        .editor-btn {
+            flex: 1;
+            min-width: 70px;
+            padding: 10px 8px;
+            border: none;
+            border-radius: 6px;
+            font-size: 12px;
+            font-weight: bold;
+            cursor: pointer;
+            background: linear-gradient(135deg, #333, #222);
+            color: #fff;
+            transition: all 0.2s;
+        }
+        
+        .editor-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+        }
+        
+        .editor-btn.save {
+            background: linear-gradient(135deg, #00aa00, #008800);
+        }
+        
+        .editor-btn.danger {
+            background: linear-gradient(135deg, #aa0000, #880000);
+        }
+        
+        .editor-btn.close {
+            width: 100%;
+            margin-top: 15px;
+            background: linear-gradient(135deg, #666, #444);
+        }
+        
+        .editor-btn.active {
+            background: linear-gradient(135deg, #ff6600, #cc4400);
+            box-shadow: 0 0 15px rgba(255, 102, 0, 0.5);
+        }
+        
+        #editorPreview {
+            position: absolute;
+            pointer-events: none;
+            border: 3px dashed #00ff00;
+            background: rgba(0, 255, 0, 0.1);
+            display: none;
+        }
+        
+        #editorCoords {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            background: rgba(0, 0, 0, 0.8);
+            color: #00ff00;
+            padding: 10px 20px;
+            border-radius: 8px;
+            font-family: monospace;
+            font-size: 16px;
+            pointer-events: none;
+        }
+        
+        #levelEditor.delete-mode #editorPreview {
+            border-color: #ff0000;
+            background: rgba(255, 0, 0, 0.1);
+        }
+    </style>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script type="module" src="js/main.js"></script>
