@@ -15,12 +15,13 @@ A fast-paced 3D car chase game! Outrun the cops, collect coins, upgrade your rid
 | `D` or `→` | Turn Right |
 | `Space` | Drift! (Handbrake) |
 | `C` | See map from above |
-| `F` | Shoot (only works with Tank) |
+| `F` | Shoot tank cannon / Speed boost (others) |
 
 ### Goal
-- 🏃 Run away from police as long as you can
-- 💰 Pick up coins to get money
-- 🛒 Buy cooler cars in the shop
+- 🏃 Run away from police as long as you can to increase your **Heat Level**
+- ⭐️ **Drift** to earn bonus points and money (Speed > 20 km/h + Spacebar)
+- 💰 Pick up cash stacks to get money
+- 🛒 Buy cooler cars in the shop (Visual upgrades included!)
 - ❤️ Don't let your health go to zero!
 - 🚨 If you stop when police are near = ARRESTED!
 
@@ -114,21 +115,17 @@ Give the **Network URL** (like `http://192.168.1.100:3000`) to your friends on t
 
 **On the HOST computer (the one running the server):**
 1. Open browser and go to `http://localhost:3000`
-2. Click "KØR NU" (Play Now)
-3. Choose **HOST MULTIPLAYER**
-4. You'll see a **6-letter room code** (like `ABC123`)
-5. Tell your friends the room code!
+2. Click "START SPIL" (Start Game)
+3. You are now the host!
 
 #### Step 5: Friends join the room
 
 **On EACH FRIEND'S computer:**
 1. Open browser and go to the **Network URL** (e.g. `http://192.168.1.100:3000`)
    - ⚠️ NOT localhost! Use the IP address the host shared with you
-2. Click "KØR NU" (Play Now)
-3. Choose **JOIN MULTIPLAYER**
-4. Enter your name
-5. Type the **room code** the host gave you
-6. Click **JOIN SPIL**
+2. The game will automatically find the running server (or click the server in the list)
+3. Enter your name
+4. Click **JOIN SPIL**
 
 #### Step 6: Start the game
 
@@ -141,6 +138,7 @@ Once everyone has joined:
 - 🎨 Each player gets a unique color
 - 🚔 Police chase all players (host controls the AI)
 - 📍 See other players on the map in real-time
+- 🔄 **Drop-in Support**: Friends can join even if the game has already started!
 
 ---
 
@@ -210,10 +208,11 @@ The longer you survive, the harder it gets!
 
 ## 💡 Pro Tips
 
-- **Drift around corners** - Hold Space while turning for sick drifts
+- **Drift for Money** - Drifting > 20 km/h builds a combo. Maintain it for big cash rewards!
+- **Environment is Destructible** - You can smash through almost any building if you have enough speed (> 20 km/h).
 - **Don't stop!** - If police catch you standing still, you're arrested in 3 seconds
 - **Crash into police** - Going fast? Ram them to damage their cars!
-- **Collect coins** - More time = more money per coin
+- **Collect Cash** - Cash stacks are worth more at higher Heat Levels.
 - **Watch your health** - When it's low, your car gets slower and harder to control
 
 ---

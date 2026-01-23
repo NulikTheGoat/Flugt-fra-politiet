@@ -3,13 +3,89 @@ import { gameConfig } from './config.js';
 import { scene, camera, THREE } from './core.js';
 import { enemies, cars } from './constants.js';
 import { sharedGeometries, sharedMaterials } from './assets.js';
-import { createSmoke, createSpeedParticle, createFire } from './particles.js';
+import { createSmoke, createSpeedParticle, createFire, createSpark } from './particles.js';
 import { playerCar, takeDamage } from './player.js';
 import { normalizeAngleRadians, clamp } from './utils.js';
 import { addMoney, showGameOver } from './ui.js';
 import * as Network from './network.js';
 
 const projectileGeometry = new THREE.SphereGeometry(2, 8, 8);
+
+// Money popup tracking
+const moneyPopups = [];
+
+// Create floating money popup
+function createMoneyPopup(position, amount) {
+    // Create a canvas texture for the money text
+    const canvas = document.createElement('canvas');
+    canvas.width = 256;
+    canvas.height = 128;
+    const ctx = canvas.getContext('2d');
+    
+    // Draw money text
+    ctx.fillStyle = '#00ff00';
+    ctx.strokeStyle = '#004400';
+    ctx.lineWidth = 4;
+    ctx.font = 'bold 64px Arial';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    const text = `+${amount}kr`;
+    ctx.strokeText(text, 128, 64);
+    ctx.fillText(text, 128, 64);
+    
+    // Create sprite
+    const texture = new THREE.CanvasTexture(canvas);
+    const spriteMat = new THREE.SpriteMaterial({ 
+        map: texture, 
+        transparent: true,
+        depthTest: false
+    });
+    const sprite = new THREE.Sprite(spriteMat);
+    sprite.position.copy(position);
+    sprite.position.y += 20;
+    sprite.scale.set(40, 20, 1);
+    
+    sprite.userData = {
+        spawnTime: Date.now(),
+        lifetime: 1200, // 1.2 seconds
+        startY: sprite.position.y
+    };
+    
+    scene.add(sprite);
+    moneyPopups.push(sprite);
+}
+
+// Update money popups (call from main loop)
+export function updateMoneyPopups() {
+    const now = Date.now();
+    for (let i = moneyPopups.length - 1; i >= 0; i--) {
+        const popup = moneyPopups[i];
+        const age = now - popup.userData.spawnTime;
+        const progress = age / popup.userData.lifetime;
+        
+        if (progress >= 1) {
+            scene.remove(popup);
+            popup.material.map.dispose();
+            popup.material.dispose();
+            moneyPopups.splice(i, 1);
+            continue;
+        }
+        
+        // Float up
+        popup.position.y = popup.userData.startY + progress * 30;
+        
+        // Scale up then down (bounce effect)
+        const scaleProgress = progress < 0.2 ? progress / 0.2 : 1;
+        const shrinkProgress = progress > 0.7 ? (progress - 0.7) / 0.3 : 0;
+        const scale = (0.5 + scaleProgress * 0.5) * (1 - shrinkProgress * 0.5);
+        popup.scale.set(40 * scale, 20 * scale, 1);
+        
+        // Fade out in last 40%
+        if (progress > 0.6) {
+            popup.material.opacity = 1 - ((progress - 0.6) / 0.4);
+        }
+    }
+}
 
 export function createPoliceCar(type = 'standard') {
     const config = enemies[type];
@@ -226,9 +302,24 @@ export function updatePoliceAI(delta) {
     if(!playerCar) return 10000;
 
     let minDistance = 10000;
+    
+    // In multiplayer, only HOST runs the AI logic (movement, collisions)
+    // Clients only calculate distance for HUD
+    const shouldRunAI = !gameState.isMultiplayer || gameState.isHost;
 
     gameState.policeCars.forEach((policeCar, index) => {
+        // Calculate distance to player (needed for HUD on all clients)
+        const dx = playerCar.position.x - policeCar.position.x;
+        const dz = playerCar.position.z - policeCar.position.z;
+        const distToPlayer = Math.sqrt(dx * dx + dz * dz);
+        if (distToPlayer < minDistance) minDistance = distToPlayer;
+
+        if (!shouldRunAI) return; // Skip movement/logic for clients
+
         if (policeCar.userData.dead) {
+             const now = Date.now();
+             const timeSinceDeath = now - policeCar.userData.deathTime;
+             
              // Dead police cars slow down and stop
              policeCar.userData.speed *= Math.pow(0.9, delta || 1);
              if (policeCar.userData.speed > 1) {
@@ -239,57 +330,94 @@ export function updatePoliceAI(delta) {
                  policeCar.userData.speed = 0;
              }
              
-             // Dead cars are still solid obstacles - check collision with player
-             if (playerCar) {
-                 const dx = playerCar.position.x - policeCar.position.x;
-                 const dz = playerCar.position.z - policeCar.position.z;
-                 const dist = Math.sqrt(dx*dx + dz*dz);
-                 const collisionRadius = 25;
+             // === VISUAL: Add loot indicator after car stops (1 second) ===
+             if (timeSinceDeath > 1000 && !policeCar.userData.lootIndicator) {
+                 // Create floating ring indicator
+                 const ring = new THREE.Mesh(
+                     sharedGeometries.lootIcon,
+                     sharedMaterials.lootGlow.clone()
+                 );
+                 ring.rotation.x = Math.PI / 2;
+                 ring.position.y = 30;
+                 ring.name = 'lootRing';
+                 policeCar.add(ring);
+                 policeCar.userData.lootIndicator = ring;
                  
-                 if (dist < collisionRadius) {
-                     const overlap = collisionRadius - dist;
-                     const nx = dist > 0 ? dx / dist : 1;
-                     const nz = dist > 0 ? dz / dist : 0;
-                     
-                     // Push player away from dead car
-                     playerCar.position.x += nx * overlap * 0.8;
-                     playerCar.position.z += nz * overlap * 0.8;
-                     
-                     // Damage player if going fast (throttled)
-                     const now = Date.now();
-                     if (now - (policeCar.userData.lastDeadCollision || 0) > 500) {
-                         policeCar.userData.lastDeadCollision = now;
-                         const speedKmh = Math.abs(gameState.speed) * 3.6;
-                         if (speedKmh > 20) {
-                             const damage = Math.max(gameConfig.minCrashDamage, speedKmh * gameConfig.playerCrashDamageMultiplier * 0.5);
-                             takeDamage(damage);
-                             gameState.speed *= 0.5; // Slow down on impact
-                             gameState.screenShake = 0.2;
-                             createSmoke(policeCar.position);
+                 // Make car body darker/burnt
+                 policeCar.traverse(child => {
+                     if (child.isMesh && child.material && child.material.color) {
+                         if (!child.userData.originalColor) {
+                             child.userData.originalColor = child.material.color.getHex();
                          }
+                         child.material = child.material.clone();
+                         child.material.color.setHex(0x222222); // Burnt look
                      }
+                 });
+                 
+                 // Hide health bar
+                 const hpBar = policeCar.getObjectByName('hpBar');
+                 const hpBg = policeCar.getObjectByName('hpBg');
+                 if (hpBar) hpBar.visible = false;
+                 if (hpBg) hpBg.visible = false;
+             }
+             
+             // === VISUAL: Animate loot indicator (pulse + rotate) ===
+             if (policeCar.userData.lootIndicator) {
+                 const ring = policeCar.userData.lootIndicator;
+                 ring.rotation.z += 0.05 * (delta || 1);
+                 const pulse = 0.8 + Math.sin(now * 0.005) * 0.3;
+                 ring.scale.set(pulse, pulse, pulse);
+                 ring.material.opacity = 0.5 + Math.sin(now * 0.008) * 0.3;
+             }
+             
+             // === COLLECTION: Check if player is close enough to collect ===
+             if (playerCar && timeSinceDeath > 1000) {
+                 const cdx = playerCar.position.x - policeCar.position.x;
+                 const cdz = playerCar.position.z - policeCar.position.z;
+                 const collectDist = Math.sqrt(cdx*cdx + cdz*cdz);
+                 const collectRadius = 35; // Pickup radius
+                 
+                 if (collectDist < collectRadius) {
+                     // === REWARD ===
+                     const baseReward = 200;
+                     const heatBonus = gameState.heatLevel * 50;
+                     const reward = baseReward + heatBonus;
+                     addMoney(reward, true);
+                     
+                     // === VISUAL FEEDBACK: Big money popup ===
+                     createMoneyPopup(policeCar.position, reward);
+                     
+                     // === VISUAL FEEDBACK: Explosion of coins/sparks ===
+                     for (let s = 0; s < 8; s++) {
+                         createSpark(policeCar.position);
+                     }
+                     createSmoke(policeCar.position);
+                     
+                     // Screen shake for satisfying feedback
+                     gameState.screenShake = 0.15;
+                     
+                     // Mark for removal
+                     policeCar.userData.collected = true;
                  }
              }
              
-             // Smoke and fire effects - stay forever (throttled for performance)
-             const now = Date.now();
-             const timeSinceDeath = now - policeCar.userData.deathTime;
-             const lastParticle = policeCar.userData.lastParticleTime || 0;
+             // === REMOVE if collected ===
+             if (policeCar.userData.collected) {
+                 scene.remove(policeCar);
+                 gameState.policeCars.splice(index, 1);
+                 return;
+             }
              
-             // Throttle particle spawning to every 100ms
-             if (now - lastParticle > 100) {
+             // Smoke and fire effects (throttled for performance)
+             const lastParticle = policeCar.userData.lastParticleTime || 0;
+             if (now - lastParticle > 150) {
                  policeCar.userData.lastParticleTime = now;
-                 
-                 // Smoke constantly (30% chance per tick)
-                 if (Math.random() < 0.4) createSmoke(policeCar.position);
-                 
-                 // Fire sparks after 2 seconds (25% chance per tick)
-                 if (timeSinceDeath > 2000 && Math.random() < 0.3) {
+                 if (Math.random() < 0.3) createSmoke(policeCar.position);
+                 if (timeSinceDeath > 2000 && Math.random() < 0.2) {
                      createFire(policeCar.position);
                  }
              }
              
-             // Don't remove dead cars - they stay as obstacles
              return;
         }
 
@@ -297,17 +425,17 @@ export function updatePoliceAI(delta) {
         for (let j = index + 1; j < gameState.policeCars.length; j++) {
             const otherCar = gameState.policeCars[j];
             
-            const dx = policeCar.position.x - otherCar.position.x;
-            const dz = policeCar.position.z - otherCar.position.z;
-            const distSq = dx*dx + dz*dz;
+            const pdx = policeCar.position.x - otherCar.position.x;
+            const pdz = policeCar.position.z - otherCar.position.z;
+            const distSq = pdx*pdx + pdz*pdz;
             const minDist = 30; // Larger collision radius for police cars
             const preferredDist = 50; // Distance they try to keep from each other
 
             if (distSq < minDist * minDist) {
                 const dist = Math.sqrt(distSq);
                 const overlap = (minDist - dist) * 0.5;
-                const nx = dist > 0 ? dx / dist : 1; 
-                const nz = dist > 0 ? dz / dist : 0;
+                const nx = dist > 0 ? pdx / dist : 1; 
+                const nz = dist > 0 ? pdz / dist : 0;
 
                 // Push both cars apart (living car moves more, dead car barely moves)
                 if (otherCar.userData.dead) {
@@ -363,17 +491,16 @@ export function updatePoliceAI(delta) {
                 // Gentle push to maintain spacing - police try to spread out (only for living cars)
                 const dist = Math.sqrt(distSq);
                 const pushStrength = 0.3 * (1 - dist / preferredDist);
-                const nx = dx / dist;
-                const nz = dz / dist;
+                const nx = pdx / dist;
+                const nz = pdz / dist;
                 
                 policeCar.position.x += nx * pushStrength;
                 policeCar.position.z += nz * pushStrength;
             }
         }
 
-        const dx = playerCar.position.x - policeCar.position.x;
-        const dz = playerCar.position.z - policeCar.position.z;
-        const distance = Math.sqrt(dx * dx + dz * dz);
+        // Use already calculated distance
+        const distance = distToPlayer;
 
         // Tank Ramming Logic
         const currentCar = cars[gameState.selectedCar];
@@ -780,20 +907,17 @@ export function syncPoliceFromNetwork(policeData) {
             // Update existing car
             const { car } = existingPolice.get(data.id);
             
-            // Smooth interpolation
-            const lerpFactor = 0.3;
-            car.position.x += (data.x - car.position.x) * lerpFactor;
-            car.position.z += (data.z - car.position.z) * lerpFactor;
+            // Store target for smooth interpolation in updateNetworkPolice
+            car.userData.networkTarget = {
+                x: data.x,
+                z: data.z,
+                rotation: data.rotation
+            };
             
-            // Smooth rotation
-            let diff = data.rotation - car.rotation.y;
-            if (diff > Math.PI) diff -= Math.PI * 2;
-            if (diff < -Math.PI) diff += Math.PI * 2;
-            car.rotation.y += diff * lerpFactor;
-            
-            // Update health
+            // Update health and speed immediately
             car.userData.health = data.health;
             car.userData.speed = data.speed;
+            car.userData.type = data.type; // Ensure type is synced
             
         } else {
             // Create new police car
@@ -817,6 +941,36 @@ export function syncPoliceFromNetwork(policeData) {
             gameState.policeCars.splice(i, 1);
         }
     }
+}
+
+// Client-side interpolation loop
+export function updateNetworkPolice(delta) {
+    gameState.policeCars.forEach(car => {
+        if (car.userData.networkTarget) {
+            const target = car.userData.networkTarget;
+            const lerpSpeed = 5.0 * delta; // Adjust for smoothness vs responsiveness
+
+            // Position Lerp
+            car.position.x += (target.x - car.position.x) * lerpSpeed;
+            car.position.z += (target.z - car.position.z) * lerpSpeed;
+
+            // Rotation Lerp (shortest path)
+            let diff = target.rotation - car.rotation.y;
+            // Normalize to -PI to PI
+            while (diff > Math.PI) diff -= Math.PI * 2;
+            while (diff < -Math.PI) diff += Math.PI * 2;
+            
+            car.rotation.y += diff * lerpSpeed;
+            
+            // Visual wheel turn (fake)
+            car.children.forEach(child => {
+                 if (child.geometry && child.geometry.type === 'CylinderGeometry' && child.scale.y < 2) {
+                     // It's a wheel
+                     child.rotation.x += (car.userData.speed || 0) * delta * 0.1;
+                 }
+            });
+        }
+    });
 }
 
 // Get police state for sending to clients (host-side)
