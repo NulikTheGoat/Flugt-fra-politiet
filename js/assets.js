@@ -1,6 +1,6 @@
 // Shared Geometries and Materials
 import { enemies } from './constants.js';
-import { scene } from './core.js';
+import { scene, THREE } from './core.js';
 
 export const sharedGeometries = {
     wheel: new THREE.CylinderGeometry(5, 5, 8, 16),
@@ -47,6 +47,7 @@ Object.values(enemies).forEach(enemy => {
 export const particlePool = {
     spark: [],
     smoke: [],
+    fire: [],
     speed: []
 };
 

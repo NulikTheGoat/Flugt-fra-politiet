@@ -1,4 +1,9 @@
 // Three.js Scene Setup (Singletons)
+import * as THREE from 'three';
+
+// Re-export THREE for other modules that need it
+export { THREE };
+
 export const scene = new THREE.Scene();
 scene.background = new THREE.Color(0x87ceeb);
 scene.fog = new THREE.Fog(0x87ceeb, 3000, 6000);

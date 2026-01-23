@@ -1,6 +1,6 @@
 import { gameState } from './state.js';
 import { gameConfig } from './config.js';
-import { scene, camera } from './core.js';
+import { scene, camera, THREE } from './core.js';
 import { enemies, cars } from './constants.js';
 import { sharedGeometries, sharedMaterials } from './assets.js';
 import { createSmoke, createSpeedParticle, createFire } from './particles.js';

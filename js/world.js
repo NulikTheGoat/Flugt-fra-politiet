@@ -1,6 +1,6 @@
 import { gameState } from './state.js';
 import { gameConfig } from './config.js';
-import { scene } from './core.js';
+import { scene, THREE } from './core.js';
 import { sharedGeometries, sharedMaterials } from './assets.js';
 import { playerCar, takeDamage } from './player.js';
 import { createSmoke, createSpark } from './particles.js';
@@ -1270,8 +1270,12 @@ export function updateCollectibles() {
     if (Math.random() < 0.02) { 
          createMoney();
          if (gameState.collectibles.length > 50) {
-             const oldCoin = gameState.collectibles.shift();
-             scene.remove(oldCoin);
+             const excess = gameState.collectibles.length - 50;
+             for (let i = 0; i < excess; i++) {
+                 const oldCoin = gameState.collectibles[i];
+                 if (oldCoin) scene.remove(oldCoin);
+             }
+             gameState.collectibles.splice(0, excess);
          }
     }
 
@@ -1282,9 +1286,6 @@ export function updateCollectibles() {
     for (let i = gameState.collectibles.length - 1; i >= 0; i--) {
         const coin = gameState.collectibles[i];
         coin.rotation.y += 0.05;
-
-        // Ensure coin is upright
-        coin.rotation.z = Math.PI / 2;
 
         if(!playerCar) continue;
         const dx = playerX - coin.position.x;

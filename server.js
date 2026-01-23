@@ -1,9 +1,14 @@
 // LAN Multiplayer Server for Flugt fra Politiet
 // Persistent "floating" server - always running, anyone can join
-const http = require('http');
-const fs = require('fs');
-const path = require('path');
-const { WebSocketServer } = require('ws');
+import http from 'http';
+import fs from 'fs';
+import path from 'path';
+import os from 'os';
+import { fileURLToPath } from 'url';
+import { WebSocketServer } from 'ws';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 const PORT = 3000;
 const WS_PORT = 3001;
@@ -503,7 +508,7 @@ wss.on('connection', (ws) => {
 initDefaultRoom();
 
 httpServer.listen(PORT, '0.0.0.0', () => {
-    const interfaces = require('os').networkInterfaces();
+    const interfaces = os.networkInterfaces();
     let lanIP = 'localhost';
     
     for (const name of Object.keys(interfaces)) {
