@@ -381,8 +381,10 @@ export function updatePoliceAI(delta) {
                     const chunkDistSq = cdx*cdx + cdz*cdz;
                     
                     // Speed-based collision detection radius (similar to player)
-                    const policeSpeedUnits = policeSpeed / 16.67; // Convert to units similar to player speed
-                    const policeSpeedFactor = Math.max(1, policeSpeedUnits / 30);
+                    const POLICE_SPEED_CONVERSION_FACTOR = 16.67; // Convert police speed (px/sec) to player speed units
+                    const SPEED_TO_COLLISION_RATIO = 30; // Speed units needed to double collision radius
+                    const policeSpeedUnits = policeSpeed / POLICE_SPEED_CONVERSION_FACTOR;
+                    const policeSpeedFactor = Math.max(1, policeSpeedUnits / SPEED_TO_COLLISION_RATIO);
                     const policeCollisionRadius = 15 * policeSpeedFactor;
                     const chunkCollisionRadius = policeCollisionRadius + chunk.userData.width/2 + 5;
                     
@@ -398,7 +400,8 @@ export function updatePoliceAI(delta) {
                         
                         const policeAngle = policeCar.rotation.y;
                         const chunkDist = Math.sqrt(chunkDistSq);
-                        const impactSpeed = policeSpeedUnits * 0.2; // Better scaling with player
+                        const IMPACT_SPEED_MULTIPLIER = 0.2; // Scale police speed to match player physics
+                        const impactSpeed = policeSpeedUnits * IMPACT_SPEED_MULTIPLIER;
                         
                         chunk.userData.velocity.set(
                             Math.sin(policeAngle) * impactSpeed + (cdx/chunkDist) * 5,

@@ -698,7 +698,8 @@ export function updateBuildingChunks(delta) {
     
     // Speed-based collision detection radius to prevent tunneling at high speeds
     const carSpeed = Math.abs(gameState.speed);
-    const speedFactor = Math.max(1, carSpeed / 30); // Increase detection range when moving fast
+    const SPEED_TO_COLLISION_RATIO = 30; // Speed units needed to double collision radius
+    const speedFactor = Math.max(1, carSpeed / SPEED_TO_COLLISION_RATIO);
     const effectiveCarRadius = carRadius * speedFactor;
     
     const gridSize = gameState.chunkGridSize;
@@ -727,7 +728,6 @@ export function updateBuildingChunks(delta) {
                      if (distSq < collisionRadius * collisionRadius) {
                          if (Math.abs(chunk.position.y - carPos.y) < (chunk.userData.height/2 + 10)) {
                              
-                             const carSpeed = Math.abs(gameState.speed);
                              const carAngle = playerCar.rotation.y;
                              const angleToChunk = Math.atan2(dx, dz);
                              
@@ -865,7 +865,8 @@ export function updateBuildingChunks(delta) {
             ) / 2;
             
             // Speed-based collision detection to prevent tunneling at high speeds
-            const speedBasedBuffer = Math.max(2, carSpeed * 0.3);
+            const SPEED_BUFFER_MULTIPLIER = 0.3; // Buffer scales 30% of current speed
+            const speedBasedBuffer = Math.max(2, carSpeed * SPEED_BUFFER_MULTIPLIER);
             const collisionDist = effectiveCarRadius + debrisSize + speedBasedBuffer;
             
             if (distSq < collisionDist * collisionDist) {
@@ -876,10 +877,11 @@ export function updateBuildingChunks(delta) {
                 const normZ = -dz / dist;
                 
                 // Push CAR back (solid collision - no passing through!)
+                const TUNNELING_PREVENTION_MULTIPLIER = 1.5; // Stronger push to prevent high-speed tunneling
                 const overlap = collisionDist - dist;
                 if (overlap > 0) {
-                    playerCar.position.x += normX * overlap * 1.5; // Stronger push to prevent tunneling
-                    playerCar.position.z += normZ * overlap * 1.5;
+                    playerCar.position.x += normX * overlap * TUNNELING_PREVENTION_MULTIPLIER;
+                    playerCar.position.z += normZ * overlap * TUNNELING_PREVENTION_MULTIPLIER;
                 }
                 
                 // Only shatter if not already shattered and going fast enough
@@ -1093,8 +1095,9 @@ export function createBuildingDebris(position, buildingColor, carSpeed) {
         
         // More realistic spread pattern - debris follows impact direction with limited spread
         // Instead of random 360° spread, debris mostly goes in the impact direction
+        const DEBRIS_SPREAD_ANGLE_RADIANS = Math.PI * 0.4; // ±36 degrees (72° total cone)
         const impactAngle = Math.atan2(impactX, impactZ);
-        const spreadAngle = impactAngle + (Math.random() - 0.5) * Math.PI * 0.4; // ±36° spread instead of 360°
+        const spreadAngle = impactAngle + (Math.random() - 0.5) * DEBRIS_SPREAD_ANGLE_RADIANS;
         const spreadForce = 2 + Math.random() * carSpeed * 0.25; // Reduced spread force
         
         chunk.userData = {
