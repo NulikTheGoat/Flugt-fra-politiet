@@ -65,9 +65,9 @@ Using LEGO MPS (Model Prediction Service) with Anthropic Claude:
 
 ### Phase 5: Polish & Optimization
 - [x] Add fallback static phrases if API fails
-- [ ] Tune commentary frequency
-- [ ] Add variety to prompts
-- [ ] Test with different game scenarios
+- [x] Tune commentary frequency
+- [x] Add variety to prompts
+- [x] Test with different game scenarios
 
 ### Phase 6: Voice
 - [ ] Add text to speech ( maybe whisper or something like it)
