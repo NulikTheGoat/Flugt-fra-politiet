@@ -26,18 +26,71 @@ export function createPoliceCar(type = 'standard') {
     };
 
     // Get shared materials if available
-    const bodyMat = config.bodyMaterial || new THREE.MeshLambertMaterial({ color: config.color });
-    // Car body
+    const bodyConfig = config.bodyMaterial || { color: config.color };
+    const bodyMat = new THREE.MeshPhongMaterial({ 
+        color: bodyConfig.color,
+        shininess: type === 'interceptor' ? 100 : 60,
+        specular: 0x444444
+    });
+
+    // --- ENHANCED POLICE CAR ---
+    
+    // 1. Car Body
     const body = new THREE.Mesh(sharedGeometries.carBody, bodyMat);
     body.position.y = 6;
     body.castShadow = true;
     carGroup.add(body);
+
+    // Bumpers
+    const bumper = new THREE.Mesh(sharedGeometries.bumper, sharedMaterials.bumper);
+    bumper.position.set(0, 2, -23); // Rear
+    carGroup.add(bumper);
+
+    const frontBumper = new THREE.Mesh(sharedGeometries.bumper, sharedMaterials.bumper);
+    frontBumper.position.set(0, 2, 23); // Front
+    carGroup.add(frontBumper);
+
+    // Headlights/Taillights
+    const leftHead = new THREE.Mesh(sharedGeometries.headlight, sharedMaterials.headlight);
+    leftHead.position.set(-7, 6, 22.6);
+    carGroup.add(leftHead);
+    const rightHead = new THREE.Mesh(sharedGeometries.headlight, sharedMaterials.headlight);
+    rightHead.position.set(7, 6, 22.6);
+    carGroup.add(rightHead);
+
+    const leftTail = new THREE.Mesh(sharedGeometries.taillight, sharedMaterials.taillight);
+    leftTail.position.set(-7, 7, -22.6);
+    carGroup.add(leftTail);
+    const rightTail = new THREE.Mesh(sharedGeometries.taillight, sharedMaterials.taillight);
+    rightTail.position.set(7, 7, -22.6);
+    carGroup.add(rightTail);
 
     // White stripe (only for police/interceptor)
     if (type === 'standard' || type === 'interceptor') {
         const stripe = new THREE.Mesh(sharedGeometries.policeStripe, sharedMaterials.white);
         stripe.position.set(0, 12.5, 0);
         carGroup.add(stripe);
+        
+        // Windows
+        const windowGeo = new THREE.BoxGeometry(16, 6, 1);
+        const frontWindow = new THREE.Mesh(windowGeo, sharedMaterials.window);
+        frontWindow.position.set(0, 16, 5);
+        carGroup.add(frontWindow);
+        const backWindow = new THREE.Mesh(windowGeo, sharedMaterials.window);
+        backWindow.position.set(0, 16, -15);
+        carGroup.add(backWindow);
+
+        // Bullbar (Ramming Guard)
+        const bullbar = new THREE.Mesh(new THREE.BoxGeometry(14, 6, 2), sharedMaterials.bumper);
+        bullbar.position.set(0, 6, 25);
+        carGroup.add(bullbar);
+        const bullbarV1 = new THREE.Mesh(new THREE.BoxGeometry(2, 8, 2), sharedMaterials.bumper);
+        bullbarV1.position.set(-5, 7, 25);
+        carGroup.add(bullbarV1);
+        const bullbarV2 = new THREE.Mesh(new THREE.BoxGeometry(2, 8, 2), sharedMaterials.bumper);
+        bullbarV2.position.set(5, 7, 25);
+        carGroup.add(bullbarV2);
+
     } else if (type === 'military') {
         const camo = new THREE.Mesh(sharedGeometries.militaryCamo, sharedMaterials.camo);
         camo.position.set(0, 8, 0);
@@ -60,19 +113,27 @@ export function createPoliceCar(type = 'standard') {
     }
 
     // Car roof
-    const roofMat = config.roofMaterial || new THREE.MeshLambertMaterial({ color: config.color });
+    const roofConfig = config.roofMaterial || { color: config.color };
+    const roofMat = new THREE.MeshPhongMaterial({ color: roofConfig.color, shininess: 50 });
+    // Make roof slightly darker
+    roofMat.color.multiplyScalar(0.8);
+
     const roof = new THREE.Mesh(sharedGeometries.carRoof, roofMat);
     roof.position.set(0, 16, -5);
     roof.castShadow = true;
     carGroup.add(roof);
 
-    // Light on roof
+    // Light on roof - Improved
+    const lightBarCenter = new THREE.Mesh(new THREE.BoxGeometry(10, 1, 3), sharedMaterials.bumper);
+    lightBarCenter.position.set(0, 20.5, -5);
+    carGroup.add(lightBarCenter);
+
     const redLight = new THREE.Mesh(sharedGeometries.policeLight, sharedMaterials.redLight);
-    redLight.position.set(-4, 20, -8);
+    redLight.position.set(-4, 21, -5);
     carGroup.add(redLight);
 
     const blueLight = new THREE.Mesh(sharedGeometries.policeLight, sharedMaterials.blueLight);
-    blueLight.position.set(4, 20, -8);
+    blueLight.position.set(4, 21, -5);
     carGroup.add(blueLight);
 
     // Wheels
@@ -87,6 +148,11 @@ export function createPoliceCar(type = 'standard') {
         const wheel = new THREE.Mesh(sharedGeometries.wheel, sharedMaterials.wheel);
         wheel.rotation.z = Math.PI / 2;
         wheel.position.set(...pos);
+        
+        // Rims for police too
+        const rim = new THREE.Mesh(new THREE.CylinderGeometry(2, 2, 8.2, 8), sharedMaterials.bumper);
+        wheel.add(rim);
+
         carGroup.add(wheel);
     });
 

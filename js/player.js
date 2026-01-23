@@ -105,31 +105,126 @@ export function createPlayerCar(color = 0xff0000, type = 'standard') {
         }
 
     } else {
-        // Standard Car body
-        const body = new THREE.Mesh(sharedGeometries.carBody, new THREE.MeshLambertMaterial({ color: color }));
+        // --- ENHANCED CAR DESIGN ---
+        const isSport = ['sport', 'super', 'hyper'].includes(type);
+        const isMuscle = type === 'muscle';
+        
+        // Shiny paint for player
+        const bodyMat = new THREE.MeshPhongMaterial({ 
+            color: color,
+            shininess: isSport ? 100 : 30, // Sport cars are shinier
+            specular: 0x444444 
+        });
+
+        // 1. Car Body
+        const body = new THREE.Mesh(sharedGeometries.carBody, bodyMat);
         body.position.y = 6;
         body.castShadow = true;
         body.receiveShadow = true;
         body.name = 'carBody';
         carGroup.add(body);
 
-        // Car roof (slightly darker than body)
-        const roofColor = new THREE.Color(color).multiplyScalar(0.8);
-        const roof = new THREE.Mesh(sharedGeometries.carRoof, new THREE.MeshLambertMaterial({ color: roofColor }));
-        roof.position.set(0, 16, -5);
+        // 2. Car Roof/Cabin
+        const roofColor = new THREE.Color(color).multiplyScalar(0.7);
+        const roofMat = new THREE.MeshPhongMaterial({ color: roofColor, shininess: 50 });
+        const roof = new THREE.Mesh(sharedGeometries.carRoof, roofMat);
+        
+        // Adjust roof based on car type
+        if (isSport) {
+            roof.scale.y = 0.7; // Lower profile
+            roof.position.set(0, 14, -3); // Shifted back slightly
+        } else {
+            roof.position.set(0, 16, -5);
+        }
+        
         roof.castShadow = true;
         roof.receiveShadow = true;
         roof.name = 'carRoof';
         carGroup.add(roof);
 
-        // Windows
-        const frontWindow = new THREE.Mesh(sharedGeometries.window, sharedMaterials.window);
-        frontWindow.position.set(0, 16, 5);
+        // 3. Reflective Windows
+        const windowGeo = new THREE.BoxGeometry(16, 6, 1);
+        
+        // Front Window (Windshield)
+        const frontWindow = new THREE.Mesh(windowGeo, sharedMaterials.window);
+        if (isSport) {
+            frontWindow.scale.y = 0.7;
+            frontWindow.position.set(0, 14, 5); // Matching roof
+            frontWindow.rotation.x = -0.2; // Rake it back
+        } else {
+            frontWindow.position.set(0, 16, 5);
+        }
         carGroup.add(frontWindow);
 
-        const backWindow = new THREE.Mesh(sharedGeometries.window, sharedMaterials.window);
-        backWindow.position.set(0, 16, -12);
+        // Back Window
+        const backWindow = new THREE.Mesh(windowGeo, sharedMaterials.window);
+        if (isSport) {
+            backWindow.scale.y = 0.7;
+            backWindow.position.set(0, 14, -11); 
+        } else {
+            backWindow.position.set(0, 16, -15);
+        }
         carGroup.add(backWindow);
+
+        // 4. Bumpers
+        const frontBumper = new THREE.Mesh(sharedGeometries.bumper, sharedMaterials.bumper);
+        frontBumper.position.set(0, 2, 23);
+        carGroup.add(frontBumper);
+
+        const backBumper = new THREE.Mesh(sharedGeometries.bumper, sharedMaterials.bumper);
+        backBumper.position.set(0, 2, -23);
+        carGroup.add(backBumper);
+
+        // 5. Lights
+        // Headlights (Front)
+        const leftHeadlight = new THREE.Mesh(sharedGeometries.headlight, sharedMaterials.headlight);
+        leftHeadlight.position.set(-7, 6, 22.6);
+        carGroup.add(leftHeadlight);
+
+        const rightHeadlight = new THREE.Mesh(sharedGeometries.headlight, sharedMaterials.headlight);
+        rightHeadlight.position.set(7, 6, 22.6);
+        carGroup.add(rightHeadlight);
+
+        // Emissive Spotlights (Optional - expensive, keeping it fake for now with meshes)
+        // If we want real light:
+        // const spot = new THREE.SpotLight(0xffffee, 2, 100, 0.5, 0.5, 1); ...
+
+        // Taillights (Back)
+        const leftTail = new THREE.Mesh(sharedGeometries.taillight, sharedMaterials.taillight);
+        leftTail.position.set(-7, 7, -22.6);
+        carGroup.add(leftTail);
+
+        const rightTail = new THREE.Mesh(sharedGeometries.taillight, sharedMaterials.taillight);
+        rightTail.position.set(7, 7, -22.6);
+        carGroup.add(rightTail);
+
+        // 6. Spoiler (for fancy cars)
+        if (isSport || isMuscle) {
+            const spoiler = new THREE.Mesh(sharedGeometries.spoiler, bodyMat);
+            spoiler.position.set(0, 15, -20);
+            if (isSport) spoiler.position.y = 13; // Lower for sport
+            
+            const standL = new THREE.Mesh(sharedGeometries.spoilerStand, sharedMaterials.bumper);
+            standL.position.set(-8, -2, 0);
+            spoiler.add(standL);
+            
+            const standR = new THREE.Mesh(sharedGeometries.spoilerStand, sharedMaterials.bumper);
+            standR.position.set(8, -2, 0);
+            spoiler.add(standR);
+
+            carGroup.add(spoiler);
+        }
+
+        // 7. Exhausts
+        const exhaustL = new THREE.Mesh(sharedGeometries.exhaust, sharedMaterials.chrome);
+        exhaustL.rotation.x = Math.PI / 2;
+        exhaustL.position.set(-5, 2, -24);
+        carGroup.add(exhaustL);
+
+        const exhaustR = new THREE.Mesh(sharedGeometries.exhaust, sharedMaterials.chrome);
+        exhaustR.rotation.x = Math.PI / 2;
+        exhaustR.position.set(5, 2, -24);
+        carGroup.add(exhaustR);
 
         // Wheels
         const wheelPositions = [
@@ -147,6 +242,11 @@ export function createPlayerCar(color = 0xff0000, type = 'standard') {
             wheel.position.set(...pos);
             wheel.userData.baseY = pos[1];
             wheel.userData.wobbleOffset = index * Math.PI / 2; 
+
+            // Rims (Chrome cap)
+            const rim = new THREE.Mesh(new THREE.CylinderGeometry(2, 2, 8.2, 8), sharedMaterials.chrome);
+            wheel.add(rim);
+
             carGroup.userData.wheels.push(wheel);
             carGroup.add(wheel);
         });
