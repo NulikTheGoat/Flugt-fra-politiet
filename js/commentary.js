@@ -1310,3 +1310,16 @@ function showPoliceScannerBubble(text) {
         bubble.style.opacity = "0";
     }, 6000);
 }
+
+/**
+ * Display Sheriff Command - shows LLM-generated tactical commands
+ * @param {string} commandText - The command text from the LLM
+ */
+export function displaySheriffCommand(commandText) {
+    if (!commandText) return;
+    
+    // Display command as a police scanner message with special styling
+    showPoliceScannerBubble(commandText);
+    
+    console.log('[Sheriff Command]:', commandText);
+}
