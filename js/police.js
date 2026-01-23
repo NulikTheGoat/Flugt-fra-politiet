@@ -352,6 +352,9 @@ export function updatePoliceAI(delta) {
         // Heat 1: baseline, Heat 6: 2.5x more aggressive
         let aggressionMultiplier = 1 + (gameState.heatLevel - 1) * 0.3; 
         
+        // Initialize police speed first (needed for calculations below)
+        let policeSpeed = (policeCar.userData.speed || 250);
+        
         // --- PREDICTIVE TARGETING (ALL EXCEPT SHERIFF) ---
         // Police predict where player will be and try to intercept
         let targetDirection;
@@ -375,8 +378,6 @@ export function updatePoliceAI(delta) {
                 targetDirection = Math.atan2(dx, dz);
             }
         }
-        
-        let policeSpeed = (policeCar.userData.speed || 250);
 
         // --- OBSTACLE AVOIDANCE (ALL POLICE) ---
         // Proactive lookahead to avoid buildings - varies by type
