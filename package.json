@@ -5,12 +5,16 @@
   "main": "script_backup.js",
   "scripts": {
     "test": "npx playwright test",
+    "test:fast": "npx playwright test --workers=4",
+    "test:failed": "npx playwright test --last-failed",
+    "test:only": "npx playwright test --grep",
+    "test:quick": "npx playwright test tests/regression/quick.spec.js --workers=4",
     "test:speed": "npx playwright test speed-limit.spec.js",
-    "test:speed:headed": "npx playwright test speed-limit.spec.js --headed",
     "test:values": "node tests/test-speed-values.cjs",
-    "test:debug": "npx playwright test --debug",
+    "test:debug": "npx playwright test --debug --headed",
+    "test:headed": "npx playwright test --headed --workers=1",
     "test:regression": "npx playwright test tests/regression/",
-    "test:regression:headed": "npx playwright test tests/regression/ --headed",
+    "test:regression:fast": "npx playwright test tests/regression/ --workers=4",
     "test:core": "npx playwright test tests/regression/core-gameplay.spec.js",
     "test:ui": "npx playwright test tests/regression/ui-elements.spec.js",
     "test:physics": "npx playwright test tests/regression/physics-collision.spec.js",
@@ -18,7 +22,7 @@
     "test:police": "npx playwright test tests/regression/police-ai.spec.js",
     "test:mp": "npx playwright test tests/regression/multiplayer.spec.js",
     "test:world": "npx playwright test tests/regression/world-rendering.spec.js",
-    "test:all": "npm run test:values && npx playwright test",
+    "test:all": "npm run test:values && npx playwright test --workers=4",
     "start": "node server.js"
   },
   "repository": {
