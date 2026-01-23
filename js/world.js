@@ -6,6 +6,7 @@ import { playerCar, takeDamage } from './player.js';
 import { createSmoke, createSpark } from './particles.js';
 import { addMoney } from './ui.js';
 import { logEvent, EVENTS } from './commentary.js';
+import { BUILDING_TYPES } from './constants.js';
 
 export function createSky() {
     // Gradient Sky
@@ -209,7 +210,7 @@ export function createGround() {
     for (let i = -2500; i < 2500; i += 300) {
         const marking = new THREE.Mesh(markingGeometry, markingMaterial);
         marking.rotation.x = -Math.PI / 2;
-        marking.position.set(0, 0.45, i);
+        marking.position.set(0, 0.55, i); // Raised to prevent z-fighting
         marking.receiveShadow = true;
         scene.add(marking);
     }
@@ -218,7 +219,7 @@ export function createGround() {
     for (let i = -2500; i < 2500; i += 300) {
         const marking = new THREE.Mesh(markingGeometry, markingMaterial);
         marking.rotation.x = -Math.PI / 2;
-        marking.position.set(i, 0.45, 0);
+        marking.position.set(i, 0.55, 0); // Raised to prevent z-fighting
         marking.receiveShadow = true;
         scene.add(marking);
     }
@@ -247,191 +248,51 @@ export function createTrees() {
     const foliageMaterial = new THREE.MeshLambertMaterial({ color: 0x2E7D32 });
 
     treePositions.forEach(pos => {
-        // Træstamme - destructible
-        // Optimization: Reuse material, disable auto update
-        const trunk = new THREE.Mesh(trunkGeometry, trunkMaterial);
-        trunk.position.set(pos[0], 25, pos[1]);
-        trunk.matrixAutoUpdate = false;
-        trunk.updateMatrix();
-
-        trunk.castShadow = true;
-        trunk.userData = {
-            isTree: true,
-            isHit: false,
-            health: 2, // Kan modstå 2 hits
-            velocity: new THREE.Vector3(),
-            rotVelocity: new THREE.Vector3(),
-            width: 20,
-            height: 50,
-            depth: 20
-        };
-        scene.add(trunk);
-        gameState.chunks.push(trunk);
-        
-        // Grid registration for træstamme
-        const gridX = Math.floor(trunk.position.x / gameState.chunkGridSize);
-        const gridZ = Math.floor(trunk.position.z / gameState.chunkGridSize);
-        const key = `${gridX},${gridZ}`;
-        if (!gameState.chunkGrid[key]) gameState.chunkGrid[key] = [];
-        gameState.chunkGrid[key].push(trunk);
-
-        // Trækrone - destructible, falder med stammen
-        // Optimization: Reuse material, disable auto update
-        const foliage = new THREE.Mesh(foliageGeometry, foliageMaterial);
-        foliage.position.set(pos[0], 80, pos[1]);
-        foliage.matrixAutoUpdate = false;
-        foliage.updateMatrix();
-
-        foliage.castShadow = true;
-        foliage.userData = {
-            isTreeFoliage: true,
-            linkedTrunk: trunk,
-            isHit: false,
-            velocity: new THREE.Vector3(),
-            rotVelocity: new THREE.Vector3(),
-            width: 35,
-            height: 70,
-            depth: 35
-        };
-        scene.add(foliage);
-        trunk.userData.linkedFoliage = foliage;
+        const group = createSingleTree(pos[0], pos[1]);
+        scene.add(group);
     });
 }
 
 
-// Create a randomized "Pølsevogn" (Hotdog Stand) at a given position
+// Create "Pølsevogn" (Hotdog Stand) around the map - BIGGER and more visible!
 export function createHotdogStands() {
+    console.log("🌭 Creating Hotdog Stands...");
+    
+    // Positions around the map - away from roads but visible
     const standPositions = [
-        [100, 100], [-100, 100], [100, -100], [-100, -100], // Near center
-        [500, 500], [-500, -500], [500, -500], [-500, 500], // Mid range
-        [1200, 0], [-1200, 0], [0, 1200], [0, -1200],       // Outer axes
-        [800, 800], [-800, -800], [-800, 800], [800, -800], // Diagonal
-        [150, -450], [-350, 200], [600, -100], [-100, 700]  // Random spots
+        // Near spawn - easy to find!
+        [80, 80],
+        [-80, 80],
+        [80, -80],
+        [-80, -80],
+        // Along edges of road
+        [200, 200],
+        [-200, 200],
+        [200, -200],
+        [-200, -200],
+        // Further out
+        [400, 0],
+        [-400, 0],
+        [0, 400],
+        [0, -400],
+        [600, 300],
+        [-600, 300],
+        [600, -300],
+        [-600, -300],
+        // Spread around map
+        [900, 500],
+        [-900, 500],
+        [500, 900],
+        [-500, -900],
     ];
 
     standPositions.forEach(pos => {
-        // Randomize slightly
-        const x = pos[0] + (Math.random() - 0.5) * 100;
-        const z = pos[1] + (Math.random() - 0.5) * 100;
-        
-        const group = new THREE.Group();
-        group.position.set(x, 0, z);
-        group.rotation.y = Math.random() * Math.PI * 2;
-        
-        // --- Visual Mesh Construction ---
-        
-        // Cart Body (White box)
-        const bodyGeo = new THREE.BoxGeometry(20, 15, 12);
-        const bodyMat = new THREE.MeshLambertMaterial({ color: 0xFFFFFF }); // White
-        const body = new THREE.Mesh(bodyGeo, bodyMat);
-        body.position.set(0, 10, 0);
-        group.add(body);
-        
-        // Red Stripe/Details
-        const stripeGeo = new THREE.BoxGeometry(20.2, 3, 12.2);
-        const redMat = new THREE.MeshLambertMaterial({ color: 0xD32F2F }); // Red
-        const stripe = new THREE.Mesh(stripeGeo, redMat);
-        stripe.position.set(0, 8, 0);
-        group.add(stripe);
-        
-        // Wheels
-        const wheelGeo = new THREE.CylinderGeometry(4, 4, 14, 16);
-        const wheelMat = new THREE.MeshLambertMaterial({ color: 0x333333 });
-        const wheels = new THREE.Mesh(wheelGeo, wheelMat);
-        wheels.rotation.z = Math.PI / 2;
-        wheels.position.set(0, 4, 0);
-        group.add(wheels);
-        
-        // Umbrella Stick
-        const stickGeo = new THREE.CylinderGeometry(0.5, 0.5, 25);
-        const stickMat = new THREE.MeshLambertMaterial({ color: 0xCCCCCC });
-        const stick = new THREE.Mesh(stickGeo, stickMat);
-        stick.position.set(0, 20, 0);
-        group.add(stick);
-        
-        // Umbrella Top (Red/White stripes effectively simulated by single color for now or simple cone)
-        const umbrellaGeo = new THREE.ConeGeometry(12, 5, 8);
-        const umbrellaMat = new THREE.MeshLambertMaterial({ color: 0xFFFFFF }); // White base
-        const umbrella = new THREE.Mesh(umbrellaGeo, umbrellaMat);
-        umbrella.position.set(0, 32, 0);
-        group.add(umbrella);
-        
-        // Second cone for stripe effect (Red)
-        const umbrellaStripeGeo = new THREE.ConeGeometry(12.1, 4, 8);
-        const umbrellaStripe = new THREE.Mesh(umbrellaStripeGeo, redMat);
-        umbrellaStripe.position.set(0, 31, 0);
-        group.add(umbrellaStripe);
-        
-        // --- Physics/Collision Setup ---
-        // We create an invisible bounding box for collision detection,
-        // but we attach the visual group to it or make the group itself the interactive object?
-        // The existing system uses single Meshes (for trees) or chunks. 
-        // Let's wrap it in a single physics object for simplicity, or just treat the body as the collider.
-        
-        // To make the whole group fly apart, it's complex. 
-        // Simpler approach: Treat 'body' as the main collider, and link the rest visually.
-        // OR: Make a single Mesh by merging geometries if performance needed, but for 20 props, Group is fine?
-        // Wait, the collision logic checks `chunk.position` and `chunk.userData`.
-        // `chunk` needs to be an Object3D in the scene.
-        
-        // Let's make the 'body' the main physics object, and attach other parts to it.
-        // That way when body moves/rotates physically, parts follow.
-        
-        scene.add(body); // Add body directly to scene as the "physics object"
-        
-        // Attach other parts to body
-        // Body is at (0, 10, 0) relative to group. 
-        // Converting relative positions to be children of body:
-        stripe.position.y -= 10; body.add(stripe);
-        wheels.position.y -= 10; body.add(wheels);
-        stick.position.y -= 10; body.add(stick);
-        umbrella.position.y -= 10; body.add(umbrella);
-        umbrellaStripe.position.y -= 10; body.add(umbrellaStripe);
-        
-        // Set body world position (it was 0,10,0 in group, so at x, 10, z in world)
-        body.position.set(x, 10, z);
-        body.rotation.y = Math.random() * Math.PI * 2;
-        body.castShadow = true;
-        
-        // Physics Data
-        body.matrixAutoUpdate = false; // Static until hit
-        body.updateMatrix();
-        
-        body.userData = {
-            isHotdogStand: true, // Identify it
-            isHit: false,
-            health: 1, // Fragile! 1 hit to smash
-            velocity: new THREE.Vector3(),
-            rotVelocity: new THREE.Vector3(),
-            width: 20,
-            height: 35, // Approx height including umbrella
-            depth: 12
-        };
-        
-        gameState.chunks.push(body);
-        
-        // Grid registration
-        const gridX = Math.floor(x / gameState.chunkGridSize);
-        const gridZ = Math.floor(z / gameState.chunkGridSize);
-        const key = `${gridX},${gridZ}`;
-        if (!gameState.chunkGrid[key]) gameState.chunkGrid[key] = [];
-        gameState.chunkGrid[key].push(body);
+        const stand = createSingleHotdogStand(pos[0], pos[1]);
+        scene.add(stand);
     });
+    
+    console.log(`🌭 Created ${standPositions.length} Hotdog stands!`);
 }
-
-// Bygnings typer med deres karakteristika
-const BUILDING_TYPES = {
-    GENERIC: { name: 'generic', colors: [0xE55039, 0xE58E26, 0x4A69BD, 0x60A3BC, 0x78E08F] }, // Colorful bricks
-    SHOP: { name: 'shop', colors: [0xF6B93B, 0xFA983A, 0xE58E26], hasAwning: true, signColor: 0xFEEAFA }, // Bright Orange/Gold
-    BANK: { name: 'bank', colors: [0x82CCDD, 0x60A3BC, 0x3C6382], hasColumns: true, signColor: 0xF8EFBA }, // Clean Blue-Greys
-    PIZZERIA: { name: 'pizzeria', colors: [0xEB2F06, 0xB71540, 0xE55039], hasAwning: true, signColor: 0xF8C291 }, // Vibrant Red
-    CHURCH: { name: 'church', colors: [0xF1F2F6, 0xDFE4EA], hasTower: true, hasRoof: true }, // White/Light Grey (Traditional)
-    POLICE_STATION: { name: 'police', colors: [0x0C2461, 0x1E3799, 0x4A69BD], hasFlagpole: true, signColor: 0xFFFFFF }, // Policing Blue
-    PARLIAMENT: { name: 'parliament', colors: [0xD7CCC8, 0xBCAAA4], hasDome: true, hasColumns: true, hasCow: true }, // Stone color
-    RESIDENTIAL: { name: 'residential', colors: [0xF8C291, 0xE77F67, 0xFDA7DF, 0xD980FA, 0xB53471] }, // Pastel warmth and pinks
-    OFFICE: { name: 'office', colors: [0x7EFFF5, 0x7158E2, 0x17C0EB], isGlass: true }, // Cyan/Neon Blue
-    WAREHOUSE: { name: 'warehouse', colors: [0x95A5A6, 0x7F8C8D, 0xA4B0BE], hasRollerDoor: true }, // Grey (Standard concrete)
-};
 
 // Skab et vindue
 function createWindow(x, y, z, rotY, width, height, isLit) {
@@ -789,106 +650,8 @@ export function createBuildings() {
     const chunkSize = 30;
 
     buildingConfigs.forEach(([x, z, width, depth, height, type]) => {
-        const buildingGroup = new THREE.Group();
-        
-        // Vælg farve baseret på bygningstype
-        const colors = type.colors;
-        const buildingColor = colors[Math.floor(Math.random() * colors.length)];
-        
-        const nx = Math.ceil(width / chunkSize);
-        const ny = Math.ceil(height / chunkSize);
-        const nz = Math.ceil(depth / chunkSize);
-
-        const dx = width / nx;
-        const dy = height / ny;
-        const dz = depth / nz;
-
-        const chunkGeometry = new THREE.BoxGeometry(dx, dy, dz);
-        const buildingMaterial = new THREE.MeshLambertMaterial({ color: buildingColor });
-        
-        const startX = x - width / 2 + dx / 2;
-        const startY = dy / 2;
-        const startZ = z - depth / 2 + dz / 2;
-
-        for(let ix = 0; ix < nx; ix++) {
-            for(let iy = 0; iy < ny; iy++) {
-                for(let iz = 0; iz < nz; iz++) {
-                    // Optimization: Reuse material, disable auto-update for static chunks
-                    const chunk = new THREE.Mesh(chunkGeometry, buildingMaterial);
-                    
-                    chunk.position.set(
-                        startX + ix * dx,
-                        startY + iy * dy,
-                        startZ + iz * dz
-                    );
-
-                    chunk.matrixAutoUpdate = false;
-                    chunk.updateMatrix();
-                    
-                    chunk.userData = {
-                        isHit: false,
-                        buildingType: type.name,
-                        velocity: new THREE.Vector3(),
-                        rotVelocity: new THREE.Vector3(),
-                        width: dx,
-                        height: dy,
-                        depth: dz
-                    };
-                    
-                    scene.add(chunk);
-                    gameState.chunks.push(chunk);
-
-                    const gridX = Math.floor(chunk.position.x / gameState.chunkGridSize);
-                    const gridZ = Math.floor(chunk.position.z / gameState.chunkGridSize);
-                    const key = `${gridX},${gridZ}`;
-                    if (!gameState.chunkGrid[key]) gameState.chunkGrid[key] = [];
-                    gameState.chunkGrid[key].push(chunk);
-                }
-            }
-        }
-        
-        // Tilføj vinduer til bygningen
-        addWindowsToBuilding(buildingGroup, x, z, width, depth, height, type);
-        
-        // Tilføj specielle elementer baseret på type
-        if (type.hasAwning) {
-            const awningColor = type.name === 'pizzeria' ? 0x388E3C : 0x1565C0;
-            const awning = createAwning(x, z, width, depth, awningColor);
-            buildingGroup.add(awning);
-        }
-        
-        if (type.hasColumns) {
-            const numCols = type.name === 'parliament' ? 6 : 4;
-            const columns = createColumns(x, z, width, depth, height, numCols);
-            buildingGroup.add(columns);
-        }
-        
-        if (type.hasTower) {
-            const tower = createChurchTower(x, z - depth/4, height);
-            buildingGroup.add(tower);
-        }
-        
-        if (type.hasDome) {
-            const dome = createDome(x, z, height, 30);
-            buildingGroup.add(dome);
-        }
-        
-        if (type.hasCow) {
-            const cow = createCow(x, z, height + 45);
-            buildingGroup.add(cow);
-        }
-        
-        if (type.hasFlagpole) {
-            const flagpole = createFlagpole(x + width/2 + 15, z + depth/2 + 10, 0);
-            buildingGroup.add(flagpole);
-        }
-        
-        if (type.signColor) {
-            const sign = createSign(x, z + depth/2 + 2, width, height, type.name, type.signColor, 0x000000);
-            buildingGroup.add(sign);
-        }
-        
-        scene.add(buildingGroup);
+        const building = createSingleBuilding(x, z, width, depth, height, type);
+        scene.add(building);
     });
 }
 
@@ -1299,7 +1062,7 @@ function createTreeDebris(position, carSpeed) {
 }
 
 // Create building debris (concrete chunks, glass shards, dust particles)
-function createBuildingDebris(position, buildingColor, carSpeed) {
+export function createBuildingDebris(position, buildingColor, carSpeed) {
     const impactX = Math.sin(playerCar?.rotation.y || 0);
     const impactZ = Math.cos(playerCar?.rotation.y || 0);
     
@@ -1648,4 +1411,326 @@ export function updateCollectibles() {
             addMoney((baseValue + timeBonus) * rebirthMult);
         }
     }
+}
+
+/**
+ * MODULARE SKABELSESFUNKTIONER 
+ * Bruges af både den indledende verden og Level Editoren
+ */
+
+export function removeObjectFromWorld(object) {
+    if (!object) return;
+    
+    // Recursive search for chunks to remove from grid
+    object.traverse(child => {
+        // If it's a chunk or physics object (has userData)
+        if (child.userData && (child.userData.buildingType || child.userData.isTree || child.userData.isHotdogStand || child.userData.isTreeFoliage)) {
+             // Remove from chunks array
+             if (gameState.chunks) {
+                 const chunkIndex = gameState.chunks.indexOf(child);
+                 if (chunkIndex > -1) {
+                      gameState.chunks.splice(chunkIndex, 1);
+                 }
+             }
+     
+             // Remove from chunkGrid
+             // We estimate key from current world position
+             const worldPos = new THREE.Vector3();
+             child.getWorldPosition(worldPos);
+             
+             const gridX = Math.floor(worldPos.x / gameState.chunkGridSize);
+             const gridZ = Math.floor(worldPos.z / gameState.chunkGridSize);
+             
+             // Check this key and neighbors (in case of boundary issues)
+             const keysToCheck = [
+                 `${gridX},${gridZ}`,
+                 `${gridX+1},${gridZ}`, `${gridX-1},${gridZ}`,
+                 `${gridX},${gridZ+1}`, `${gridX},${gridZ-1}`
+             ];
+             
+             keysToCheck.forEach(key => {
+                 if (gameState.chunkGrid[key]) {
+                      const idx = gameState.chunkGrid[key].indexOf(child);
+                      if (idx > -1) {
+                          gameState.chunkGrid[key].splice(idx, 1);
+                      }
+                 }
+             });
+        }
+    });
+    
+    scene.remove(object);
+}
+
+export function addObjectToWorld(object) {
+    if (!object) return;
+    
+    scene.add(object);
+    
+    // Recursive search for chunks to add to grid (restore physics)
+    object.traverse(child => {
+        if (child.userData && (child.userData.buildingType || child.userData.isTree || child.userData.isHotdogStand || child.userData.isTreeFoliage)) {
+             if (gameState.chunks && gameState.chunks.indexOf(child) === -1) {
+                 gameState.chunks.push(child);
+             }
+             
+             // Re-calculate key
+             const worldPos = new THREE.Vector3();
+             child.getWorldPosition(worldPos);
+             
+             const gridX = Math.floor(worldPos.x / gameState.chunkGridSize);
+             const gridZ = Math.floor(worldPos.z / gameState.chunkGridSize);
+             const key = `${gridX},${gridZ}`;
+             
+             if (!gameState.chunkGrid[key]) gameState.chunkGrid[key] = [];
+             if (gameState.chunkGrid[key].indexOf(child) === -1) {
+                 gameState.chunkGrid[key].push(child);
+             }
+        }
+    });
+}
+
+export function createSingleBuilding(x, z, width, depth, height, type) {
+    const buildingGroup = new THREE.Group();
+    
+    // Vælg farve baseret på bygningstype
+    const colors = type.colors;
+    const buildingColor = colors[Math.floor(Math.random() * colors.length)];
+    
+    const chunkSize = 30;
+    const nx = Math.ceil(width / chunkSize);
+    const ny = Math.ceil(height / chunkSize);
+    const nz = Math.ceil(depth / chunkSize);
+
+    const dx = width / nx;
+    const dy = height / ny;
+    const dz = depth / nz;
+
+    const chunkGeometry = new THREE.BoxGeometry(dx, dy, dz);
+    const buildingMaterial = new THREE.MeshLambertMaterial({ color: buildingColor });
+    
+    const startX = x - width / 2 + dx / 2;
+    const startY = dy / 2;
+    const startZ = z - depth / 2 + dz / 2;
+
+    for(let ix = 0; ix < nx; ix++) {
+        for(let iy = 0; iy < ny; iy++) {
+            for(let iz = 0; iz < nz; iz++) {
+                const chunk = new THREE.Mesh(chunkGeometry, buildingMaterial);
+                
+                chunk.position.set(
+                    startX + ix * dx,
+                    startY + iy * dy,
+                    startZ + iz * dz
+                );
+
+                chunk.matrixAutoUpdate = false;
+                chunk.updateMatrix();
+                
+                chunk.userData = {
+                    isHit: false,
+                    buildingType: type.name,
+                    velocity: new THREE.Vector3(),
+                    rotVelocity: new THREE.Vector3(),
+                    width: dx,
+                    height: dy,
+                    depth: dz
+                };
+                
+                // scene.add(chunk); // REMOVED: Managed by group
+                buildingGroup.add(chunk); // ADDED: Add to group
+                gameState.chunks.push(chunk);
+
+                const gridX = Math.floor(chunk.position.x / gameState.chunkGridSize);
+                const gridZ = Math.floor(chunk.position.z / gameState.chunkGridSize);
+                const key = `${gridX},${gridZ}`;
+                if (!gameState.chunkGrid[key]) gameState.chunkGrid[key] = [];
+                gameState.chunkGrid[key].push(chunk);
+            }
+        }
+    }
+    
+    // Tilføj vinduer til bygningen (vinduer er visuelle og ikke destruerbare)
+    addWindowsToBuilding(buildingGroup, x, z, width, depth, height, type);
+    
+    // Tilføj specielle elementer baseret på type
+    if (type.hasAwning) {
+        const awningColor = type.name === 'pizzeria' ? 0x388E3C : 0x1565C0;
+        const awning = createAwning(x, z, width, depth, awningColor);
+        buildingGroup.add(awning);
+    }
+    
+    if (type.hasColumns) {
+        const numCols = type.name === 'parliament' ? 6 : 4;
+        const columns = createColumns(x, z, width, depth, height, numCols);
+        buildingGroup.add(columns);
+    }
+    
+    if (type.hasTower) {
+        const tower = createChurchTower(x, z - depth/4, height);
+        buildingGroup.add(tower);
+    }
+    
+    if (type.hasDome) {
+        const dome = createDome(x, z, height, 30);
+        buildingGroup.add(dome);
+    }
+    
+    if (type.hasCow) {
+        const cow = createCow(x, z, height + 45);
+        buildingGroup.add(cow);
+    }
+    
+    if (type.hasFlagpole) {
+        const flagpole = createFlagpole(x + width/2 + 15, z + depth/2 + 10, 0);
+        buildingGroup.add(flagpole);
+    }
+    
+    if (type.signColor) {
+        const sign = createSign(x, z + depth/2 + 2, width, height, type.name, type.signColor, 0x000000);
+        buildingGroup.add(sign);
+    }
+    
+    scene.add(buildingGroup);
+    return buildingGroup;
+}
+
+export function createSingleTree(x, z) {
+    const trunkGeometry = new THREE.CylinderGeometry(8, 12, 50, 8);
+    const trunkMaterial = new THREE.MeshLambertMaterial({ color: 0x5D4037 });
+    const foliageGeometry = new THREE.ConeGeometry(35, 70, 8);
+    const foliageMaterial = new THREE.MeshLambertMaterial({ color: 0x2E7D32 });
+
+    const treeGroup = new THREE.Group();
+
+    const trunk = new THREE.Mesh(trunkGeometry, trunkMaterial);
+    trunk.position.set(x, 25, z);
+    trunk.matrixAutoUpdate = false;
+    trunk.updateMatrix();
+
+    trunk.castShadow = true;
+    trunk.userData = {
+        isTree: true,
+        isHit: false,
+        health: 2,
+        velocity: new THREE.Vector3(),
+        rotVelocity: new THREE.Vector3(),
+        width: 20,
+        height: 50,
+        depth: 20
+    };
+    // scene.add(trunk); // REMOVED
+    gameState.chunks.push(trunk);
+    
+    const gridX = Math.floor(trunk.position.x / gameState.chunkGridSize);
+    const gridZ = Math.floor(trunk.position.z / gameState.chunkGridSize);
+    const key = `${gridX},${gridZ}`;
+    if (!gameState.chunkGrid[key]) gameState.chunkGrid[key] = [];
+    gameState.chunkGrid[key].push(trunk);
+
+    const foliage = new THREE.Mesh(foliageGeometry, foliageMaterial);
+    foliage.position.set(x, 80, z);
+    foliage.matrixAutoUpdate = false;
+    foliage.updateMatrix();
+    foliage.castShadow = true;
+    
+    foliage.userData = {
+        isTreeFoliage: true,
+        linkedTrunk: trunk,
+        isHit: false,
+        velocity: new THREE.Vector3(),
+        rotVelocity: new THREE.Vector3(),
+        width: 35,
+        height: 70,
+        depth: 35
+    };
+    // scene.add(foliage); // REMOVED
+    // Note: for trees, we don't necessarily need the foliage in the grid if hitting the trunk is enough, 
+    // but building hits check everything in the grid.
+    // The physics loop for chunks iterates activeChunks.
+    // Collision loop iterates gameState.chunks via the grid.
+    
+    gameState.chunks.push(foliage);
+    const fGridX = Math.floor(foliage.position.x / gameState.chunkGridSize);
+    const fGridZ = Math.floor(foliage.position.z / gameState.chunkGridSize);
+    const fKey = `${fGridX},${fGridZ}`;
+    if (!gameState.chunkGrid[fKey]) gameState.chunkGrid[fKey] = [];
+    gameState.chunkGrid[fKey].push(foliage);
+
+    trunk.userData.linkedFoliage = foliage;
+    
+    treeGroup.add(trunk);
+    treeGroup.add(foliage);
+    return treeGroup;
+}
+
+export function createSingleHotdogStand(x, z) {
+    const standGroup = new THREE.Group();
+
+    // Body (destructible)
+    const bodyGeo = new THREE.BoxGeometry(30, 22, 18);
+    const bodyMat = new THREE.MeshLambertMaterial({ color: 0xFFFFFF });
+    const body = new THREE.Mesh(bodyGeo, bodyMat);
+    body.position.set(x, 17, z);
+    
+    body.userData = {
+        isHotdogStand: true,
+        isHit: false,
+        velocity: new THREE.Vector3(),
+        rotVelocity: new THREE.Vector3(),
+        width: 30,
+        height: 22,
+        depth: 18
+    };
+    
+    // scene.add(body); // REMOVED
+    gameState.chunks.push(body);
+    
+    const gridX = Math.floor(body.position.x / gameState.chunkGridSize);
+    const gridZ = Math.floor(body.position.z / gameState.chunkGridSize);
+    const key = `${gridX},${gridZ}`;
+    if (!gameState.chunkGrid[key]) gameState.chunkGrid[key] = [];
+    gameState.chunkGrid[key].push(body);
+
+    // Stripe (destructible/child)
+    const stripeGeo = new THREE.BoxGeometry(30.5, 5, 18.5);
+    const redMat = new THREE.MeshLambertMaterial({ color: 0xFF0000 });
+    const stripe = new THREE.Mesh(stripeGeo, redMat);
+    stripe.position.set(0, 3, 0); 
+    body.add(stripe);
+
+    // Umbrella (destructible/child)
+    const umbrellaGeo = new THREE.ConeGeometry(25, 10, 8);
+    const umbrella = new THREE.Mesh(umbrellaGeo, redMat);
+    umbrella.position.set(0, 40, 0);
+    body.add(umbrella);
+
+    // Pole (destructible/child)
+    const poleGeo = new THREE.CylinderGeometry(1, 1, 40);
+    const poleMat = new THREE.MeshLambertMaterial({ color: 0x888888 });
+    const pole = new THREE.Mesh(poleGeo, poleMat);
+    pole.position.set(0, 18, 0);
+    body.add(pole);
+
+    // Wheels (destructible/child)
+    const wheelGeo = new THREE.CylinderGeometry(4, 4, 2, 8);
+    const wheelMat = new THREE.MeshLambertMaterial({ color: 0x333333 });
+    const wheel1 = new THREE.Mesh(wheelGeo, wheelMat);
+    wheel1.rotation.z = Math.PI / 2;
+    wheel1.position.set(-10, -10, 9);
+    body.add(wheel1);
+    
+    const wheel2 = wheel1.clone();
+    wheel2.position.set(10, -10, 9);
+    body.add(wheel2);
+    
+    const wheel3 = wheel1.clone();
+    wheel3.position.set(-10, -10, -9);
+    body.add(wheel3);
+    
+    const wheel4 = wheel1.clone();
+    wheel4.position.set(10, -10, -9);
+    body.add(wheel4);
+    
+    return body;
 }

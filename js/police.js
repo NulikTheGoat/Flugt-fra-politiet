@@ -3,10 +3,11 @@ import { gameConfig } from './config.js';
 import { scene, camera } from './core.js';
 import { enemies, cars } from './constants.js';
 import { sharedGeometries, sharedMaterials } from './assets.js';
-import { createSmoke, createSpeedParticle, createFire } from './particles.js';
+import { createSmoke, createSpeedParticle, createFire, createMoneyExplosion } from './particles.js';
 import { playerCar, takeDamage } from './player.js';
 import { normalizeAngleRadians, clamp } from './utils.js';
-import { addMoney, showGameOver } from './ui.js';
+import { createBuildingDebris } from './world.js';
+import { addMoney, showFloatingMoney, showGameOver } from './ui.js';
 import * as Network from './network.js';
 import { logEvent, EVENTS } from './commentary.js';
 
@@ -174,7 +175,7 @@ export function updatePoliceAI(delta) {
                  policeCar.userData.speed = 0;
              }
              
-             // Dead cars are still solid obstacles - check collision with player
+             // Dead cars are collectable awards
              if (playerCar) {
                  const dx = playerCar.position.x - policeCar.position.x;
                  const dz = playerCar.position.z - policeCar.position.z;
@@ -182,30 +183,29 @@ export function updatePoliceAI(delta) {
                  const collisionRadius = 25;
                  
                  if (dist < collisionRadius) {
-                     const overlap = collisionRadius - dist;
-                     const nx = dist > 0 ? dx / dist : 1;
-                     const nz = dist > 0 ? dz / dist : 0;
+                     // AWARD!
+                     const reward = 250;
+                     addMoney(reward);
                      
-                     // Push player away from dead car
-                     playerCar.position.x += nx * overlap * 0.8;
-                     playerCar.position.z += nz * overlap * 0.8;
+                     // Show floating text animation
+                     showFloatingMoney(reward, policeCar.position, camera);
+
+                     createMoneyExplosion(policeCar.position);
+                     logEvent(EVENTS.COLLISION, `INDKASSERET BETJENT! +${reward} KR`);
                      
-                     // Damage player if going fast (throttled)
-                     const now = Date.now();
-                     if (now - (policeCar.userData.lastDeadCollision || 0) > 500) {
-                         policeCar.userData.lastDeadCollision = now;
-                         const speedKmh = Math.abs(gameState.speed) * 3.6;
-                         if (speedKmh > 20) {
-                             const damage = Math.max(gameConfig.minCrashDamage, speedKmh * gameConfig.playerCrashDamageMultiplier * 0.5);
-                             takeDamage(damage);
-                             gameState.speed *= 0.5; // Slow down on impact
-                             gameState.screenShake = 0.2;
-                             createSmoke(policeCar.position);
-                         }
-                     }
+                     // Despawn
+                     scene.remove(policeCar);
+                     
+                     // Mark for removal from array by setting a flag or handled in next loop
+                     // We can't splice easily inside forEach without messing up index
+                     // So we set a flag 'despawn' and filter later, or handle carefully
+                     policeCar.userData.remove = true;
+                     return; // Skip rest of loop for this car
                  }
              }
              
+             if (policeCar.userData.remove) return;
+
              // Smoke and fire effects - stay forever (throttled for performance)
              const now = Date.now();
              const timeSinceDeath = now - policeCar.userData.deathTime;
@@ -384,6 +384,9 @@ export function updatePoliceAI(delta) {
                         // Police hit a building chunk
                         chunk.userData.isHit = true;
                         gameState.activeChunks.push(chunk);
+
+                        // Create debris
+                        createBuildingDebris(chunk.position, chunk.material.color, policeSpeed);
                         
                         const policeAngle = policeCar.rotation.y;
                         const impactSpeed = policeSpeed * 0.01;

@@ -114,6 +114,94 @@ export function updateHUD(policeDistance) {
     }
 }
 
+
+export function showFloatingMoney(amount, worldPosition, camera) {
+    if (!amount || amount <= 0) return;
+    
+    // Create container
+    const floatingEl = document.createElement('div');
+    floatingEl.innerHTML = `
+        <span style="font-size: 1.5em; vertical-align: middle;">💸</span> 
+        <span>+${amount}</span>
+    `;
+    
+    // Assertive Design: Big, Bold, Gold & Black
+    Object.assign(floatingEl.style, {
+        position: 'absolute',
+        fontFamily: '"Arial Black", "Impact", sans-serif',
+        color: '#FFD700', // Gold
+        webkitTextStroke: '1.5px black', // Thick outline
+        textShadow: '3px 3px 0px rgba(0,0,0,0.5)', // Hard drop shadow
+        fontWeight: '900',
+        fontSize: '42px', // Much bigger
+        pointerEvents: 'none',
+        zIndex: '2000', // Very top
+        transform: 'translate(-50%, -50%) scale(0)', // Start invisible/small
+        transition: 'none', // We manage transitions manually or via animation
+        whiteSpace: 'nowrap'
+    });
+
+    let startX = window.innerWidth / 2;
+    let startY = window.innerHeight / 2;
+
+    // Project world position
+    if (worldPosition && camera) {
+        const vector = worldPosition.clone();
+        // Slightly offset upwards from the car wreck
+        vector.y += 5;
+        vector.project(camera);
+        startX = (vector.x * 0.5 + 0.5) * window.innerWidth;
+        startY = (-(vector.y * 0.5) + 0.5) * window.innerHeight;
+    }
+    
+    floatingEl.style.left = startX + 'px';
+    floatingEl.style.top = startY + 'px';
+    document.body.appendChild(floatingEl);
+    
+    // Animation Phase 1: THE IMPACT (Boom!)
+    requestAnimationFrame(() => {
+        // Force Reflow
+        void floatingEl.offsetWidth;
+        
+        floatingEl.style.transition = 'transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275)'; // Overshoot "Spring" easing
+        // Random tilt for dynamic look
+        const tilt = (Math.random() - 0.5) * 30; 
+        floatingEl.style.transform = `translate(-50%, -50%) scale(1.5) rotate(${tilt}deg)`;
+        
+        // Add a "Shockwave" flash behind if possible, or just keep it simple text for now.
+    });
+
+    // Animation Phase 2: THE COLLECTION (Swoosh to HUD)
+    // Wait for user to register the "Boom" (400ms)
+    setTimeout(() => {
+        const moneyRect = DOM.money.getBoundingClientRect();
+        // Target center of money counter
+        const targetX = moneyRect.left + moneyRect.width / 2;
+        const targetY = moneyRect.top + moneyRect.height / 2;
+        
+        // Calculate deltas
+        // We use transition for this movement
+        floatingEl.style.transition = 'all 0.6s cubic-bezier(0.6, -0.28, 0.735, 0.045)'; // Back-in / Anticipation easing? maybe too complex. 
+        // Let's use Ease-In (accelerate away)
+        floatingEl.style.transition = 'top 0.5s ease-in, left 0.5s ease-in, transform 0.5s ease-in, opacity 0.5s ease-in';
+        
+        floatingEl.style.left = targetX + 'px';
+        floatingEl.style.top = targetY + 'px';
+        floatingEl.style.transform = 'translate(-50%, -50%) scale(0.3) rotate(0deg)'; // Shrink into the wallet
+        floatingEl.style.opacity = '0.5';
+
+    }, 500);
+    
+    // Cleanup
+    setTimeout(() => {
+        floatingEl.remove();
+        // Trigger HUD bump exactly when it arrives
+        DOM.money.parentElement.classList.remove('hud-money-pop');
+        void DOM.money.parentElement.offsetWidth;
+        DOM.money.parentElement.classList.add('hud-money-pop');
+    }, 1000);
+}
+
 // Helper to add money and animate
 export function addMoney(amount) {
     if (amount <= 0) return;
