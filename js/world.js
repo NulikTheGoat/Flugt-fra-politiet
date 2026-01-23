@@ -77,8 +77,12 @@ export function createTrees() {
 
     treePositions.forEach(pos => {
         // Træstamme - destructible
-        const trunk = new THREE.Mesh(trunkGeometry, trunkMaterial.clone());
+        // Optimization: Reuse material, disable auto update
+        const trunk = new THREE.Mesh(trunkGeometry, trunkMaterial);
         trunk.position.set(pos[0], 25, pos[1]);
+        trunk.matrixAutoUpdate = false;
+        trunk.updateMatrix();
+
         trunk.castShadow = true;
         trunk.userData = {
             isTree: true,
@@ -101,8 +105,12 @@ export function createTrees() {
         gameState.chunkGrid[key].push(trunk);
 
         // Trækrone - destructible, falder med stammen
-        const foliage = new THREE.Mesh(foliageGeometry, foliageMaterial.clone());
+        // Optimization: Reuse material, disable auto update
+        const foliage = new THREE.Mesh(foliageGeometry, foliageMaterial);
         foliage.position.set(pos[0], 80, pos[1]);
+        foliage.matrixAutoUpdate = false;
+        foliage.updateMatrix();
+
         foliage.castShadow = true;
         foliage.userData = {
             isTreeFoliage: true,
@@ -513,13 +521,17 @@ export function createBuildings() {
         for(let ix = 0; ix < nx; ix++) {
             for(let iy = 0; iy < ny; iy++) {
                 for(let iz = 0; iz < nz; iz++) {
-                    const chunk = new THREE.Mesh(chunkGeometry, buildingMaterial.clone());
+                    // Optimization: Reuse material, disable auto-update for static chunks
+                    const chunk = new THREE.Mesh(chunkGeometry, buildingMaterial);
                     
                     chunk.position.set(
                         startX + ix * dx,
                         startY + iy * dy,
                         startZ + iz * dz
                     );
+
+                    chunk.matrixAutoUpdate = false;
+                    chunk.updateMatrix();
                     
                     chunk.userData = {
                         isHit: false,
@@ -632,6 +644,10 @@ export function updateBuildingChunks(delta) {
             chunk.position.y <= groundY + 0.1) {
              gameState.activeChunks.splice(i, 1);
              
+             // Optimization: Disable updates again as it's now static debris
+             chunk.matrixAutoUpdate = false;
+             chunk.updateMatrix(); // Ensure final position is locked
+
              // Mark as fallen debris - solid but no damage, can be shattered
              if (!chunk.userData.isSmallDebris) {
                  chunk.userData.isFallenDebris = true;
@@ -678,6 +694,7 @@ export function updateBuildingChunks(delta) {
                                  if (chunk.userData.health <= 0 || carSpeed > 25) {
                                      // Tree falls!
                                      chunk.userData.isHit = true;
+                                     chunk.matrixAutoUpdate = true; // Enable physics updates
                                      gameState.activeChunks.push(chunk);
                                      
                                      // Fell the tree in the direction of impact
@@ -697,6 +714,7 @@ export function updateBuildingChunks(delta) {
                                      if (chunk.userData.linkedFoliage) {
                                          const foliage = chunk.userData.linkedFoliage;
                                          foliage.userData.isHit = true;
+                                         foliage.matrixAutoUpdate = true;
                                          gameState.activeChunks.push(foliage);
                                          foliage.userData.velocity = chunk.userData.velocity.clone();
                                          foliage.userData.velocity.y += 3;
@@ -723,6 +741,7 @@ export function updateBuildingChunks(delta) {
                              } else {
                                  // Normal building chunk
                                  chunk.userData.isHit = true;
+                                 chunk.matrixAutoUpdate = true;
                                  gameState.activeChunks.push(chunk);
                                  
                                  chunk.userData.velocity.set(

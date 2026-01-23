@@ -750,6 +750,7 @@ function animate() {
     requestAnimationFrame(animate);
     
     const now = performance.now();
+    // Delta as ratio: 1.0 = one frame at 60fps, capped at 2 frames
     const delta = Math.min((now - lastTime) / 16.67, 2); 
     lastTime = now;
 

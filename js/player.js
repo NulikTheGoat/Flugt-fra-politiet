@@ -277,7 +277,7 @@ export function updatePlayer(delta, now) {
     const targetVelX = forwardX * gameState.speed;
     const targetVelZ = forwardZ * gameState.speed;
     
-    // Increased grip transition for better drift feel
+    // Grip transition for drift feel
     gameState.velocityX += (targetVelX - gameState.velocityX) * (0.15 + grip * 0.25) * delta;
     gameState.velocityZ += (targetVelZ - gameState.velocityZ) * (0.15 + grip * 0.25) * delta;
     
@@ -317,8 +317,9 @@ export function updatePlayer(delta, now) {
     // Wheel Suspensions
     if (playerCar.userData.wheels) {
         playerCar.userData.wheels.forEach(wheel => {
-             const wobble = Math.sin(now * 0.05 + wheel.userData.wobbleOffset) * 0.3;
-             const jitter = absSpeed > 30 ? (Math.random() - 0.5) * (absSpeed / 100) : 0;
+             // Slow wobble: now is in ms, 0.005 gives ~1.3 second period
+             const wobble = Math.sin(now * 0.005 + wheel.userData.wobbleOffset) * 0.3;
+             const jitter = absSpeed > 30 ? (Math.random() - 0.5) * (absSpeed / 150) : 0;
              wheel.position.y = wheel.userData.baseY + wobble + jitter;
         });
     }
