@@ -9,6 +9,16 @@
     "test:speed:headed": "npx playwright test speed-limit.spec.js --headed",
     "test:values": "node tests/test-speed-values.cjs",
     "test:debug": "npx playwright test --debug",
+    "test:regression": "npx playwright test tests/regression/",
+    "test:regression:headed": "npx playwright test tests/regression/ --headed",
+    "test:core": "npx playwright test tests/regression/core-gameplay.spec.js",
+    "test:ui": "npx playwright test tests/regression/ui-elements.spec.js",
+    "test:physics": "npx playwright test tests/regression/physics-collision.spec.js",
+    "test:shop": "npx playwright test tests/regression/shop-economy.spec.js",
+    "test:police": "npx playwright test tests/regression/police-ai.spec.js",
+    "test:mp": "npx playwright test tests/regression/multiplayer.spec.js",
+    "test:world": "npx playwright test tests/regression/world-rendering.spec.js",
+    "test:all": "npm run test:values && npx playwright test",
     "start": "node server.js"
   },
   "repository": {
