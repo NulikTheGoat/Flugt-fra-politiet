@@ -50,7 +50,41 @@ const commentaryState = {
     policeMessageCooldown: 12000, // 12 seconds cooldown for police radio
     lastGPSMessageTime: 0,
     gpsCooldown: 15000, // 15 seconds cooldown for GPS
-    lastMovementTime: 0 // Track idle time
+    lastMovementTime: 0, // Track idle time
+    activeMission: null, // { type, target, progress, text, reward, startTime }
+    lastMissionTime: 0,
+    missionCooldown: 45000 // 45 seconds between missions
+};
+
+const MISSION_TYPES = {
+    DESTROY: 'DESTROY', // Smash police cars
+    SURVIVE: 'SURVIVE', // Survive time without crashing (reset on crash?) or just survive duration
+    COLLECT: 'COLLECT', // Collect money
+    SPEED: 'SPEED'      // Maintain speed (hard to track duration, maybe just "Reach X speed")
+};
+
+// System prompt for The Boss
+const BOSS_PROMPT = `Du er "The Boss", en kriminel bagmand der sender SMS til en flugtbilist.
+Du er kynisk, magtfuld og taler i gadesprog ("makker", "yo", "hør her").
+Du giver en ordre.
+SKRIV EN KORT SMS PÅ DANSK (max 20 ord).
+Vær direkte. Hvis opgaven er udført, ros kort ("Godt arbejde", "Sådan skal det gøres").
+Ingen emojis.`;
+
+// Fallbacks for Boss
+const BOSS_FALLBACKS = {
+    NEW: [
+        "Jeg mangler penge. Kør som en gal og skaf mig 5000 kr!",
+        "Politiet irriterer mig. Smadr 3 af deres biler, nu.",
+        "Vis mig hvad du kan. Overlev i 60 sekunder uden at blive fanget.",
+        "Jeg keder mig. Kør over 150 km/t og giv den gas!"
+    ],
+    COMPLETE: [
+        "Godt arbejde, makker. Her er din andel.",
+        "Respekt. Du leverede varen.",
+        "Ikke dårligt. Vi ses ved næste job.",
+        "Sådan. Pengene er overført."
+    ]
 };
 
 // System prompt for the commentator
@@ -249,6 +283,16 @@ export function logEvent(type, value = null, context = {}) {
     commentaryState.eventBuffer.push(event);
     console.log('[Commentary] Event logged:', type, value);
 
+    // Update Mission Progress for events
+    if (commentaryState.activeMission && commentaryState.activeMission.type === MISSION_TYPES.DESTROY) {
+        if (type === EVENTS.POLICE_KILLED) {
+            commentaryState.activeMission.progress++;
+            if (commentaryState.activeMission.progress >= commentaryState.activeMission.target) {
+                completeMission();
+            }
+        }
+    }
+
     // Specific triggers for Sarcastic GPS
     if (type === EVENTS.CRASH) {
         // Chance to trigger GPS on crash
@@ -415,37 +459,40 @@ function buildEventSummary() {
     return `${summary}\n${contextInfo}\n\nGiv en kort, spændende kommentar på dansk om hvad der lige skete!`;
 }
 
+// Helper to make LLM requests
+async function callLLM(systemPrompt, eventSummary) {
+    try {
+        const response = await fetch('/api/commentary', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ systemPrompt, eventSummary })
+        });
+        
+        if (response.ok) {
+            const data = await response.json();
+            return data.commentary || null;
+        }
+    } catch (error) {
+        console.error('LLM Call Error:', error);
+    }
+    return null;
+}
+
 // Request commentary from server
 async function requestCommentary() {
     const summary = buildEventSummary();
     if (!summary) return;
     
-    try {
-        const response = await fetch('/api/commentary', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ 
-                systemPrompt: SYSTEM_PROMPT,
-                eventSummary: summary 
-            })
-        });
-        
-        if (response.ok) {
-            const data = await response.json();
-            if (data.commentary) {
-                queueCommentary(data.commentary);
-            }
-        } else {
-            console.warn('[Commentary] API request failed, using fallback');
-            useFallbackCommentary();
-        }
-    } catch (error) {
-        console.error('[Commentary] Error:', error);
+    // Clear processed events immediately to avoid double processing
+    commentaryState.eventBuffer = [];
+    
+    const commentary = await callLLM(SYSTEM_PROMPT, summary);
+    if (commentary) {
+        queueCommentary(commentary);
+    } else {
+        console.warn('[Commentary] API request failed, using fallback');
         useFallbackCommentary();
     }
-    
-    // Clear processed events
-    commentaryState.eventBuffer = [];
 }
 
 // Use fallback phrases when API fails
@@ -574,6 +621,7 @@ function hideCommentaryBubble() {
 // Main update function - call this from game loop
 export function updateCommentary() {
     checkStateEvents();
+    updateMissionProgress();
     
     const now = Date.now();
     
@@ -596,6 +644,15 @@ export function updateCommentary() {
             // Let's just trigger it solely on cooldown + intense action check inside the function
              triggerPoliceScanner();
         }
+    }
+
+    // Check for NEW MISSION trigger
+    // Only if: No active mission, no game over, cooldown passed, and random chance
+    if (!commentaryState.activeMission && 
+        !gameState.arrested && 
+        now - commentaryState.lastMissionTime > commentaryState.missionCooldown &&
+        Math.random() < 0.01) { // Low chance per frame
+        triggerNewMission();
     }
 }
 
@@ -653,27 +710,11 @@ export async function generateVerdict(stats) {
     Heat Level: ${stats.heatLevel}/5. 
     Indsamlede penge: ${stats.money} kr.`;
     
-    try {
-        const response = await fetch('/api/commentary', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ 
-                systemPrompt: JUDGE_PROMPT,
-                eventSummary: summary 
-            })
-        });
-        
-        if (response.ok) {
-            const data = await response.json();
-            if (data.commentary) {
-                return data.commentary;
-            }
-        }
-        return getJudgeFallback();
-    } catch (error) {
-        console.error("Judge API error:", error);
-        return getJudgeFallback();
+    const verdict = await callLLM(JUDGE_PROMPT, summary);
+    if (verdict) {
+        return verdict;
     }
+    return getJudgeFallback();
 }
 
 function getJudgeFallback() {
@@ -709,25 +750,10 @@ async function triggerGPSComment(triggerType, contextData = {}) {
             summary = "Spilleren gør noget irriterende.";
     }
 
-    try {
-        const response = await fetch('/api/commentary', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ 
-                systemPrompt: GPS_PROMPT,
-                eventSummary: summary 
-            })
-        });
-        
-        if (response.ok) {
-            const data = await response.json();
-            if (data.commentary) {
-                showGPSBubble(data.commentary);
-            }
-        } else {
-            useGPSFallback();
-        }
-    } catch (error) {
+    const comment = await callLLM(GPS_PROMPT, summary);
+    if (comment) {
+        showGPSBubble(comment);
+    } else {
         useGPSFallback();
     }
 }
@@ -789,6 +815,195 @@ function showGPSBubble(text) {
 }
 
 // ==========================================
+// BOSS MISSION FUNCTIONS
+// ==========================================
+
+async function triggerNewMission() {
+    if (commentaryState.activeMission) return;
+    
+    // Select random mission type
+    const types = Object.values(MISSION_TYPES);
+    const type = types[Math.floor(Math.random() * types.length)];
+    
+    let mission = {
+        type: type,
+        target: 0,
+        progress: 0,
+        reward: 0,
+        startTime: Date.now(),
+        description: "" // For LLM input
+    };
+
+    switch(type) {
+        case MISSION_TYPES.DESTROY:
+            mission.target = 3;
+            mission.reward = 5000;
+            mission.description = "Smadr 3 politibiler";
+            break;
+        case MISSION_TYPES.SURVIVE:
+            mission.target = 60; // Seconds
+            mission.reward = 3000;
+            mission.description = "Overlev i 60 sekunder uden at blive fanget";
+            break;
+        case MISSION_TYPES.COLLECT:
+            mission.target = 2000; // Cash
+            mission.startValue = gameState.totalMoney || gameState.money; // Track from current
+            mission.reward = 4000;
+            mission.description = "Saml 2000 kr";
+            break;
+        case MISSION_TYPES.SPEED:
+            mission.target = 180; // km/t
+            mission.reward = 2500;
+            mission.description = "Opnå 180 km/t";
+            break;
+    }
+    
+    commentaryState.activeMission = mission;
+    commentaryState.lastMissionTime = Date.now();
+    
+    // Ask LLM to generate the SMS
+    const summary = `Ny mission til spilleren: ${mission.description}. Skriv SMS'en.`;
+    
+    const text = await callLLM(BOSS_PROMPT, summary);
+    if (text) {
+        showBossMessage(text);
+    } else {
+        useBossFallback('NEW');
+    }
+}
+
+async function completeMission() {
+    if (!commentaryState.activeMission) return;
+    
+    const mission = commentaryState.activeMission;
+    gameState.money += mission.reward; // Give reward
+    logEvent(EVENTS.MONEY_MILESTONE, mission.reward, { source: "MISSION_REWARD" });
+    
+    // Success sound/effect could go here
+    
+    // Clear mission
+    commentaryState.activeMission = null;
+    commentaryState.lastMissionTime = Date.now();
+    
+    // Ask LLM for success message
+    const summary = `Spilleren klarede missionen: ${mission.description}. Skriv rosende SMS.`;
+    
+    const text = await callLLM(BOSS_PROMPT, summary);
+    if (text) {
+        showBossMessage(text, true);
+    } else {
+        useBossFallback('COMPLETE');
+    }
+}
+
+function useBossFallback(type) { // type: 'NEW' or 'COMPLETE'
+    console.warn('[Boss] LLM Connection Failed - Using FALLBACK mission text');
+    const phrases = BOSS_FALLBACKS[type];
+    const phrase = phrases[Math.floor(Math.random() * phrases.length)];
+    showBossMessage(phrase, type === 'COMPLETE');
+}
+
+function showBossMessage(text, isSuccess = false) {
+    let container = document.getElementById('bossMessageContainer');
+    if (!container) {
+        container = document.createElement('div');
+        container.id = 'bossMessageContainer';
+        container.style.cssText = `
+            position: fixed;
+            top: 80px;
+            left: 20px;
+            width: 250px;
+            z-index: 9997;
+            pointer-events: none;
+            font-family: 'Helvetica Neue', Arial, sans-serif;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        `;
+        document.body.appendChild(container);
+    }
+    
+    const msg = document.createElement('div');
+    msg.className = 'boss-sms';
+    msg.style.cssText = `
+        background: #e5e5ea;
+        color: #000;
+        padding: 12px 16px;
+        border-radius: 18px;
+        border-bottom-left-radius: 4px; /* Message from others style */
+        box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+        font-size: 14px;
+        opacity: 0;
+        transform: translateY(20px);
+        transition: all 0.5s ease;
+        position: relative;
+    `;
+    
+    if (isSuccess) {
+        msg.style.background = "#34c759"; // Green for success
+        msg.style.color = "#fff";
+    }
+
+    // Avatar / Sender Name
+    const sender = document.createElement('div');
+    sender.textContent = "The Boss";
+    sender.style.cssText = "font-size: 10px; color: #888; margin-bottom: 4px; font-weight: bold; text-transform: uppercase;";
+    if (isSuccess) sender.style.color = "#e0ffe0";
+    msg.appendChild(sender);
+
+    const content = document.createElement('div');
+    content.textContent = text;
+    msg.appendChild(content);
+
+    container.appendChild(msg);
+
+    // Animate in
+    requestAnimationFrame(() => {
+        msg.style.opacity = "1";
+        msg.style.transform = "translateY(0)";
+    });
+
+    // Remove after time
+    setTimeout(() => {
+        msg.style.opacity = "0";
+        setTimeout(() => msg.remove(), 500);
+    }, 8000);
+}
+
+// Update Mission Progress
+function updateMissionProgress() {
+    if (!commentaryState.activeMission) return;
+    
+    const mission = commentaryState.activeMission;
+    
+    switch(mission.type) {
+        case MISSION_TYPES.SURVIVE:
+            // Check if timer done
+            if (Date.now() - mission.startTime > mission.target * 1000) {
+                completeMission();
+            }
+            break;
+            
+        case MISSION_TYPES.SPEED:
+            const currentSpeed = Math.round(gameState.speed * 3.6);
+            if (currentSpeed >= mission.target) {
+                completeMission();
+            }
+            break;
+            
+        case MISSION_TYPES.COLLECT:
+            const currentMoney = gameState.totalMoney || gameState.money;
+            const collected = currentMoney - (mission.startValue || 0);
+            if (collected >= mission.target) {
+                completeMission();
+            }
+            break;
+        // DESTROY is handled in logEvent
+    }
+}
+
+
+// ==========================================
 // POLICE SCANNER FUNCTIONS
 // ==========================================
 
@@ -808,26 +1023,10 @@ async function triggerPoliceScanner() {
 
     const summary = `Situation: Suspect moving at ${context.speed} km/t. Heat Level ${context.heat}/5. Active Pursuit.`;
     
-    try {
-        const response = await fetch('/api/commentary', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ 
-                systemPrompt: POLICE_SCANNER_PROMPT,
-                eventSummary: summary 
-            })
-        });
-        
-        if (response.ok) {
-            const data = await response.json();
-            if (data.commentary) {
-                showPoliceScannerBubble(data.commentary);
-            }
-        } else {
-            usePoliceFallback();
-        }
-    } catch (error) {
-        // Silent fail or fallback
+    const message = await callLLM(POLICE_SCANNER_PROMPT, summary);
+    if (message) {
+        showPoliceScannerBubble(message);
+    } else {
         usePoliceFallback();
     }
 }

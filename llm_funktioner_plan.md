@@ -43,9 +43,9 @@ Giv bilen en personlighed (lidt som KITT fra Knight Rider, men træt af livet).
     *   *Ved tomgang:* "Skal vi køre, eller venter vi på at ruste op?"
 
 ## 4. 📱 "The Boss" - Dynamiske Missioner
-- [ ] Lave misssions-system logic
-- [ ] Designe SMS notifikation UI
-- [ ] Implementere belønningssystem
+- [x] Lave misssions-system logic
+- [x] Designe SMS notifikation UI
+- [x] Implementere belønningssystem
 
 En kriminel bagmand sender SMS'er til spilleren med tilfældige mini-missioner genereret af LLM'en baseret på omgivelserne.
 
