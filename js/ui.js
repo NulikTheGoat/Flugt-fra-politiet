@@ -36,7 +36,8 @@ export const DOM = {
     healthValue: document.getElementById('healthValue'),
     healthFill: document.getElementById('healthFill'),
     playBtn: document.getElementById('playBtn'),
-    gameOverShopBtn: document.getElementById('gameOverShopBtn')
+    gameOverShopBtn: document.getElementById('gameOverShopBtn'),
+    sheriffIndicator: document.getElementById('sheriffIndicator')
 };
 
 // ==========================================
@@ -169,6 +170,12 @@ export function updateHUD(policeDistance) {
     const activeCount = gameState.policeCars.length - deadCount;
     DOM.policeCount.textContent = activeCount;
     DOM.deadPoliceCount.textContent = deadCount;
+    
+    // Check if Sheriff is active
+    const hasSheriff = gameState.policeCars.some(c => c.userData.type === 'sheriff' && !c.userData.dead);
+    if (DOM.sheriffIndicator) {
+        DOM.sheriffIndicator.style.display = hasSheriff ? 'block' : 'none';
+    }
     
     // Style heat level
     const heatColor = ['#00ff00', '#99ff00', '#ffff00', '#ff8800', '#ff4400', '#ff0000'][gameState.heatLevel - 1] || '#ff0000';
