@@ -12,6 +12,10 @@ export const SHERIFF_COMMANDS = {
     INTERCEPT: 'INTERCEPT'  // Cut off target's path
 };
 
+// Configuration constants
+const SURROUND_ANGLE_STEP = Math.PI / 4; // 45 degrees
+const PREDICTION_TIME_MULTIPLIER = 2; // seconds ahead for interception
+
 // Sheriff state management
 export const sheriffState = {
     currentCommand: null,
@@ -247,7 +251,7 @@ export function applySheriffCommand(commandType, policeCar, playerCar) {
         case SHERIFF_COMMANDS.SURROUND:
             // Position around player at different angles
             const angle = policeCar.userData.networkId ? 
-                (policeCar.userData.networkId * Math.PI / 4) : 0;
+                (policeCar.userData.networkId * SURROUND_ANGLE_STEP) : 0;
             return { speedMultiplier: 1.0, targetOffset: angle, behavior: 'surrounding' };
             
         case SHERIFF_COMMANDS.SPREAD:
@@ -264,8 +268,8 @@ export function applySheriffCommand(commandType, policeCar, playerCar) {
         case SHERIFF_COMMANDS.INTERCEPT:
             // Try to predict player path and intercept
             const playerVelocity = playerCar.userData.velocity || { x: 0, z: 0 };
-            const predictedX = playerCar.position.x + playerVelocity.x * 2;
-            const predictedZ = playerCar.position.z + playerVelocity.z * 2;
+            const predictedX = playerCar.position.x + playerVelocity.x * PREDICTION_TIME_MULTIPLIER;
+            const predictedZ = playerCar.position.z + playerVelocity.z * PREDICTION_TIME_MULTIPLIER;
             const toPredicted = Math.atan2(
                 predictedX - policeCar.position.x,
                 predictedZ - policeCar.position.z

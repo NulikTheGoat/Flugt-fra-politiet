@@ -53,6 +53,32 @@ const COMMENTARY_COOLDOWN = 5000; // 5 seconds
 let lastSheriffRequest = 0;
 const SHERIFF_COOLDOWN = 8000; // 8 seconds between commands
 
+// Sheriff system prompt
+const SHERIFF_SYSTEM_PROMPT = `Du er Sheriff, en erfaren politichef der koordinerer en biljagt.
+Du styrer andre politibiler gennem taktiske kommandoer.
+Analyser situationen og giv EN klar, kort ordre på dansk (maks 20 ord).
+
+Kommando-typer du kan give:
+- CHASE: Forfølg målrettet (brug når mistænkt er langt væk)
+- BLOCK: Bloker flugtruter (brug ved høj fart eller nær bygninger)
+- SURROUND: Omring mistænkt (brug når mistænkt er langsom eller fanget)
+- SPREAD: Spred jer ud (brug når mistænkt er hurtig og unpredictable)
+- RETREAT: Træk tilbage (brug når for mange enheder er ødelagt)
+- INTERCEPT: Skær vejen af (brug når du kan forudse mistænkts rute)
+
+Vær kortfattet og autoritær. Brug politijargon.
+Format: "[KOMMANDO]: [Kort beskrivelse]"
+Eksempel: "SURROUND: Alle enheder, omring mistænkt fra nord og syd!"`;
+
+// Helper function to send JSON error responses
+function sendErrorResponse(res, statusCode, errorMessage, extraData = {}) {
+    res.writeHead(statusCode, { 
+        'Content-Type': 'application/json', 
+        'Access-Control-Allow-Origin': '*' 
+    });
+    res.end(JSON.stringify({ error: errorMessage, ...extraData }));
+}
+
 // Helper function to make HTTPS requests
 function httpsPost(url, headers, body) {
     return new Promise((resolve, reject) => {
@@ -101,15 +127,15 @@ const httpServer = http.createServer(async (req, res) => {
         // Rate limiting
         const now = Date.now();
         if (now - lastCommentaryRequest < COMMENTARY_COOLDOWN) {
-            res.writeHead(429, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' });
-            res.end(JSON.stringify({ error: 'Rate limited', retryAfter: COMMENTARY_COOLDOWN - (now - lastCommentaryRequest) }));
+            sendErrorResponse(res, 429, 'Rate limited', { 
+                retryAfter: COMMENTARY_COOLDOWN - (now - lastCommentaryRequest) 
+            });
             return;
         }
         
         // Check if API key is configured
         if (!MPS_CONFIG.apiKey) {
-            res.writeHead(503, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' });
-            res.end(JSON.stringify({ error: 'API not configured' }));
+            sendErrorResponse(res, 503, 'API not configured');
             return;
         }
         
@@ -120,8 +146,7 @@ const httpServer = http.createServer(async (req, res) => {
                 const { systemPrompt, eventSummary } = JSON.parse(body);
                 
                 if (!eventSummary) {
-                    res.writeHead(400, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' });
-                    res.end(JSON.stringify({ error: 'Missing eventSummary' }));
+                    sendErrorResponse(res, 400, 'Missing eventSummary');
                     return;
                 }
                 
@@ -151,8 +176,7 @@ const httpServer = http.createServer(async (req, res) => {
                 
                 if (mpsResponse.status !== 200) {
                     console.error('[Commentary] MPS error:', mpsResponse.status, mpsResponse.data);
-                    res.writeHead(502, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' });
-                    res.end(JSON.stringify({ error: 'LLM request failed', status: mpsResponse.status }));
+                    sendErrorResponse(res, 502, 'LLM request failed', { status: mpsResponse.status });
                     return;
                 }
                 
@@ -171,8 +195,7 @@ const httpServer = http.createServer(async (req, res) => {
                 
             } catch (err) {
                 console.error('[Commentary] Error:', err);
-                res.writeHead(500, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' });
-                res.end(JSON.stringify({ error: 'Internal server error' }));
+                sendErrorResponse(res, 500, 'Internal server error');
             }
         });
         return;
@@ -183,15 +206,15 @@ const httpServer = http.createServer(async (req, res) => {
         // Rate limiting
         const now = Date.now();
         if (now - lastSheriffRequest < SHERIFF_COOLDOWN) {
-            res.writeHead(429, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' });
-            res.end(JSON.stringify({ error: 'Rate limited', retryAfter: SHERIFF_COOLDOWN - (now - lastSheriffRequest) }));
+            sendErrorResponse(res, 429, 'Rate limited', {
+                retryAfter: SHERIFF_COOLDOWN - (now - lastSheriffRequest)
+            });
             return;
         }
         
         // Check if API key is configured
         if (!MPS_CONFIG.apiKey) {
-            res.writeHead(503, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' });
-            res.end(JSON.stringify({ error: 'API not configured' }));
+            sendErrorResponse(res, 503, 'API not configured');
             return;
         }
         
@@ -202,29 +225,11 @@ const httpServer = http.createServer(async (req, res) => {
                 const gameState = JSON.parse(body);
                 
                 if (!gameState) {
-                    res.writeHead(400, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' });
-                    res.end(JSON.stringify({ error: 'Missing game state' }));
+                    sendErrorResponse(res, 400, 'Missing game state');
                     return;
                 }
                 
                 lastSheriffRequest = now;
-                
-                // Build Sheriff system prompt
-                const systemPrompt = `Du er Sheriff, en erfaren politichef der koordinerer en biljagt.
-Du styrer andre politibiler gennem taktiske kommandoer.
-Analyser situationen og giv EN klar, kort ordre på dansk (maks 20 ord).
-
-Kommando-typer du kan give:
-- CHASE: Forfølg målrettet (brug når mistænkt er langt væk)
-- BLOCK: Bloker flugtruter (brug ved høj fart eller nær bygninger)
-- SURROUND: Omring mistænkt (brug når mistænkt er langsom eller fanget)
-- SPREAD: Spred jer ud (brug når mistænkt er hurtig og unpredictable)
-- RETREAT: Træk tilbage (brug når for mange enheder er ødelagt)
-- INTERCEPT: Skær vejen af (brug når du kan forudse mistænkts rute)
-
-Vær kortfattet og autoritær. Brug politijargon.
-Format: "[KOMMANDO]: [Kort beskrivelse]"
-Eksempel: "SURROUND: Alle enheder, omring mistænkt fra nord og syd!"`;
 
                 // Build context about game state
                 const context = `Situation rapport:
@@ -240,7 +245,7 @@ ${gameState.recentEvents ? `- Seneste events: ${gameState.recentEvents}` : ''}`;
                 // Build MPS request payload
                 const payload = {
                     model: MPS_CONFIG.deployment,
-                    system: systemPrompt,
+                    system: SHERIFF_SYSTEM_PROMPT,
                     messages: [{ role: 'user', content: context }],
                     max_tokens: 128
                 };
@@ -261,8 +266,7 @@ ${gameState.recentEvents ? `- Seneste events: ${gameState.recentEvents}` : ''}`;
                 
                 if (mpsResponse.status !== 200) {
                     console.error('[Sheriff] MPS error:', mpsResponse.status, mpsResponse.data);
-                    res.writeHead(502, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' });
-                    res.end(JSON.stringify({ error: 'LLM request failed', status: mpsResponse.status }));
+                    sendErrorResponse(res, 502, 'LLM request failed', { status: mpsResponse.status });
                     return;
                 }
                 
@@ -281,8 +285,7 @@ ${gameState.recentEvents ? `- Seneste events: ${gameState.recentEvents}` : ''}`;
                 
             } catch (err) {
                 console.error('[Sheriff] Error:', err);
-                res.writeHead(500, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' });
-                res.end(JSON.stringify({ error: 'Internal server error' }));
+                sendErrorResponse(res, 500, 'Internal server error');
             }
         });
         return;

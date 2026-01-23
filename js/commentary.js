@@ -1278,13 +1278,15 @@ function showPoliceScannerBubble(text) {
          bubble.style.background = 'rgba(50, 40, 0, 0.95)'; // Gold-ish background
          bubble.style.color = '#ffd700'; // Gold text
          bubble.style.border = '2px solid #ffd700';
-         bubble.querySelector('div').textContent = "SHERIFF COMMAND CHANNEL"; // Change header
+         const header = bubble.querySelector('div:first-child');
+         if (header) header.textContent = "SHERIFF COMMAND CHANNEL"; // Change header
     } else {
          // Reset standard police style
          bubble.style.background = 'rgba(0, 20, 0, 0.9)';
          bubble.style.color = '#00ff00';
          bubble.style.border = '1px solid #00ff00';
-         bubble.querySelector('div').textContent = "POLICE FREQUENCY 112.5 MHz";
+         const header = bubble.querySelector('div:first-child');
+         if (header) header.textContent = "POLICE FREQUENCY 112.5 MHz";
     }
 
     const content = bubble.querySelector('#policeScannerContent');

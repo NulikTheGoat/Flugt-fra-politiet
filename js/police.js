@@ -186,6 +186,7 @@ export function updatePoliceAI(delta) {
         const activePoliceCount = gameState.policeCars.filter(c => !c.userData.dead).length;
         requestSheriffCommand(playerCar, activePoliceCount).catch(err => {
             console.warn('[Sheriff] Command request failed:', err);
+            // Fallback: Sheriff continues using last command or default behavior
         });
     }
     
