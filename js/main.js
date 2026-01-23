@@ -4,7 +4,7 @@ import { scene, camera, renderer } from './core.js';
 import { cars } from './constants.js';
 import { createPlayerCar, rebuildPlayerCar, updatePlayer, playerCar, setUICallbacks, createOtherPlayerCar, updateOtherPlayerCar, removeOtherPlayerCar } from './player.js';
 import { spawnPoliceCar, updatePoliceAI, updateProjectiles, firePlayerProjectile, syncPoliceFromNetwork, getPoliceStateForNetwork, resetPoliceNetworkIds } from './police.js';
-import { createGround, createTrees, createBuildings, updateBuildingChunks, updateCollectibles, cleanupSmallDebris } from './world.js';
+import { createGround, createTrees, createBuildings, updateBuildingChunks, updateCollectibles, cleanupSmallDebris, createSky, createDistantCityscape } from './world.js';
 import { updateHUD, updateHealthUI, DOM, goToShop, showGameOver, setStartGameCallback, triggerDamageEffect, setMultiplayerShopCallback } from './ui.js';
 import { updateSpeedEffects, updateSparks, updateTireMarks } from './particles.js';
 import * as Network from './network.js';
@@ -629,6 +629,8 @@ window.addEventListener('keyup', (e) => {
 });
 
 // Create World
+createSky();
+createDistantCityscape();
 createGround();
 createBuildings();
 createTrees();
@@ -801,6 +803,10 @@ function animate() {
         // Chunks
         updateBuildingChunks(delta);
         cleanupSmallDebris();
+        
+        // Update distant background position to follow player (appearing infinite)
+        if (playerCar) {
+        }
 
         // Collectibles & Heat
         updateCollectibles();

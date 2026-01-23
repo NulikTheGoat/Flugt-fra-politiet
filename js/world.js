@@ -7,6 +7,177 @@ import { createSmoke, createSpark } from './particles.js';
 import { addMoney } from './ui.js';
 import { logEvent, EVENTS } from './commentary.js';
 
+export function createSky() {
+    // Gradient Sky
+    const vertexShader = `
+        varying vec3 vWorldPosition;
+        void main() {
+            vec4 worldPosition = modelMatrix * vec4( position, 1.0 );
+            vWorldPosition = worldPosition.xyz;
+            gl_Position = projectionMatrix * modelViewMatrix * vec4( position, 1.0 );
+        }
+    `;
+    const fragmentShader = `
+        uniform vec3 topColor;
+        uniform vec3 bottomColor;
+        uniform float offset;
+        uniform float exponent;
+        varying vec3 vWorldPosition;
+        void main() {
+            float h = normalize( vWorldPosition + offset ).y;
+            gl_FragColor = vec4( mix( bottomColor, topColor, max( pow( max( h, 0.0 ), exponent ), 0.0 ) ), 1.0 );
+        }
+    `;
+
+    const uniforms = {
+        topColor: { value: new THREE.Color(0x0077ff) },
+        bottomColor: { value: new THREE.Color(0xffffff) },
+        offset: { value: 33 },
+        exponent: { value: 0.6 }
+    };
+    uniforms.bottomColor.value.copy(scene.fog.color); // Blend horizon with fog
+
+    const skyGeo = new THREE.SphereGeometry(8000, 32, 15);
+    const skyMat = new THREE.ShaderMaterial({
+        uniforms: uniforms,
+        vertexShader: vertexShader,
+        fragmentShader: fragmentShader,
+        side: THREE.BackSide
+    });
+
+    const sky = new THREE.Mesh(skyGeo, skyMat);
+    scene.add(sky);
+}
+
+// Helper to create a procedural window texture for background buildings
+function createWindowTexture() {
+    try {
+        const canvas = document.createElement('canvas');
+        canvas.width = 64;
+        canvas.height = 64;
+        const ctx = canvas.getContext('2d');
+        
+        // Background (Dark)
+        ctx.fillStyle = '#111';
+        ctx.fillRect(0, 0, 64, 64);
+        
+        // Windows
+        for (let y = 0; y < 8; y++) {
+            for (let x = 0; x < 4; x++) {
+                if (Math.random() > 0.4) {
+                     ctx.fillStyle = Math.random() > 0.5 ? '#FEF9E7' : '#F4D03F'; // Warm lights
+                     // Draw pairs of windows
+                     ctx.fillRect(4 + x * 16, 4 + y * 8, 4, 4);
+                     ctx.fillRect(10 + x * 16, 4 + y * 8, 4, 4);
+            }
+        }
+    }
+    
+    const texture = new THREE.CanvasTexture(canvas);
+    texture.wrapS = THREE.RepeatWrapping;
+    texture.wrapT = THREE.RepeatWrapping;
+    texture.magFilter = THREE.NearestFilter; // Pixelated look
+    return texture;
+    } catch (e) {
+        console.error("Window texture creation failed", e);
+        return null;
+    }
+}
+
+export function createDistantCityscape() {
+    try {
+        // Generate a dense city ring at the EDGE of the map (Map radius is approx 5000)
+        // Moved further out as requested
+        const buildingCount = 450; 
+        const minRadius = 4200;
+        const maxRadius = 4900;
+        const windowTexture = createWindowTexture();
+        
+        const buildingGeo = new THREE.BoxGeometry(100, 300, 100);
+        // Fallback to basic color if texture fails
+        const buildingMat = new THREE.MeshLambertMaterial({ 
+            map: windowTexture,
+            emissiveMap: windowTexture,
+            emissive: 0x555555,
+            emissiveIntensity: 0.8,
+            color: 0xffffff // White base allows instance colors to show through
+        });
+        
+        // Instanced mesh for performance
+        const instancedMesh = new THREE.InstancedMesh(buildingGeo, buildingMat, buildingCount);
+        
+        // Explicitly create instanceColor buffer to avoid potential crash
+        if (!instancedMesh.instanceColor) {
+             // Let Three.js handle it or verify version compatibility
+        }
+
+        const dummy = new THREE.Object3D();
+        const color = new THREE.Color();
+        // Colorful palette for distant buildings (Neon/Cyberpunk-ish dark tones)
+        const palette = [
+            0x2C3E50, // Dark Blue
+            0x8E44AD, // Purple
+            0x2980B9, // Blue
+            0xC0392B, // Dark Red
+            0xD35400, // Pumpkin
+            0x27AE60, // Green
+            0x1A252F  // Dark Slate
+        ];
+        
+        for (let i = 0; i < buildingCount; i++) {
+            const angle = Math.random() * Math.PI * 2;
+            const r = minRadius + Math.random() * (maxRadius - minRadius);
+            
+            const x = Math.cos(angle) * r;
+            const z = Math.sin(angle) * r;
+            
+            const width = 120 + Math.random() * 200;
+            const depth = 120 + Math.random() * 200;
+            const height = 300 + Math.random() * 800; 
+            
+            dummy.position.set(x, height / 2, z);
+            dummy.rotation.y = Math.random() * Math.PI;
+            dummy.scale.set(width / 100, height / 300, depth / 100);
+            dummy.updateMatrix();
+            
+            instancedMesh.setMatrixAt(i, dummy.matrix);
+            
+            // Random dark color variation
+            color.setHex(palette[Math.floor(Math.random() * palette.length)]);
+            instancedMesh.setColorAt(i, color);
+        }
+        
+        instancedMesh.instanceMatrix.needsUpdate = true;
+        if (instancedMesh.instanceColor) instancedMesh.instanceColor.needsUpdate = true;
+        
+        scene.add(instancedMesh);
+        
+        // Add "Radio Towers"
+        for (let i = 0; i < 12; i++) {
+            const angle = Math.random() * Math.PI * 2;
+            const r = minRadius + Math.random() * (maxRadius - minRadius);
+            const x = Math.cos(angle) * r;
+            const z = Math.sin(angle) * r;
+            
+            const towerHeight = 1000 + Math.random() * 500;
+            
+            const towerGeo = new THREE.CylinderGeometry(5, 30, towerHeight, 4);
+            const towerMat = new THREE.MeshBasicMaterial({ color: 0x111111 });
+            const tower = new THREE.Mesh(towerGeo, towerMat);
+            tower.position.set(x, towerHeight / 2, z);
+            scene.add(tower);
+            
+            const lightGeo = new THREE.SphereGeometry(40, 4, 4);
+            const lightMat = new THREE.MeshBasicMaterial({ color: 0xff0000 });
+            const light = new THREE.Mesh(lightGeo, lightMat);
+            light.position.set(0, towerHeight / 2, 0);
+            tower.add(light);
+        }
+    } catch (err) {
+        console.error("Distant cityscape generation failed:", err);
+    }
+}
+
 export function createGround() {
     const groundGeometry = new THREE.PlaneGeometry(10000, 10000);
     const groundMaterial = new THREE.MeshLambertMaterial({ color: 0x444444 });
@@ -129,16 +300,16 @@ export function createTrees() {
 
 // Bygnings typer med deres karakteristika
 const BUILDING_TYPES = {
-    GENERIC: { name: 'generic', colors: [0x8D6E63, 0x795548, 0x6D4C41, 0xA1887F] },
-    SHOP: { name: 'shop', colors: [0x1976D2, 0x2196F3, 0x42A5F5], hasAwning: true, signColor: 0xFFEB3B },
-    BANK: { name: 'bank', colors: [0x37474F, 0x455A64, 0x546E7A], hasColumns: true, signColor: 0xFFD700 },
-    PIZZERIA: { name: 'pizzeria', colors: [0xD32F2F, 0xC62828, 0xB71C1C], hasAwning: true, signColor: 0xFFC107 },
-    CHURCH: { name: 'church', colors: [0xECEFF1, 0xCFD8DC, 0xB0BEC5], hasTower: true, hasRoof: true },
-    POLICE_STATION: { name: 'police', colors: [0x1565C0, 0x0D47A1], hasFlagpole: true, signColor: 0xFFFFFF },
-    PARLIAMENT: { name: 'parliament', colors: [0xD7CCC8, 0xBCAAA4, 0xA1887F], hasDome: true, hasColumns: true, hasCow: true },
-    RESIDENTIAL: { name: 'residential', colors: [0xFFCCBC, 0xFFAB91, 0xFF8A65, 0xBDBDBD] },
-    OFFICE: { name: 'office', colors: [0x90CAF9, 0x64B5F6, 0x42A5F5], isGlass: true },
-    WAREHOUSE: { name: 'warehouse', colors: [0x757575, 0x616161, 0x424242], hasRollerDoor: true },
+    GENERIC: { name: 'generic', colors: [0xE55039, 0xE58E26, 0x4A69BD, 0x60A3BC, 0x78E08F] }, // Colorful bricks
+    SHOP: { name: 'shop', colors: [0xF6B93B, 0xFA983A, 0xE58E26], hasAwning: true, signColor: 0xFEEAFA }, // Bright Orange/Gold
+    BANK: { name: 'bank', colors: [0x82CCDD, 0x60A3BC, 0x3C6382], hasColumns: true, signColor: 0xF8EFBA }, // Clean Blue-Greys
+    PIZZERIA: { name: 'pizzeria', colors: [0xEB2F06, 0xB71540, 0xE55039], hasAwning: true, signColor: 0xF8C291 }, // Vibrant Red
+    CHURCH: { name: 'church', colors: [0xF1F2F6, 0xDFE4EA], hasTower: true, hasRoof: true }, // White/Light Grey (Traditional)
+    POLICE_STATION: { name: 'police', colors: [0x0C2461, 0x1E3799, 0x4A69BD], hasFlagpole: true, signColor: 0xFFFFFF }, // Policing Blue
+    PARLIAMENT: { name: 'parliament', colors: [0xD7CCC8, 0xBCAAA4], hasDome: true, hasColumns: true, hasCow: true }, // Stone color
+    RESIDENTIAL: { name: 'residential', colors: [0xF8C291, 0xE77F67, 0xFDA7DF, 0xD980FA, 0xB53471] }, // Pastel warmth and pinks
+    OFFICE: { name: 'office', colors: [0x7EFFF5, 0x7158E2, 0x17C0EB], isGlass: true }, // Cyan/Neon Blue
+    WAREHOUSE: { name: 'warehouse', colors: [0x95A5A6, 0x7F8C8D, 0xA4B0BE], hasRollerDoor: true }, // Grey (Standard concrete)
 };
 
 // Skab et vindue
