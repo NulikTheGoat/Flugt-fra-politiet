@@ -1395,7 +1395,7 @@
 <body>
     <div id="gameContainer"></div>
     
-    <div id="hud">
+    <div id="hud" data-testid="hud">
         <style>
             @keyframes hudMoneyPop {
                 0% { transform: scale(1); }
@@ -1407,26 +1407,27 @@
                 animation: hudMoneyPop 0.3s ease-out;
             }
         </style>
-        <div>Penge: <span id="money">0</span>kr</div>
-        <div>Tid: <span id="time">0</span>s</div>
-        <div>Heat Level: <span id="heatLevel">1</span></div>
-        <div>Politibiler: <span id="policeCount">0</span> <span style="color: #ff4444;">💀</span><span id="deadPoliceCount" style="color: #ff4444;">0</span></div>
-        <div>Hastighed: <span id="speed">0</span> km/t</div>
-        <div id="speedometer">
+        <div data-testid="money-display">Penge: <span id="money" data-testid="money">0</span>kr</div>
+        <div data-testid="time-display">Tid: <span id="time" data-testid="time">0</span>s</div>
+        <div data-testid="heat-display">Heat Level: <span id="heatLevel" data-testid="heatLevel">1</span></div>
+        <div data-testid="police-display">Politibiler: <span id="policeCount" data-testid="policeCount">0</span> <span style="color: #ff4444;">💀</span><span id="deadPoliceCount" data-testid="deadPoliceCount" style="color: #ff4444;">0</span></div>
+        <div data-testid="speed-display">Hastighed: <span id="speed" data-testid="speed">0</span> km/t</div>
+        <div id="speedometer" data-testid="speedometer">
             <div id="speedBar">
-                <div id="speedFill"></div>
+                <div id="speedFill" data-testid="speedFill"></div>
             </div>
         </div>
-        <div id="healthDisplay" style="margin-top: 10px; margin-bottom: 5px;">
-            <div>Helbred: <span id="healthValue">100</span>%</div>
+        <div id="healthDisplay" data-testid="health-display" style="margin-top: 10px; margin-bottom: 5px;">
+            <div>Helbred: <span id="healthValue" data-testid="healthValue">100</span>%</div>
             <div id="healthBar" style="width: 200px; height: 15px; background: #333; border: 1px solid #ff0000; margin-top: 5px;">
-                <div id="healthFill" style="height: 100%; background: #ff0000; width: 100%; transition: width 0.1s;"></div>
+                <div id="healthFill" data-testid="healthFill" style="height: 100%; background: #ff0000; width: 100%; transition: width 0.1s;"></div>
             </div>
         </div>
-        <div id="driftIndicator" style="display: none; color: #ff6600; font-weight: bold; text-shadow: 0 0 10px #ff6600;">🔥 DRIFT!</div>
-        <div id="policeStatus">
-            <div>Politiet: <span id="policeDistance">-</span> m</div>
-            <div>Status: <span id="status" style="color: #00ff00;">Fri</span></div>
+        <div id="driftIndicator" data-testid="driftIndicator" style="display: none; color: #ff6600; font-weight: bold; text-shadow: 0 0 10px #ff6600;">🔥 DRIFT!</div>
+        <div id="policeStatus" data-testid="police-status">
+            <div>Politiet: <span id="policeDistance" data-testid="policeDistance">-</span> m</div>
+            <div>Status: <span id="status" data-testid="status" style="color: #00ff00;">Fri</span></div>
+            <div id="sheriffIndicator" data-testid="sheriffIndicator" style="display: none; color: #ffd700; font-weight: bold; text-shadow: 0 0 10px #ffd700;">⭐ SHERIFF AKTIV</div>
         </div>
     </div>
 

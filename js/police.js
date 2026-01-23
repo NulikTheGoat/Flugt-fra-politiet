@@ -10,6 +10,7 @@ import { createBuildingDebris } from './world.js';
 import { addMoney, showFloatingMoney, showGameOver } from './ui.js';
 import * as Network from './network.js';
 import { logEvent, EVENTS } from './commentary.js';
+import { requestSheriffCommand, getCurrentSheriffCommand, applySheriffCommand } from './sheriff.js';
 
 const projectileGeometry = new THREE.SphereGeometry(2, 8, 8);
 
@@ -130,9 +131,20 @@ export function spawnPoliceCar() {
     let type = 'standard';
     const rand = Math.random();
     
-    if (gameState.heatLevel >= 2 && rand > 0.6) type = 'interceptor';
-    if (gameState.heatLevel >= 3 && rand > 0.7) type = 'swat';
-    if (gameState.heatLevel >= 4 && rand > 0.8) type = 'military';
+    // Check if Sheriff already exists
+    const hasSheriff = gameState.policeCars.some(car => 
+        car.userData.type === 'sheriff' && !car.userData.dead
+    );
+    
+    // Spawn Sheriff at heat level 3+ if not already present (10% chance)
+    if (!hasSheriff && gameState.heatLevel >= 3 && rand > 0.9) {
+        type = 'sheriff';
+    } else {
+        // Regular police spawning logic
+        if (gameState.heatLevel >= 2 && rand > 0.6) type = 'interceptor';
+        if (gameState.heatLevel >= 3 && rand > 0.7) type = 'swat';
+        if (gameState.heatLevel >= 4 && rand > 0.8) type = 'military';
+    }
 
     const policeCar = createPoliceCar(type);
     
@@ -151,7 +163,7 @@ export function spawnPoliceCar() {
     policeCar.position.z = z;
     gameState.policeCars.push(policeCar);
     
-    if (gameState.isMultiplayer) {
+    if (gameState.isMultiplayer || type === 'sheriff') {
         console.log(`[POLICE] Spawned police #${policeCar.userData.networkId} (${type}) at (${Math.round(x)}, ${Math.round(z)}). Total: ${gameState.policeCars.length}`);
     }
     
@@ -162,6 +174,24 @@ export function updatePoliceAI(delta) {
     if(!playerCar) return 10000;
 
     let minDistance = 10000;
+    
+    // Sheriff Command System - Request new commands periodically
+    const now = Date.now();
+    const sheriff = gameState.policeCars.find(car => 
+        car.userData.type === 'sheriff' && !car.userData.dead
+    );
+    
+    // If sheriff exists, periodically request new commands
+    if (sheriff) {
+        const activePoliceCount = gameState.policeCars.filter(c => !c.userData.dead).length;
+        requestSheriffCommand(playerCar, activePoliceCount).catch(err => {
+            console.warn('[Sheriff] Command request failed:', err);
+            // Fallback: Sheriff continues using last command or default behavior
+        });
+    }
+    
+    // Get current active command
+    const currentCommand = getCurrentSheriffCommand();
 
     // Enhanced AI system with industry best practices:
     // - Predictive intercept targeting
@@ -334,6 +364,16 @@ export function updatePoliceAI(delta) {
              return; 
         }
 
+        // SHERIFF COMMAND SYSTEM - Apply commands to non-Sheriff police
+        let commandModifiers = {};
+        if (currentCommand && policeCar.userData.type !== 'sheriff') {
+            commandModifiers = applySheriffCommand(currentCommand.type, policeCar, playerCar);
+            // Store active command for visual feedback
+            policeCar.userData.activeCommand = currentCommand.type;
+        } else {
+            policeCar.userData.activeCommand = null;
+        }
+
         // AGGRESSIVE AI - scales with heat level
         // Heat 1: baseline, Heat 6: 2.5x more aggressive
         const aggressionMultiplier = 1 + (gameState.heatLevel - 1) * 0.3; // 1.0 to 2.5
@@ -346,9 +386,6 @@ export function updatePoliceAI(delta) {
         
         const predictedX = playerCar.position.x + playerVelX * predictionTime * 60;
         const predictedZ = playerCar.position.z + playerVelZ * predictionTime * 60;
-        
-        const interceptDx = predictedX - policeCar.position.x;
-        const interceptDz = predictedZ - policeCar.position.z;
         
         // === FORMATION PURSUIT ===
         // Distribute police around player for surround tactics
@@ -364,16 +401,26 @@ export function updatePoliceAI(delta) {
         
         // Blend between direct intercept and formation based on distance and heat
         const useFormation = distance < 300 && gameState.heatLevel >= 2;
-        const targetX = useFormation ? 
+        let targetX = useFormation ? 
             (formationTargetX * 0.6 + predictedX * 0.4) : predictedX;
-        const targetZ = useFormation ? 
+        let targetZ = useFormation ? 
             (formationTargetZ * 0.6 + predictedZ * 0.4) : predictedZ;
         
+        // --- SHERIFF AI OVERRIDE ---
+        if (commandModifiers.targetOffset !== undefined) {
+             targetX = playerCar.position.x + Math.sin(commandModifiers.targetOffset) * 100;
+             targetZ = playerCar.position.z + Math.cos(commandModifiers.targetOffset) * 100;
+        }
+
         const finalDx = targetX - policeCar.position.x;
         const finalDz = targetZ - policeCar.position.z;
         
-        const targetDirection = Math.atan2(finalDx, finalDz);
+        let targetDirection = Math.atan2(finalDx, finalDz);
         
+        if (commandModifiers.overrideDirection !== undefined) {
+            targetDirection = commandModifiers.overrideDirection;
+        }
+
         // === LOOK-AHEAD OBSTACLE AVOIDANCE ===
         const lookAheadDist = 80; // Distance to check for obstacles
         const checkX = policeCar.position.x + Math.sin(policeCar.rotation.y) * lookAheadDist;
@@ -408,8 +455,9 @@ export function updatePoliceAI(delta) {
         }
         
         // If obstacle detected, turn to avoid it
+        // Only avoid if NOT under strict directional command (like U-Turn)
         let avoidanceAngle = 0;
-        if (hasObstacle) {
+        if (hasObstacle && commandModifiers.overrideDirection === undefined) {
             // Turn perpendicular to current direction
             avoidanceAngle = Math.PI / 2; // 90 degree turn
             // Randomly choose left or right turn based on police car index
@@ -439,6 +487,11 @@ export function updatePoliceAI(delta) {
         
         // Apply cornering slowdown
         targetPoliceSpeed *= corneringSpeedFactor;
+        
+        // Apply Sheriff command speed modifier
+        if (commandModifiers.speedMultiplier) {
+            targetPoliceSpeed *= commandModifiers.speedMultiplier;
+        }
         
         // Slow down police when near player and player is slow (for arrest)
         const playerSpeedKmh = Math.abs(gameState.speed) * 3.6;

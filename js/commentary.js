@@ -1278,13 +1278,15 @@ function showPoliceScannerBubble(text) {
          bubble.style.background = 'rgba(50, 40, 0, 0.95)'; // Gold-ish background
          bubble.style.color = '#ffd700'; // Gold text
          bubble.style.border = '2px solid #ffd700';
-         bubble.querySelector('div').textContent = "SHERIFF COMMAND CHANNEL"; // Change header
+         const header = bubble.querySelector('div:first-child');
+         if (header) header.textContent = "SHERIFF COMMAND CHANNEL"; // Change header
     } else {
          // Reset standard police style
          bubble.style.background = 'rgba(0, 20, 0, 0.9)';
          bubble.style.color = '#00ff00';
          bubble.style.border = '1px solid #00ff00';
-         bubble.querySelector('div').textContent = "POLICE FREQUENCY 112.5 MHz";
+         const header = bubble.querySelector('div:first-child');
+         if (header) header.textContent = "POLICE FREQUENCY 112.5 MHz";
     }
 
     const content = bubble.querySelector('#policeScannerContent');
@@ -1309,4 +1311,17 @@ function showPoliceScannerBubble(text) {
     setTimeout(() => {
         bubble.style.opacity = "0";
     }, 6000);
+}
+
+/**
+ * Display Sheriff Command - shows LLM-generated tactical commands
+ * @param {string} commandText - The command text from the LLM
+ */
+export function displaySheriffCommand(commandText) {
+    if (!commandText) return;
+    
+    // Display command as a police scanner message with special styling
+    showPoliceScannerBubble(commandText);
+    
+    console.log('[Sheriff Command]:', commandText);
 }

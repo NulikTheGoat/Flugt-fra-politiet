@@ -236,10 +236,10 @@ export function updatePlayer(delta, now) {
     
     // === TIRE GRIP MODEL ===
     // Speed-dependent traction: optimal at medium speeds, reduced at very high speeds
-    const optimalSpeedRatio = 0.6;
-    const gripLoss = Math.abs(speedRatio - optimalSpeedRatio) * 0.4;
-    const baseGrip = 1.0 - gripLoss;
-    const tiregrip = Math.max(0.5, baseGrip + gameState.weightTransfer * 0.2);
+    const optimalSpeedRatio = 0.5;
+    const gripLoss = Math.abs(speedRatio - optimalSpeedRatio) * 0.25;
+    const baseGrip = 1.15 - gripLoss;
+    const tiregrip = Math.max(0.6, baseGrip + gameState.weightTransfer * 0.2);
     
     // Steering
     let steerInput = 0;
@@ -254,12 +254,12 @@ export function updatePlayer(delta, now) {
     // Acceleration with improved traction model
     if (keys['w'] || keys['arrowup']) {
         // Better traction at lower speeds due to weight transfer
-        const tractionFactor = tiregrip * (1 - (speedRatio * 0.3));
+        const tractionFactor = tiregrip * (1 - (speedRatio * 0.2));
         if (gameState.speed < effectiveMaxSpeed) {
             gameState.speed = Math.min(gameState.speed + gameState.acceleration * tractionFactor * delta, effectiveMaxSpeed);
         } else {
             // Drag at high speeds
-            gameState.speed *= Math.pow(0.95, delta);
+            gameState.speed *= Math.pow(0.97, delta);
         }
     }
     if (keys['s'] || keys['arrowdown']) {
@@ -327,8 +327,27 @@ export function updatePlayer(delta, now) {
     gameState.velocityZ += (targetVelZ - gameState.velocityZ) * velocityBlend * delta;
     
     // Friction with surface grip
-    gameState.speed *= Math.pow(gameState.friction, delta);
-    const lateralFriction = 0.98 * tiregrip;
+    // Only apply base friction (rolling resistance) when not providing input
+    // This allows the car to reach max speed while accelerating, but slow down when coasting
+    const isInputActive = (keys['w'] || keys['arrowup'] || keys['s'] || keys['arrowdown']);
+    if (!isInputActive) {
+        gameState.speed *= Math.pow(gameState.friction, delta);
+    } else {
+        // High Speed Drag (Air Resistance)
+        // Applies a gentle friction during acceleration to naturally cap speed
+        gameState.speed *= Math.pow(0.992, delta);
+    }
+    
+    // === HARD SPEED CAP ===
+    // Ensure speed NEVER exceeds maxSpeed (prevents runaway acceleration bugs)
+    if (gameState.speed > effectiveMaxSpeed) {
+        gameState.speed = effectiveMaxSpeed;
+    } else if (gameState.speed < -gameState.maxReverseSpeed) {
+        gameState.speed = -gameState.maxReverseSpeed;
+    }
+    
+    // Fixed: Standard lateral friction to prevent "driving in molasses" feeling
+    const lateralFriction = 0.98;
     gameState.velocityX *= Math.pow(lateralFriction, delta);
     gameState.velocityZ *= Math.pow(lateralFriction, delta);
 

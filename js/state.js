@@ -21,19 +21,21 @@
 // Game State
 export const gameState = {
     // === Physics & Movement ===
+    // Default values match 'standard' car from constants.js
     speed: 0,
-    maxSpeed: 80,
-    maxReverseSpeed: 30,
-    acceleration: 0.3,
+    maxSpeed: 22,           // Standard car: 22 (≈80 km/h)
+    maxReverseSpeed: 10,    // Adjusted for new scale
+    acceleration: 0.08,     // Standard car: 0.08
     friction: 0.97,
     brakePower: 0.88,
-    maxSpeedWarning: 70,
+    maxSpeedWarning: 20,    // Warning threshold adjusted
     velocityX: 0,
     velocityZ: 0,
     angularVelocity: 0,
     driftFactor: 0,
     carTilt: 0,
     wheelAngle: 0,
+    handling: 0.05,         // Standard car: 0.05
     
     // === Player State ===
     health: 100,

@@ -46,6 +46,10 @@ import * as Network from './network.js';
 import { updateCommentary, resetCommentary, logEvent, EVENTS } from './commentary.js';
 import { initLevelEditor, openLevelEditor } from './levelEditor.js';
 
+// Expose gameState globally for debugging and testing
+window.gameState = gameState;
+window.cars = cars;
+
 
 // === Initialization ===
 // Attach renderer to gameContainer
@@ -687,9 +691,14 @@ export function startGame() {
     gameState.money = 0;
     gameState.heatLevel = 1;
     
-    // Set health based on selected car
+    // Set ALL stats based on selected car (this was the bug - only health was set!)
     const carData = cars[gameState.selectedCar];
     gameState.health = carData.health || 100;
+    gameState.maxSpeed = carData.maxSpeed;
+    gameState.acceleration = carData.acceleration;
+    gameState.handling = carData.handling || 0.05;
+    
+    console.log(`[START] Car: ${gameState.selectedCar}, maxSpeed: ${gameState.maxSpeed} (${Math.round(gameState.maxSpeed * 3.6)} km/h)`);
     
     updateHealthUI();
     gameState.arrested = false;
@@ -741,8 +750,14 @@ export function startMultiplayerGame(spawnPos) {
     gameState.money = 0;
     gameState.heatLevel = 1;
     
+    // Set ALL stats based on selected car
     const carData = cars[gameState.selectedCar];
     gameState.health = carData.health || 100;
+    gameState.maxSpeed = carData.maxSpeed;
+    gameState.acceleration = carData.acceleration;
+    gameState.handling = carData.handling || 0.05;
+    
+    console.log(`[MP START] Car: ${gameState.selectedCar}, maxSpeed: ${gameState.maxSpeed} (${Math.round(gameState.maxSpeed * 3.6)} km/h)`);
     
     updateHealthUI();
     gameState.arrested = false;
