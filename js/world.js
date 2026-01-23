@@ -1018,7 +1018,18 @@ export function updateBuildingChunks(delta) {
                                      }
                                      
                                      createTreeDebris(chunk.position, carSpeed);
-                                 } 
+                                     
+                                     // Log tree destruction for commentary
+                                     logEvent(EVENTS.TREE_DESTROYED, null, { speed: carSpeed });
+                                 } else {
+                                     // Tree shakes but doesn't fall
+                                     gameState.screenShake = 0.2;
+                                 }
+                                 
+                                 gameState.speed *= 0.85;
+                                 takeDamage(Math.floor(carSpeed * 0.15) + 8);
+                                 gameState.screenShake = 0.4;
+                                 createSmoke(chunk.position);
                              }
                              // Special handling for Hotdog stands
                              else if (chunk.userData.isHotdogStand) {
@@ -1041,10 +1052,7 @@ export function updateBuildingChunks(delta) {
                                  
                                  // Add money for vandalism!
                                  if(typeof addMoney === 'function') { 
-                                     // Need to import or pass addMoney ref, or just trigger UI update
-                                     // Actually world.js imports addMoney from ui.js
                                      addMoney(50);
-                                     // Maybe log event
                                      logEvent(EVENTS.COLLISION, "SMADREDE PØLSEVOGN!!");
                                  }
                                  
@@ -1052,19 +1060,6 @@ export function updateBuildingChunks(delta) {
                                  for(let p=0; p<5; p++) {
                                      createTreeDebris(chunk.position, carSpeed); // Reuse generic debris for now
                                  }
-                             }
-                                     
-                                     // Log tree destruction for commentary
-                                     logEvent(EVENTS.TREE_DESTROYED, null, { speed: carSpeed });
-                                 } else {
-                                     // Tree shakes but doesn't fall
-                                     gameState.screenShake = 0.2;
-                                 }
-                                 
-                                 gameState.speed *= 0.85;
-                                 takeDamage(Math.floor(carSpeed * 0.15) + 8);
-                                 gameState.screenShake = 0.4;
-                                 createSmoke(chunk.position);
                              } else {
                                  // Normal building chunk
                                  chunk.userData.isHit = true;
