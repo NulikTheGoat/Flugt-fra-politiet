@@ -70,6 +70,26 @@ Hold det hektisk og seriøst, men gerne med en snert af frustration over spiller
 Maks 15 ord.
 Ingen emojis.`;
 
+// System prompt for Judge
+const JUDGE_PROMPT = `Du er en streng dommer i en retssal.
+Spilleren er lige blevet arresteret i spillet "Flugt fra Politiet".
+Du skal afsige en DOM baseret på statistikken.
+Vær kreativ, humoristisk og streng.
+SKRIV EN KORT DOM PÅ DANSK (max 30 ord).
+Inddrag deres "forbrydelser" (fart, ødelæggelse, varighed af flugt).
+Idøm en straf (fængsel, samfundstjeneste, bøde, eller en skør straf).
+Eksempel: "For at smadre 4 politibiler og køre som en galning, idømmes du at vaske politigårdens biler i 10 år med en tandbørste!"`;
+
+// Fallback phrases for Judge
+const JUDGE_FALLBACKS = [
+    "Retten finder dig skyldig i grov uansvarlighed! 10 års fængsel!",
+    "Du idømmes samfundstjeneste: 500 timer som trafiklys!",
+    "Kørekortet er hermed makuleret. Du skal cykle resten af livet!",
+    "Dommen er klar: Livstid i fængsel for vanvidskørsel!",
+    "Juryen er chokerede. Du skal betale alle skaderne!",
+    "Du er til fare for samfundet! Bure ham inde!"
+];
+
 // Fallback phrases for Police Scanner
 const POLICE_FALLBACKS = [
     "Centralen her, mistænkte observeret med høj fart. 10-4.",
@@ -576,6 +596,44 @@ export const _internal = {
     commentaryState,
     FALLBACK_PHRASES
 }; 
+
+// ==========================================
+// JUDGE / GAME OVER FUNCTIONS
+// ==========================================
+
+export async function generateVerdict(stats) {
+    const summary = `Tiltalte arresteret. 
+    Varighed: ${Math.floor(stats.time)} sekunder. 
+    Smadrede politibiler: ${stats.policeKilled}. 
+    Heat Level: ${stats.heatLevel}/5. 
+    Indsamlede penge: ${stats.money} kr.`;
+    
+    try {
+        const response = await fetch('/api/commentary', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ 
+                systemPrompt: JUDGE_PROMPT,
+                eventSummary: summary 
+            })
+        });
+        
+        if (response.ok) {
+            const data = await response.json();
+            if (data.commentary) {
+                return data.commentary;
+            }
+        }
+        return getJudgeFallback();
+    } catch (error) {
+        console.error("Judge API error:", error);
+        return getJudgeFallback();
+    }
+}
+
+function getJudgeFallback() {
+    return JUDGE_FALLBACKS[Math.floor(Math.random() * JUDGE_FALLBACKS.length)];
+}
 
 // ==========================================
 // POLICE SCANNER FUNCTIONS

@@ -3,9 +3,9 @@
 Her er en plan for sjove og opfindsomme LLM funktioner til spillet:
 
 ## 1. 🚓 Politi-Radioen (Police Scanner)
-- [ ] Implementere UI til politi-radio
-- [ ] Tilføje logik til at generere politi-beskeder via LLM
-- [ ] Integrere med spil-events
+- [x] Implementere UI til politi-radio
+- [x] Tilføje logik til at generere politi-beskeder via LLM
+- [x] Integrere med spil-events
 
 I stedet for kun at kommentere på spilleren, kan LLM'en generere intern politi-kommunikation.
 
@@ -17,9 +17,9 @@ I stedet for kun at kommentere på spilleren, kan LLM'en generere intern politi-
 *   **UI:** En lille "radio-tekst" i venstre hjørne med en anden skrifttype (fx grøn terminal-tekst).
 
 ## 2. ⚖️ Dommerens Dom (Game Over Screen)
-- [ ] Designe 'Dommerens Dom' skærm ved Game Over
-- [ ] Samle statistik til LLM prompt
-- [ ] Implementere LLM-kald ved slutningen af spillet
+- [x] Designe 'Dommerens Dom' skærm ved Game Over
+- [x] Samle statistik til LLM prompt
+- [x] Implementere LLM-kald ved slutningen af spillet
 
 Når spilleren bliver ARRESTED, bruger vi statistikken fra spillet til at generere en unik domsfældelse.
 

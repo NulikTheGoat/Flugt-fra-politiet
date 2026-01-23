@@ -1,4 +1,5 @@
 import { gameState } from './state.js';
+import { generateVerdict } from './commentary.js';
 import { gameConfig } from './config.js';
 import { clamp, darkenColor } from './utils.js';
 import { cars } from './constants.js';
@@ -145,6 +146,22 @@ export function showGameOver(customMessage) {
 
     DOM.gameOverMessage.textContent = customMessage || 'Du blev fanget af politiet og sat i fængsel!';
     DOM.gameOver.style.display = 'block';
+    
+    // Judge Verdict
+    const judgeElement = document.getElementById('judgeVerdict');
+    if (judgeElement) {
+        judgeElement.style.display = 'flex';
+        judgeElement.textContent = 'Dommeren voterer...';
+        
+        generateVerdict({
+            time: gameState.elapsedTime,
+            policeKilled: gameState.policeKilled,
+            heatLevel: gameState.heatLevel,
+            money: gameState.money
+        }).then(verdict => {
+            judgeElement.textContent = verdict;
+        });
+    }
     
     // Show/hide rejoin button based on multiplayer state
     const rejoinBtn = document.getElementById('gameOverRejoinBtn');
