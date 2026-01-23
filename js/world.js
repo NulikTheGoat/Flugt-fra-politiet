@@ -632,22 +632,66 @@ export function updateBuildingChunks(delta) {
             chunk.position.y <= groundY + 0.1) {
              gameState.activeChunks.splice(i, 1);
              
-             // Mark as fallen debris - solid but no damage, can be shattered
-             if (!chunk.userData.isSmallDebris) {
-                 chunk.userData.isFallenDebris = true;
-                 if (!gameState.fallenDebris) gameState.fallenDebris = [];
-                 gameState.fallenDebris.push(chunk);
+             // Mark as fallen debris (both large and small)
+             chunk.userData.isFallenDebris = true;
+             
+             if (!gameState.fallenDebris) gameState.fallenDebris = [];
+             gameState.fallenDebris.push(chunk);
 
-                 if (!chunk.userData.physicsBody) {
-                     chunk.userData.physicsBody = physicsWorld.addBody(chunk, 'box', {
-                         mass: 5,
-                         material: 'debris',
-                         size: {
-                             width: chunk.userData.width || 10,
-                             height: chunk.userData.height || 5,
-                             depth: chunk.userData.depth || 10
-                         }
-                     });
+             if (!chunk.userData.physicsBody) {
+                 const isSmall = chunk.userData.isSmallDebris;
+                 
+                 // Register body with Physics Engine
+                 const body = physicsWorld.addBody(chunk, 'box', {
+                     mass: isSmall ? 2 : 10,
+                     material: 'debris',
+                     size: {
+                         width: chunk.userData.width || (isSmall ? 2 : 10),
+                         height: chunk.userData.height || (isSmall ? 2 : 5),
+                         depth: chunk.userData.depth || (isSmall ? 2 : 10)
+                     }
+                 });
+                 
+                 chunk.userData.physicsBody = body;
+
+                 // Collision Listener: Shatter on high impact
+                 if (body) {
+                    body.addEventListener('collide', (e) => {
+                        // Calculate impact force
+                        const relativeVelocity = e.contact.getImpactVelocityAlongNormal();
+                        const impactForce = Math.abs(relativeVelocity);
+                        
+                        // Thresholds: Higher speed needed to smash smaller pieces
+                        const threshold = isSmall ? 10 : 6; 
+
+                        if (impactForce > threshold) {
+                            // Defer removal to next tick (outside physics step)
+                            setTimeout(() => {
+                                if (!chunk.parent) return; // Already handled
+                                
+                                // 1. Cleanup
+                                physicsWorld.removeBody(chunk);
+                                scene.remove(chunk);
+                                const idx = gameState.fallenDebris.indexOf(chunk);
+                                if (idx > -1) gameState.fallenDebris.splice(idx, 1);
+                                
+                                // 2. Effect
+                                if (isSmall) {
+                                    // Small -> Dust
+                                    createTinyFragments(chunk.position, chunk.material, impactForce * 5);
+                                    createSmoke(chunk.position, 0.5);
+                                } else {
+                                    // Big -> Small
+                                    // Create more pieces if hit harder
+                                    const numPieces = Math.min(8, Math.floor(impactForce) + 2);
+                                    shatterDebris(chunk, impactForce * 3, numPieces);
+                                    
+                                    createSmoke(chunk.position);
+                                    createDebrisSparks(chunk.position, 5);
+                                }
+                            }, 0);
+                        }
+                    });
                  }
              }
         }
@@ -763,122 +807,12 @@ export function updateBuildingChunks(delta) {
     
     // Collision with fallen debris (solid push, shatter on impact)
     if (gameState.fallenDebris && gameState.fallenDebris.length > 0) {
-        for (let i = gameState.fallenDebris.length - 1; i >= 0; i--) {
-            const debris = gameState.fallenDebris[i];
-            if (!debris || !debris.userData || !debris.userData.isFallenDebris) continue;
-            
-            const dx = debris.position.x - carPos.x;
-            const dz = debris.position.z - carPos.z;
-            const distSq = dx * dx + dz * dz;
-            
-            // Use actual debris size for collision - larger collision radius
-            const debrisWidth = debris.userData.width || 10;
-            const debrisDepth = debris.userData.depth || 10;
-            const debrisSize = Math.max(debrisWidth, debrisDepth) / 2;
-            const collisionDist = carRadius + debrisSize + 5; // Larger buffer for reliable collision
-            
-            if (distSq < collisionDist * collisionDist) {
-                const dist = Math.sqrt(distSq) || 1;
-                const carSpeed = Math.abs(gameState.speed);
-                
-                // Calculate push direction (away from debris center)
-                const normX = -dx / dist;
-                const normZ = -dz / dist;
-                
-                // Push CAR back (solid collision - no passing through!)
-                const overlap = collisionDist - dist;
-                if (overlap > 0) {
-                    playerCar.position.x += normX * overlap * 1.5;
-                    playerCar.position.z += normZ * overlap * 1.5;
-                }
-                
-                // Shatter into smaller pieces if going fast enough (lowered threshold)
-                if (carSpeed > 5) {
-                    // Remove from fallen debris
-                    gameState.fallenDebris.splice(i, 1);
-                    scene.remove(debris);
-                    physicsWorld.removeBody(debris);
-                    
-                    // Create smaller debris pieces - more pieces at higher speed
-                    const numPieces = Math.min(15, Math.floor(carSpeed / 2) + 3);
-                    shatterDebris(debris, carSpeed, numPieces);
-                    
-                    // Speed reduction and visual feedback
-                    gameState.speed *= 0.8;
-                    gameState.screenShake = Math.min(0.5, carSpeed / 25);
-                    
-                    // Add smoke and sparks for impact feedback
-                    createSmoke(debris.position);
-                    createDebrisSparks(debris.position, Math.floor(carSpeed / 4));
-                } else {
-                    // Slow collision - stop the car more and push debris
-                    gameState.speed *= 0.5;
-                    
-                    // Push debris based on car momentum
-                    const pushForce = Math.max(3, carSpeed * 0.8);
-                    physicsWorld.applyImpulse(debris, {
-                        x: (-normX) * pushForce,
-                        y: 0.5,
-                        z: (-normZ) * pushForce
-                    });
-                    
-                    // Add some rotation to pushed debris
-                    debris.rotation.y += (Math.random() - 0.5) * 0.5;
-                    
-                    // Minor screen shake for feedback
-                    gameState.screenShake = 0.15;
-                }
-            }
-        }
+        // collision logic removed
+
     }
     
-    // Collision with small debris - can also be smashed further
-    if (gameState.smallDebris && gameState.smallDebris.length > 0) {
-        for (let i = gameState.smallDebris.length - 1; i >= 0; i--) {
-            const piece = gameState.smallDebris[i];
-            if (!piece || !piece.userData) continue;
-            
-            const dx = piece.position.x - carPos.x;
-            const dz = piece.position.z - carPos.z;
-            const distSq = dx * dx + dz * dz;
-            
-            const pieceSize = (piece.userData.width || 3) / 2;
-            const collisionDist = carRadius + pieceSize;
-            
-            if (distSq < collisionDist * collisionDist) {
-                const carSpeed = Math.abs(gameState.speed);
-                
-                // Small debris gets kicked around or destroyed
-                if (carSpeed > 5 && piece.userData.width > 1.5) {
-                    // Smash small debris into even tinier pieces
-                    scene.remove(piece);
-                    gameState.smallDebris.splice(i, 1);
-                    const idx = gameState.activeChunks.indexOf(piece);
-                    if (idx > -1) gameState.activeChunks.splice(idx, 1);
-                    
-                    // Create tiny fragments
-                    createTinyFragments(piece.position, piece.material, carSpeed);
-                    
-                    // Minimal speed loss
-                    gameState.speed *= 0.95;
-                } else {
-                    // Kick the debris away
-                    const dist = Math.sqrt(distSq) || 1;
-                    const kickX = -dx / dist * (carSpeed * 0.8);
-                    const kickZ = -dz / dist * (carSpeed * 0.8);
-                    
-                    if (piece.userData.velocity) {
-                        piece.userData.velocity.x += kickX;
-                        piece.userData.velocity.z += kickZ;
-                        piece.userData.velocity.y += carSpeed * 0.3;
-                    }
-                    
-                    // Almost no speed loss from tiny debris
-                    gameState.speed *= 0.98;
-                }
-            }
-        }
-    }
+    // Collision with small debris is handled by Physics events
+
 }
 
 // Create tree debris (wood chunks and leaves)
