@@ -35,10 +35,21 @@ export function createPoliceCar(type = 'standard') {
     carGroup.add(body);
 
     // White stripe (only for police/interceptor)
-    if (type === 'standard' || type === 'interceptor') {
+    if (type === 'standard' || type === 'interceptor' || type === 'sheriff') {
         const stripe = new THREE.Mesh(sharedGeometries.policeStripe, sharedMaterials.white);
         stripe.position.set(0, 12.5, 0);
         carGroup.add(stripe);
+        
+        // Sheriff visual distinction: Gold star or just different color
+        if (type === 'sheriff') {
+             // Maybe add a distinctive "Sheriff Star" antenna or just rely on color
+             const antenna = new THREE.Mesh(
+                 new THREE.CylinderGeometry(0.5, 0.5, 10),
+                 new THREE.MeshLambertMaterial({color: 0xffd700})
+             );
+             antenna.position.set(-6, 20, 10);
+             carGroup.add(antenna);
+        }
     } else if (type === 'military') {
         const camo = new THREE.Mesh(sharedGeometries.militaryCamo, sharedMaterials.camo);
         camo.position.set(0, 8, 0);
@@ -132,6 +143,18 @@ export function spawnPoliceCar() {
     if (gameState.heatLevel >= 2 && rand > 0.6) type = 'interceptor';
     if (gameState.heatLevel >= 3 && rand > 0.7) type = 'swat';
     if (gameState.heatLevel >= 4 && rand > 0.8) type = 'military';
+
+    // SPECIAL SHERIFF SPAWN LOGIC
+    // Only one sheriff at a time. Spawns at heat 3+ with low chance, or guaranteed at Heat 5 if not present
+    const existingSheriff = gameState.policeCars.find(p => p.userData.type === 'sheriff' && !p.userData.dead);
+    
+    if (!existingSheriff) {
+        if (gameState.heatLevel >= 5) {
+            type = 'sheriff'; // Force spawn at max heat if missing
+        } else if (gameState.heatLevel >= 3 && Math.random() < 0.05) {
+            type = 'sheriff'; // 5% chance per spawn call at heat 3-4
+        }
+    }
 
     const policeCar = createPoliceCar(type);
     
@@ -327,42 +350,77 @@ export function updatePoliceAI(delta) {
 
         // AGGRESSIVE AI - scales with heat level
         // Heat 1: baseline, Heat 6: 2.5x more aggressive
-        const aggressionMultiplier = 1 + (gameState.heatLevel - 1) * 0.3; // 1.0 to 2.5
+        let aggressionMultiplier = 1 + (gameState.heatLevel - 1) * 0.3; 
         
-        const targetDirection = Math.atan2(dx, dz);
+        let targetDirection = Math.atan2(dx, dz);
+        let policeSpeed = (policeCar.userData.speed || 250);
+
+        // --- SHERIFF AI: "The Observer" ---
+        if (policeCar.userData.type === 'sheriff') {
+            aggressionMultiplier = 0.8; // Turn slower, be calmer
+            
+            const optimalDistance = 400;
+            const buffer = 50;
+
+            // 1. Maintain Distance Logic
+            if (distance < optimalDistance - buffer) {
+                // Too close: Slow down massively to let player pull away
+                policeSpeed *= 0.5;
+                // If VERY close, maybe steer away?
+                if (distance < 200) {
+                    targetDirection += Math.PI; // Turn away
+                }
+            } else if (distance > optimalDistance + buffer) {
+                // Too far: Speed up slightly (but capped by max speed)
+                policeSpeed *= 1.1; 
+            } else {
+                // In sweet spot: Match player speed approx
+                policeSpeed = Math.abs(gameState.speed * 3.6 / 0.016); // Rough estimate
+                if (policeSpeed > 200) policeSpeed = 200;
+            }
+
+            // 2. Obstacle Avoidance (Proactive)
+            // Look ahead to see if we are about to hit a building
+            const lookAhead = 80;
+            const lookX = policeCar.position.x + Math.sin(policeCar.rotation.y) * lookAhead;
+            const lookZ = policeCar.position.z + Math.cos(policeCar.rotation.y) * lookAhead;
+            
+            const gridSize = gameState.chunkGridSize;
+            const key = `${Math.floor(lookX / gridSize)},${Math.floor(lookZ / gridSize)}`;
+            
+            // Check if upcoming grid has un-hit chunks (obstacles)
+            const hasObstacle = gameState.chunkGrid[key] && gameState.chunkGrid[key].some(c => !c.userData.isHit && c.position.y > 0);
+            
+            if (hasObstacle) {
+                // Obstacle detected! Force turn.
+                // We divert 45 degrees relative to current heading
+                // To decide Left or Right, we check which matches targetDirection better, or just constant turn
+                targetDirection = policeCar.rotation.y + Math.PI / 2; 
+                // Boost turn speed for evasive maneuver
+                aggressionMultiplier = 3.0; 
+            }
         
-        // Faster turning at higher heat levels
+        } else {
+            // --- STANDARD AI ---
+            // Base speed increased by aggression at higher heat levels
+            policeSpeed *= (1 + (aggressionMultiplier - 1) * 0.5);
+            
+            // At high heat levels, standard police try to ram
+            if (gameState.heatLevel >= 3 && distance < 100 && distance > 30) {
+                policeSpeed *= 1.3;
+            }
+        }
+        
+        // Faster turning based on multiplier
         const baseTurnSpeed = 0.06;
         const turnSpeed = baseTurnSpeed * aggressionMultiplier;
         const angleDiff = normalizeAngleRadians(targetDirection - policeCar.rotation.y);
         policeCar.rotation.y += clamp(angleDiff, -turnSpeed, turnSpeed) * (delta || 1);
-
-        // Base speed increased by aggression at higher heat levels
-        let policeSpeed = (policeCar.userData.speed || 250) * (1 + (aggressionMultiplier - 1) * 0.5);
         
-        // Slow down police when near player and player is slow (for arrest)
+        // Slow down police when near player and player is slow (for arrest) - Applies to all
+        // ... (rest of movement logic)
+        
         const playerSpeedKmh = Math.abs(gameState.speed) * 3.6;
-        const maxSpeedKmh = gameState.maxSpeed * 3.6;
-        const speedThreshold = maxSpeedKmh * 0.1;
-        
-        if (distance < 150 && playerSpeedKmh < speedThreshold) {
-            // Match player speed when close and player is slow
-            const slowFactor = Math.max(0.1, distance / 150);
-            policeSpeed *= slowFactor;
-        }
-        
-        // At high heat levels, police try to ram the player when close
-        if (gameState.heatLevel >= 3 && distance < 100 && distance > 30) {
-            // Boost speed when chasing close - ramming behavior
-            policeSpeed *= 1.3;
-        }
-
-        const policeMove = policeSpeed * 0.016 * (delta || 1);
-        policeCar.position.z += Math.cos(policeCar.rotation.y) * policeMove;
-        policeCar.position.x += Math.sin(policeCar.rotation.y) * policeMove;
-
-        // Police vs Building Collision
-        const gridSize = gameState.chunkGridSize;
         const px = Math.floor(policeCar.position.x / gridSize);
         const pz = Math.floor(policeCar.position.z / gridSize);
         

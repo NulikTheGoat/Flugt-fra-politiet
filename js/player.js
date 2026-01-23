@@ -181,9 +181,9 @@ export function updateCarStats(key) {
 export function takeDamage(amount) {
     if (gameState.arrested) return;
     
-    // Reduce damage for tank
-    if (gameState.selectedCar === 'tank') amount *= 0.2;
-    // Reduce damage for UFO
+    // Reduce damage for tank (rebalanced: was 0.2x, now 0.4x)
+    if (gameState.selectedCar === 'tank') amount *= 0.4;
+    // Reduce damage for UFO (kept at 0.5x)
     if (gameState.selectedCar === 'ufo') amount *= 0.5;
 
     gameState.health -= amount;
@@ -214,10 +214,10 @@ export function updatePlayer(delta, now) {
         return;
     }
 
-    // Calculate max speed penalty based on health
+    // Calculate max speed penalty based on health (softer curve)
     let healthFactor = Math.max(0, gameState.health) / 100;
     healthFactor = Math.min(1, healthFactor);
-    const degradationCurve = 0.2 + (0.8 * healthFactor);
+    const degradationCurve = 0.5 + (0.5 * healthFactor); // Less harsh: 50% at 0 HP, 100% at full HP
     let effectiveMaxSpeed = gameState.maxSpeed * degradationCurve;
     
     if (gameState.health > 0 && effectiveMaxSpeed < 10) effectiveMaxSpeed = 10;
@@ -231,12 +231,8 @@ export function updatePlayer(delta, now) {
     if (keys['a'] || keys['arrowleft']) steerInput = 1;
     if (keys['d'] || keys['arrowright']) steerInput = -1;
     
-    // Random steering when HP is below 30 (damaged car handling)
-    if (gameState.health < 30 && gameState.health > 0) {
-        if (Math.random() < 0.05) { // 5% chance per frame
-            steerInput += (Math.random() - 0.5) * 1.5; // Random jitter
-        }
-    }
+    // REMOVED: Random steering jitter (was annoying, not fun)
+    // Instead, health degradation affects max speed and smoke effects provide visual feedback
     
     // Acceleration
     if (keys['w'] || keys['arrowup']) {
@@ -281,8 +277,9 @@ export function updatePlayer(delta, now) {
     const targetVelX = forwardX * gameState.speed;
     const targetVelZ = forwardZ * gameState.speed;
     
-    gameState.velocityX += (targetVelX - gameState.velocityX) * (0.1 + grip * 0.15) * delta;
-    gameState.velocityZ += (targetVelZ - gameState.velocityZ) * (0.1 + grip * 0.15) * delta;
+    // Increased grip transition for better drift feel
+    gameState.velocityX += (targetVelX - gameState.velocityX) * (0.15 + grip * 0.25) * delta;
+    gameState.velocityZ += (targetVelZ - gameState.velocityZ) * (0.15 + grip * 0.25) * delta;
     
     // Friction
     gameState.speed *= Math.pow(gameState.friction, delta);
