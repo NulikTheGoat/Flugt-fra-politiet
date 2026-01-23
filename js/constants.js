@@ -10,55 +10,55 @@ export const cars = {
     standard: {
         name: 'Standard Bil',
         price: 0,
-        maxSpeed: 80,
-        acceleration: 0.3,
+        maxSpeed: 22,      // ~80 km/h display
+        acceleration: 0.08,
         handling: 0.05,
-        health: 100, // Baseline
+        health: 100,
         color: 0xff0000
     },
     sport: {
         name: 'Sportsvogn',
         price: 2500,
-        maxSpeed: 110,
-        acceleration: 0.45,
+        maxSpeed: 30,      // ~110 km/h display
+        acceleration: 0.12,
         handling: 0.07,
-        health: 80, // Less health (lighter)
+        health: 80,
         color: 0xffff00
     },
     muscle: {
         name: 'Muscle Car',
         price: 8000,
-        maxSpeed: 100,
-        acceleration: 0.5,
+        maxSpeed: 28,      // ~100 km/h display
+        acceleration: 0.14,
         handling: 0.04,
-        health: 120, // Sturdy
+        health: 120,
         color: 0x0000ff
     },
     super: {
         name: 'Superbil',
         price: 25000,
-        maxSpeed: 150,
-        acceleration: 0.7,
+        maxSpeed: 42,      // ~150 km/h display
+        acceleration: 0.18,
         handling: 0.09,
-        health: 70, // Fragile
+        health: 70,
         color: 0xff00ff
     },
     hyper: {
         name: 'Hyperbil',
         price: 75000,
-        maxSpeed: 200,
-        acceleration: 1.0,
+        maxSpeed: 55,      // ~200 km/h display
+        acceleration: 0.25,
         handling: 0.12,
-        health: 150, // Carbon fiber reinforced
+        health: 150,
         color: 0x00ffff
     },
     tank: {
         name: 'Kampvogn',
         price: 200000,
-        maxSpeed: 60,
-        acceleration: 0.2, // Slow
-        handling: 0.08, // Turns okay (tracks)
-        health: 500, // Massive Tank
+        maxSpeed: 17,      // ~60 km/h display
+        acceleration: 0.05,
+        handling: 0.08,
+        health: 500,
         color: 0x2f4f4f,
         type: 'tank',
         reqRebirth: 0
@@ -66,13 +66,13 @@ export const cars = {
     ufo: {
         name: 'UFO Prototype',
         price: 500000,
-        maxSpeed: 300,
-        acceleration: 2.0,
+        maxSpeed: 83,      // ~300 km/h display
+        acceleration: 0.5,
         handling: 0.2,
-        health: 150, // Shielded (but not tank level)
+        health: 150,
         color: 0x999999,
         type: 'ufo',
-        reqRebirth: 1 // Needs 1 rebirth
+        reqRebirth: 1
     }
 };
 
