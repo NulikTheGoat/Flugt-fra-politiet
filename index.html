@@ -1104,6 +1104,21 @@
             color: #fff;
         }
 
+        @keyframes spinAndGrow {
+            0% {
+                transform: scale(0.1) rotate(720deg);
+                opacity: 0;
+            }
+            100% {
+                transform: scale(1) rotate(-2deg);
+                opacity: 1;
+            }
+        }
+
+        .newspaper-animation {
+            animation: spinAndGrow 1.5s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+        }
+
         /* Stats Bars */
         .stats-container {
             display: flex;

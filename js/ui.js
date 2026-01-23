@@ -153,6 +153,12 @@ export function showGameOver(customMessage) {
         // Reset to loading state
         document.getElementById('newspaperHeadline').textContent = "TRYKKER EKSTRA OPLAG...";
         document.getElementById('newspaperSubhead').textContent = "Vent venligst...";
+        
+        // Reset animation
+        newspaperElement.classList.remove('newspaper-animation');
+        void newspaperElement.offsetWidth; // Trigger reflow
+        newspaperElement.classList.add('newspaper-animation');
+        
         newspaperElement.style.display = 'block';
 
         generateNewspaper({

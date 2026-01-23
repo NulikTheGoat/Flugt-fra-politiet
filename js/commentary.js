@@ -53,7 +53,8 @@ const commentaryState = {
     lastMovementTime: 0, // Track idle time
     activeMission: null, // { type, target, progress, text, reward, startTime }
     lastMissionTime: 0,
-    missionCooldown: 45000 // 45 seconds between missions
+    missionCooldown: 45000, // 45 seconds between missions
+    voiceEnabled: true // New flag for Text-to-Speech
 };
 
 const MISSION_TYPES = {
@@ -63,6 +64,7 @@ const MISSION_TYPES = {
     SPEED: 'SPEED'      // Maintain speed (hard to track duration, maybe just "Reach X speed")
 };
 
+// ==========================================
 // System prompt for The Boss
 const BOSS_PROMPT = `Du er "The Boss", en kriminel bagmand der sender SMS til en flugtbilist.
 Du er kynisk, magtfuld og taler i gadesprog ("makker", "yo", "hør her").
@@ -774,7 +776,8 @@ export async function generateVerdict(stats) {
 
 function getJudgeFallback() {
     console.warn('[Judge] LLM Connection Failed - Using FALLBACK verdict');
-    return JUDGE_FALLBACKS[Math.floor(Math.random() * JUDGE_FALLBACKS.length)];
+    const fallback = JUDGE_FALLBACKS[Math.floor(Math.random() * JUDGE_FALLBACKS.length)];
+    return fallback;
 }
 
 // ==========================================
