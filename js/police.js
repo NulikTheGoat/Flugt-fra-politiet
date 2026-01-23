@@ -193,7 +193,16 @@ export function updatePoliceAI(delta) {
     // Get current active command
     const currentCommand = getCurrentSheriffCommand();
 
+    // Enhanced AI system with industry best practices:
+    // - Predictive intercept targeting
+    // - Formation pursuit tactics
+    // - Look-ahead obstacle avoidance
+    // - Dynamic cornering behavior
+    // - Realistic momentum-based collisions
     gameState.policeCars.forEach((policeCar, index) => {
+        // Shared constants for this police car's update
+        const gridSize = gameState.chunkGridSize;
+        
         if (policeCar.userData.dead) {
              // Dead police cars slow down and stop
              policeCar.userData.speed *= Math.pow(0.9, delta || 1);
@@ -369,30 +378,119 @@ export function updatePoliceAI(delta) {
         // Heat 1: baseline, Heat 6: 2.5x more aggressive
         const aggressionMultiplier = 1 + (gameState.heatLevel - 1) * 0.3; // 1.0 to 2.5
         
-        // Apply command direction override or use default targeting
-        let targetDirection;
+        // === PREDICTIVE INTERCEPT TARGETING ===
+        // Police predict where player will be and aim there
+        const playerVelX = gameState.velocityX || 0;
+        const playerVelZ = gameState.velocityZ || 0;
+        const predictionTime = Math.min(distance / 300, 2.0); // Look ahead up to 2 seconds
+        
+        const predictedX = playerCar.position.x + playerVelX * predictionTime * 60;
+        const predictedZ = playerCar.position.z + playerVelZ * predictionTime * 60;
+        
+        // === FORMATION PURSUIT ===
+        // Distribute police around player for surround tactics
+        if (!policeCar.userData.formationOffset) {
+            policeCar.userData.formationOffset = (index * Math.PI * 2) / Math.max(gameState.policeCars.length, 1);
+        }
+        
+        const formationRadius = 100; // Preferred distance for formation
+        const formationAngle = Math.atan2(playerVelZ, playerVelX) + policeCar.userData.formationOffset;
+        
+        const formationTargetX = playerCar.position.x + Math.cos(formationAngle) * formationRadius;
+        const formationTargetZ = playerCar.position.z + Math.sin(formationAngle) * formationRadius;
+        
+        // Blend between direct intercept and formation based on distance and heat
+        const useFormation = distance < 300 && gameState.heatLevel >= 2;
+        let targetX = useFormation ? 
+            (formationTargetX * 0.6 + predictedX * 0.4) : predictedX;
+        let targetZ = useFormation ? 
+            (formationTargetZ * 0.6 + predictedZ * 0.4) : predictedZ;
+        
+        // --- SHERIFF AI OVERRIDE ---
+        if (commandModifiers.targetOffset !== undefined) {
+             targetX = playerCar.position.x + Math.sin(commandModifiers.targetOffset) * 100;
+             targetZ = playerCar.position.z + Math.cos(commandModifiers.targetOffset) * 100;
+        }
+
+        const finalDx = targetX - policeCar.position.x;
+        const finalDz = targetZ - policeCar.position.z;
+        
+        let targetDirection = Math.atan2(finalDx, finalDz);
+        
         if (commandModifiers.overrideDirection !== undefined) {
             targetDirection = commandModifiers.overrideDirection;
-        } else {
-            const targetDx = dx + (commandModifiers.targetOffset ? 
-                Math.sin(commandModifiers.targetOffset) * 100 : 0);
-            const targetDz = dz + (commandModifiers.targetOffset ? 
-                Math.cos(commandModifiers.targetOffset) * 100 : 0);
-            targetDirection = Math.atan2(targetDx, targetDz);
         }
+
+        // === LOOK-AHEAD OBSTACLE AVOIDANCE ===
+        const lookAheadDist = 80; // Distance to check for obstacles
+        const checkX = policeCar.position.x + Math.sin(policeCar.rotation.y) * lookAheadDist;
+        const checkZ = policeCar.position.z + Math.cos(policeCar.rotation.y) * lookAheadDist;
+        
+        let hasObstacle = false;
+        const checkGridX = Math.floor(checkX / gridSize);
+        const checkGridZ = Math.floor(checkZ / gridSize);
+        
+        for(let gx = checkGridX-1; gx <= checkGridX+1; gx++) {
+            for(let gz = checkGridZ-1; gz <= checkGridZ+1; gz++) {
+                const key = `${gx},${gz}`;
+                const chunks = gameState.chunkGrid[key];
+                if(!chunks) continue;
+                
+                for(let c=0; c < chunks.length; c++) {
+                    const chunk = chunks[c];
+                    if(chunk.userData.isHit) continue;
+                    
+                    const cdx = chunk.position.x - checkX;
+                    const cdz = chunk.position.z - checkZ;
+                    const chunkDist = Math.sqrt(cdx*cdx + cdz*cdz);
+                    
+                    if (chunkDist < 40) {
+                        hasObstacle = true;
+                        break;
+                    }
+                }
+                if (hasObstacle) break;
+            }
+            if (hasObstacle) break;
+        }
+        
+        // If obstacle detected, turn to avoid it
+        // Only avoid if NOT under strict directional command (like U-Turn)
+        let avoidanceAngle = 0;
+        if (hasObstacle && commandModifiers.overrideDirection === undefined) {
+            // Turn perpendicular to current direction
+            avoidanceAngle = Math.PI / 2; // 90 degree turn
+            // Randomly choose left or right turn based on police car index
+            if (index % 2 === 0) avoidanceAngle = -avoidanceAngle;
+        }
+        
+        // === IMPROVED CORNERING BEHAVIOR ===
+        const angleDiff = normalizeAngleRadians(targetDirection - policeCar.rotation.y + avoidanceAngle);
+        const sharpTurn = Math.abs(angleDiff) > Math.PI / 4; // 45 degrees or more
+        
+        // Initialize physics state for police car
+        if (!policeCar.userData.currentSpeed) {
+            policeCar.userData.currentSpeed = policeCar.userData.speed || 250;
+        }
+        
+        // Slow down before sharp turns (racing game technique)
+        const corneringSpeedFactor = sharpTurn ? (0.6 - Math.abs(angleDiff) * 0.2) : 1.0;
         
         // Faster turning at higher heat levels
         const baseTurnSpeed = 0.06;
-        const turnSpeed = baseTurnSpeed * aggressionMultiplier;
-        const angleDiff = normalizeAngleRadians(targetDirection - policeCar.rotation.y);
+        const turnSpeed = baseTurnSpeed * aggressionMultiplier * (sharpTurn ? 1.3 : 1.0);
         policeCar.rotation.y += clamp(angleDiff, -turnSpeed, turnSpeed) * (delta || 1);
 
+        // === DYNAMIC SPEED ADJUSTMENT ===
         // Base speed increased by aggression at higher heat levels
-        let policeSpeed = (policeCar.userData.speed || 250) * (1 + (aggressionMultiplier - 1) * 0.5);
+        let targetPoliceSpeed = (policeCar.userData.speed || 250) * (1 + (aggressionMultiplier - 1) * 0.5);
+        
+        // Apply cornering slowdown
+        targetPoliceSpeed *= corneringSpeedFactor;
         
         // Apply Sheriff command speed modifier
         if (commandModifiers.speedMultiplier) {
-            policeSpeed *= commandModifiers.speedMultiplier;
+            targetPoliceSpeed *= commandModifiers.speedMultiplier;
         }
         
         // Slow down police when near player and player is slow (for arrest)
@@ -403,21 +501,25 @@ export function updatePoliceAI(delta) {
         if (distance < 150 && playerSpeedKmh < speedThreshold) {
             // Match player speed when close and player is slow
             const slowFactor = Math.max(0.1, distance / 150);
-            policeSpeed *= slowFactor;
+            targetPoliceSpeed *= slowFactor;
         }
         
         // At high heat levels, police try to ram the player when close
         if (gameState.heatLevel >= 3 && distance < 100 && distance > 30) {
             // Boost speed when chasing close - ramming behavior
-            policeSpeed *= 1.3;
+            targetPoliceSpeed *= 1.3;
         }
-
+        
+        // Smooth acceleration/deceleration (more realistic)
+        const speedBlendRate = 0.1;
+        policeCar.userData.currentSpeed += (targetPoliceSpeed - policeCar.userData.currentSpeed) * speedBlendRate;
+        
+        const policeSpeed = policeCar.userData.currentSpeed;
         const policeMove = policeSpeed * 0.016 * (delta || 1);
         policeCar.position.z += Math.cos(policeCar.rotation.y) * policeMove;
         policeCar.position.x += Math.sin(policeCar.rotation.y) * policeMove;
 
         // Police vs Building Collision
-        const gridSize = gameState.chunkGridSize;
         const px = Math.floor(policeCar.position.x / gridSize);
         const pz = Math.floor(policeCar.position.z / gridSize);
         
@@ -492,33 +594,83 @@ export function updatePoliceAI(delta) {
             }
         }
 
-        // Solid body collision - prevent overlap between player and police
-        // BOTH cars take damage on collision
+        // === IMPROVED COLLISION RESPONSE WITH MOMENTUM TRANSFER ===
         const collisionRadius = 25; // Combined radius of both cars
         if (distance < collisionRadius && !policeCar.userData.dead) {
             const overlap = collisionRadius - distance;
             const nx = dx / distance;
             const nz = dz / distance;
             
-            // Push both cars apart (player more, police less)
-            playerCar.position.x += nx * overlap * 0.6;
-            playerCar.position.z += nz * overlap * 0.6;
-            policeCar.position.x -= nx * overlap * 0.4;
-            policeCar.position.z -= nz * overlap * 0.4;
+            // Calculate relative velocities for realistic collision
+            const playerVelX = gameState.velocityX || 0;
+            const playerVelZ = gameState.velocityZ || 0;
+            const playerSpeed = Math.sqrt(playerVelX * playerVelX + playerVelZ * playerVelZ);
+            
+            // Police velocity based on their movement direction
+            const policeForwardX = Math.sin(policeCar.rotation.y);
+            const policeForwardZ = Math.cos(policeCar.rotation.y);
+            const policeVelX = policeForwardX * policeSpeed * 0.016;
+            const policeVelZ = policeForwardZ * policeSpeed * 0.016;
+            
+            // Relative velocity along collision normal
+            const relVelX = playerVelX - policeVelX;
+            const relVelZ = playerVelZ - policeVelZ;
+            const relVelNormal = relVelX * nx + relVelZ * nz;
+            
+            // Mass ratio (police cars are heavier for SWAT/Military)
+            const playerMass = 1.0;
+            const policeMass = policeCar.userData.type === 'swat' ? 1.5 : 
+                              policeCar.userData.type === 'military' ? 1.3 : 1.0;
+            const totalMass = playerMass + policeMass;
+            
+            // Only process collision if objects are moving toward each other
+            if (relVelNormal < 0) {
+                // Coefficient of restitution (bounciness) - partial elastic collision
+                const restitution = 0.3;
+                
+                // Calculate impulse for momentum transfer
+                const impulse = -(1 + restitution) * relVelNormal / totalMass;
+                
+                // Apply impulse to both vehicles
+                const playerImpulseX = impulse * nx * policeMass;
+                const playerImpulseZ = impulse * nz * policeMass;
+                const policeImpulseX = -impulse * nx * playerMass;
+                const policeImpulseZ = -impulse * nz * policeMass;
+                
+                // Update velocities with momentum transfer
+                gameState.velocityX += playerImpulseX;
+                gameState.velocityZ += playerImpulseZ;
+                
+                // Transfer to police (store for next frame)
+                if (!policeCar.userData.velocityX) policeCar.userData.velocityX = 0;
+                if (!policeCar.userData.velocityZ) policeCar.userData.velocityZ = 0;
+                policeCar.userData.velocityX += policeImpulseX;
+                policeCar.userData.velocityZ += policeImpulseZ;
+            }
+            
+            // Separate overlapping bodies
+            const pushRatio = policeMass / (playerMass + policeMass);
+            playerCar.position.x += nx * overlap * pushRatio;
+            playerCar.position.z += nz * overlap * pushRatio;
+            policeCar.position.x -= nx * overlap * (1 - pushRatio);
+            policeCar.position.z -= nz * overlap * (1 - pushRatio);
             
             // Damage both cars on collision (throttled)
             const now = Date.now();
             if (now - (policeCar.userData.lastCollisionDamage || 0) > 300) {
                 policeCar.userData.lastCollisionDamage = now;
-                const speedKmh = Math.abs(gameState.speed) * 3.6;
+                
+                // Damage based on collision speed (relative velocity)
+                const collisionSpeed = Math.abs(relVelNormal) * 60; // Convert to km/h-ish
                 
                 // Damage to player
-                const playerDamage = Math.max(gameConfig.minCrashDamage, speedKmh * gameConfig.playerCrashDamageMultiplier);
+                const playerDamage = Math.max(gameConfig.minCrashDamage, collisionSpeed * gameConfig.playerCrashDamageMultiplier * 0.5);
                 takeDamage(playerDamage);
                 logEvent(EVENTS.CRASH, 'police car');
                 
-                // Damage to police
-                const policeDamage = Math.max(gameConfig.minCrashDamage, speedKmh * gameConfig.policeCrashDamageMultiplier);
+                // Damage to police (heavier vehicles take less damage)
+                const policeDamageMultiplier = 1.0 / policeMass;
+                const policeDamage = Math.max(gameConfig.minCrashDamage, collisionSpeed * gameConfig.policeCrashDamageMultiplier * policeDamageMultiplier);
                 policeCar.userData.health -= policeDamage;
                 
                 if (policeCar.userData.health <= 0) {
@@ -530,7 +682,7 @@ export function updatePoliceAI(delta) {
                 }
                 
                 createSmoke(playerCar.position);
-                gameState.screenShake = 0.2;
+                gameState.screenShake = 0.2 + Math.min(collisionSpeed * 0.01, 0.3);
             }
         }
 

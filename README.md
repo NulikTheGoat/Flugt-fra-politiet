@@ -4,6 +4,20 @@ A fast-paced 3D car chase game! Outrun the cops, collect coins, upgrade your rid
 
 ---
 
+## 📚 Documentation
+
+**For Players**: Continue reading below for how to play and setup instructions.
+
+**For Developers & LLMs**: Check out our comprehensive documentation:
+- **[PROJECT_CONTEXT.md](PROJECT_CONTEXT.md)** - Project overview, structure, and quick reference for LLMs
+- **[CODE_ARCHITECTURE.md](CODE_ARCHITECTURE.md)** - Technical deep dive into the codebase
+- **[DEVELOPER_GUIDE.md](DEVELOPER_GUIDE.md)** - Step-by-step guide for developers
+- **[CHANGELOG.md](CHANGELOG.md)** - Version history and release notes
+
+**Tech Stack**: Three.js r128 • JavaScript ES6 • WebSocket • Node.js
+
+---
+
 ## 🎮 How to Play
 
 ### Controls
@@ -216,6 +230,68 @@ At Heat Level 3+, the **Sheriff** may join the chase! This special unit:
 - Commands appear in gold text on the police scanner
 
 See [SHERIFF_SETUP.md](SHERIFF_SETUP.md) for setup instructions.
+
+---
+
+## 🛠️ For Developers
+
+Want to contribute or modify the game? Check out our developer resources:
+
+### Quick Start for Development
+```bash
+git clone https://github.com/NulikTheGoat/Flugt-fra-politiet.git
+cd Flugt-fra-politiet
+npm install
+npm start
+# Game runs on http://localhost:3000
+```
+
+### Documentation
+- **[DEVELOPER_GUIDE.md](DEVELOPER_GUIDE.md)** - Complete developer guide with examples
+- **[CODE_ARCHITECTURE.md](CODE_ARCHITECTURE.md)** - Technical architecture and patterns
+- **[PROJECT_CONTEXT.md](PROJECT_CONTEXT.md)** - Project overview for LLMs
+
+### Contributing
+1. Fork the repository
+2. Create a feature branch (`git checkout -b feature/amazing-feature`)
+3. Make your changes and test thoroughly
+4. Commit your changes (`git commit -m 'Add amazing feature'`)
+5. Push to the branch (`git push origin feature/amazing-feature`)
+6. Open a Pull Request
+
+See [DEVELOPER_GUIDE.md](DEVELOPER_GUIDE.md) for detailed contributing guidelines.
+
+---
+
+## 📝 Project Information
+
+- **Version**: 1.0.0
+- **License**: ISC
+- **Repository**: https://github.com/NulikTheGoat/Flugt-fra-politiet
+- **Issues**: https://github.com/NulikTheGoat/Flugt-fra-politiet/issues
+
+### Technologies Used
+- **Frontend**: Three.js r128, JavaScript ES6 Modules, HTML5, CSS3
+- **Backend**: Node.js, WebSocket (ws library)
+- **No Build Step**: Runs directly in browser!
+
+### Features
+- ✅ Single player and LAN multiplayer
+- ✅ 5 unique car types with different stats
+- ✅ 5 police types with escalating difficulty
+- ✅ Dynamic heat level system
+- ✅ Economy and shop system
+- ✅ Procedurally generated city
+- ✅ Real-time physics and AI
+- ✅ Visual effects (tire marks, sparks, explosions)
+- ✅ Optional LLM-powered commentary
+
+### Roadmap
+See our planning documents:
+- [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md) - Current development status
+- [llm_commentary_plan.md](llm_commentary_plan.md) - AI commentary feature
+- [economy_gamification_plan.md](economy_gamification_plan.md) - Economy improvements
+- [police_improvement_plan.md](police_improvement_plan.md) - AI enhancements
 
 ---
 
