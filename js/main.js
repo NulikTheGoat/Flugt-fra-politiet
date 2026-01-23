@@ -1,3 +1,38 @@
+/**
+ * MAIN.JS - Game Entry Point
+ * 
+ * This is the main game file that orchestrates everything.
+ * 
+ * Key Responsibilities:
+ * - Initialize Three.js scene and attach to DOM
+ * - Set up event listeners (keyboard, buttons, etc.)
+ * - Manage game modes (solo vs multiplayer)
+ * - Run the main game loop (animate function)
+ * - Handle multiplayer lobby and room management
+ * 
+ * Game Loop Flow:
+ * 1. Calculate delta time
+ * 2. Update player physics
+ * 3. Update police AI
+ * 4. Update projectiles (if Tank is shooting)
+ * 5. Update visual effects (particles, sparks, tire marks)
+ * 6. Update HUD
+ * 7. Update commentary (if enabled)
+ * 8. Broadcast state to clients (if host)
+ * 9. Render scene
+ * 10. Request next frame
+ * 
+ * Module Imports:
+ * - state.js: Game state and input
+ * - player.js: Player car logic
+ * - police.js: Police AI
+ * - world.js: Environment generation
+ * - ui.js: HUD and menus
+ * - particles.js: Visual effects
+ * - network.js: Multiplayer
+ * - commentary.js: AI commentary
+ */
+
 import { gameState, keys } from './state.js';
 import { gameConfig } from './config.js';
 import { scene, camera, renderer } from './core.js';
@@ -12,7 +47,8 @@ import { updateCommentary, resetCommentary, logEvent, EVENTS } from './commentar
 import { initLevelEditor, openLevelEditor } from './levelEditor.js';
 
 
-// Initialize - attach renderer to gameContainer
+// === Initialization ===
+// Attach renderer to gameContainer
 document.getElementById('gameContainer').appendChild(renderer.domElement);
 
 // Check if URL path is /start to auto-start the game
@@ -21,7 +57,7 @@ const autoStart = window.location.pathname === '/start' || window.location.pathn
 // Check if URL path is /editor to auto-open level editor
 const autoEditor = window.location.pathname === '/editor' || window.location.pathname === '/editor/';
 
-// DOM elements for multiplayer
+// === DOM Elements - Multiplayer Lobby ===
 const multiplayerLobby = document.getElementById('multiplayerLobby');
 const lobbyCloseBtn = document.getElementById('lobbyCloseBtn');
 const joinGameBtn = document.getElementById('joinGameBtn');
@@ -756,6 +792,32 @@ export function startMultiplayerGame(spawnPos) {
 
 let lastTime = performance.now();
 
+/**
+ * MAIN GAME LOOP - animate()
+ * 
+ * This is the heart of the game, called ~60 times per second.
+ * 
+ * Execution Order:
+ * 1. Calculate delta time (frame-rate independence)
+ * 2. Update player physics and input
+ * 3. Spawn police based on intervals (host only)
+ * 4. Update heat level over time
+ * 5. Update world chunks (loading/unloading)
+ * 6. Update police AI
+ * 7. Update collectibles (coins)
+ * 8. Update projectiles (Tank shots)
+ * 9. Update visual effects (particles, sparks, tire marks)
+ * 10. Update HUD
+ * 11. Broadcast state to multiplayer clients (host only)
+ * 12. Update commentary (if enabled)
+ * 13. Render Three.js scene
+ * 14. Request next animation frame
+ * 
+ * Delta Time:
+ * - Normalized to 60 FPS (1.0 = one frame at 60fps)
+ * - Capped at 2 frames to prevent physics explosions
+ * - Used in all physics calculations for consistency
+ */
 function animate() {
     requestAnimationFrame(animate);
     
