@@ -708,6 +708,9 @@ export function updateBuildingChunks(delta) {
                                      }
                                      
                                      createTreeDebris(chunk.position, carSpeed);
+                                     
+                                     // Log tree destruction for commentary
+                                     logEvent(EVENTS.TREE_DESTROYED, null, { speed: carSpeed });
                                  } else {
                                      // Tree shakes but doesn't fall
                                      gameState.screenShake = 0.2;
