@@ -226,65 +226,110 @@ export function updatePlayer(delta, now) {
     const absSpeed = Math.abs(gameState.speed);
     const speedRatio = absSpeed / gameState.maxSpeed;
     
+    // === WEIGHT TRANSFER SIMULATION ===
+    // Forward weight transfer affects grip (braking = more front grip, acceleration = more rear grip)
+    if (!gameState.weightTransfer) gameState.weightTransfer = 0;
+    const targetWeightTransfer = (keys['w'] || keys['arrowup']) ? -0.3 : 
+                                 (keys['s'] || keys['arrowdown']) ? 0.5 : 0;
+    gameState.weightTransfer += (targetWeightTransfer - gameState.weightTransfer) * 0.1 * delta;
+    
+    // === TIRE GRIP MODEL ===
+    // Speed-dependent traction: optimal at medium speeds, reduced at very high speeds
+    const optimalSpeedRatio = 0.6;
+    const gripLoss = Math.abs(speedRatio - optimalSpeedRatio) * 0.4;
+    const baseGrip = 1.0 - gripLoss;
+    const tiregrip = Math.max(0.5, baseGrip + gameState.weightTransfer * 0.2);
+    
     // Steering
     let steerInput = 0;
     if (keys['a'] || keys['arrowleft']) steerInput = 1;
     if (keys['d'] || keys['arrowright']) steerInput = -1;
     
-    // REMOVED: Random steering jitter (was annoying, not fun)
-    // Instead, health degradation affects max speed and smoke effects provide visual feedback
+    // === SPEED-DEPENDENT STEERING SENSITIVITY ===
+    // High speed = less responsive steering (more realistic)
+    const steeringSensitivity = 1.0 - (speedRatio * 0.5);
+    steerInput *= steeringSensitivity;
     
-    // Acceleration
+    // Acceleration with improved traction model
     if (keys['w'] || keys['arrowup']) {
-        const tractionFactor = 1 - (speedRatio * 0.3);
+        // Better traction at lower speeds due to weight transfer
+        const tractionFactor = tiregrip * (1 - (speedRatio * 0.3));
         if (gameState.speed < effectiveMaxSpeed) {
             gameState.speed = Math.min(gameState.speed + gameState.acceleration * tractionFactor * delta, effectiveMaxSpeed);
         } else {
+            // Drag at high speeds
             gameState.speed *= Math.pow(0.95, delta);
         }
     }
     if (keys['s'] || keys['arrowdown']) {
+        // Weight transfer forward improves braking
+        const brakingPower = 2 * (1 + gameState.weightTransfer * 0.5);
         if (gameState.speed > 0) {
-            gameState.speed = Math.max(0, gameState.speed - gameState.acceleration * 2 * delta);
+            gameState.speed = Math.max(0, gameState.speed - gameState.acceleration * brakingPower * delta);
         } else {
             gameState.speed = Math.max(gameState.speed - gameState.acceleration * 0.5 * delta, -gameState.maxReverseSpeed);
         }
     }
     
-    // Handbrake
+    // === IMPROVED DRIFT PHYSICS WITH SLIP ANGLE ===
     const isHandbraking = keys[' '];
     if (isHandbraking) {
         gameState.speed *= Math.pow(gameState.brakePower, delta);
-        gameState.driftFactor = Math.min(gameState.driftFactor + 0.1 * delta, 0.9);
+        // Drift factor increases faster when turning during handbrake
+        const turnInfluence = Math.abs(steerInput) * 0.15;
+        gameState.driftFactor = Math.min(gameState.driftFactor + (0.1 + turnInfluence) * delta, 0.9);
     } else {
-        gameState.driftFactor = Math.max(gameState.driftFactor - 0.05 * delta, 0);
+        // Drift recovery is speed-dependent (faster at higher speeds)
+        const recoveryRate = 0.05 + (speedRatio * 0.03);
+        gameState.driftFactor = Math.max(gameState.driftFactor - recoveryRate * delta, 0);
     }
     
-    // Steering physics
-    const steerStrength = handling * (1 - speedRatio * 0.4) * (1 + gameState.driftFactor * 0.5);
+    // === STEERING PHYSICS WITH UNDERSTEER/OVERSTEER ===
+    // Calculate slip angle effect
+    const slipAngle = gameState.driftFactor;
+    
+    // Understeer at high speeds (front tires lose grip)
+    const understeerFactor = speedRatio > 0.7 ? (speedRatio - 0.7) * 0.5 : 0;
+    
+    // Oversteer during drift (rear loses grip)
+    const oversteerFactor = slipAngle * 1.5;
+    
+    // Base steering with grip consideration
+    const effectiveHandling = handling * tiregrip;
+    const steerStrength = effectiveHandling * (1 - understeerFactor) * (1 + oversteerFactor);
+    
+    // === DOWNFORCE AT HIGH SPEEDS ===
+    // Improved stability and grip at higher speeds
+    const downforce = speedRatio > 0.5 ? (speedRatio - 0.5) * 0.3 : 0;
+    const stabilityBonus = 1 + downforce;
+    
     const targetAngularVelocity = steerInput * steerStrength * (absSpeed / 20);
     
-    gameState.angularVelocity += (targetAngularVelocity - gameState.angularVelocity) * 0.15 * delta;
-    gameState.angularVelocity *= 0.92;
+    // Smoother steering response with stability
+    const steerResponsiveness = 0.15 * stabilityBonus;
+    gameState.angularVelocity += (targetAngularVelocity - gameState.angularVelocity) * steerResponsiveness * delta;
+    gameState.angularVelocity *= (0.92 + downforce * 0.03); // Better damping at high speeds
     
     playerCar.rotation.y += gameState.angularVelocity * delta;
     
-    // Velocity calculation
+    // === VELOCITY CALCULATION WITH IMPROVED GRIP MODEL ===
     const forwardX = Math.sin(playerCar.rotation.y);
     const forwardZ = Math.cos(playerCar.rotation.y);
     
-    const grip = 1 - gameState.driftFactor;
+    const grip = (1 - gameState.driftFactor) * tiregrip;
     const targetVelX = forwardX * gameState.speed;
     const targetVelZ = forwardZ * gameState.speed;
     
-    // Grip transition for drift feel
-    gameState.velocityX += (targetVelX - gameState.velocityX) * (0.15 + grip * 0.25) * delta;
-    gameState.velocityZ += (targetVelZ - gameState.velocityZ) * (0.15 + grip * 0.25) * delta;
+    // Grip transition for drift feel with tire grip consideration
+    const velocityBlend = (0.15 + grip * 0.25) * stabilityBonus;
+    gameState.velocityX += (targetVelX - gameState.velocityX) * velocityBlend * delta;
+    gameState.velocityZ += (targetVelZ - gameState.velocityZ) * velocityBlend * delta;
     
-    // Friction
+    // Friction with surface grip
     gameState.speed *= Math.pow(gameState.friction, delta);
-    gameState.velocityX *= Math.pow(0.98, delta);
-    gameState.velocityZ *= Math.pow(0.98, delta);
+    const lateralFriction = 0.98 * tiregrip;
+    gameState.velocityX *= Math.pow(lateralFriction, delta);
+    gameState.velocityZ *= Math.pow(lateralFriction, delta);
 
     const slowMultiplier = gameState.slowEffect > 0 ? (1 - gameState.slowEffect) : 1;
     
@@ -301,26 +346,45 @@ export function updatePlayer(delta, now) {
     playerCar.position.x += gameState.velocityX * delta * slowMultiplier;
     playerCar.position.z += gameState.velocityZ * delta * slowMultiplier;
     
-    // Visuals
+    // === VISUAL EFFECTS ===
     gameState.wheelAngle = steerInput * 0.4;
     
-    const targetTilt = -gameState.angularVelocity * speedRatio * 0.3;
-    gameState.carTilt += (targetTilt - gameState.carTilt) * 0.1 * delta;
+    // Body tilt based on cornering forces
+    const corneringForce = gameState.angularVelocity * speedRatio;
+    const targetTilt = -corneringForce * 0.4;
+    gameState.carTilt += (targetTilt - gameState.carTilt) * 0.12 * delta;
     playerCar.rotation.z = gameState.carTilt;
     
-    // Tire marks
+    // Tire marks during drift
     if (gameState.driftFactor > 0.3 && absSpeed > 20) {
         createTireMark(playerCar.position.x, playerCar.position.z, playerCar.rotation.y);
     }
     updateTireMarks(delta);
 
-    // Wheel Suspensions
+    // === IMPROVED SUSPENSION SIMULATION ===
     if (playerCar.userData.wheels) {
-        playerCar.userData.wheels.forEach(wheel => {
-             // Slow wobble: now is in ms, 0.005 gives ~1.3 second period
-             const wobble = Math.sin(now * 0.005 + wheel.userData.wobbleOffset) * 0.3;
-             const jitter = absSpeed > 30 ? (Math.random() - 0.5) * (absSpeed / 150) : 0;
-             wheel.position.y = wheel.userData.baseY + wobble + jitter;
+        const suspensionRate = absSpeed * 0.008; // Faster oscillation at higher speeds
+        const compressionFromSpeed = Math.min(speedRatio * 0.4, 0.4); // Compress suspension at speed
+        const compressionFromBrake = (keys['s'] || keys['arrowdown']) ? 0.3 : 0; // Nose dips when braking
+        const compressionFromAccel = (keys['w'] || keys['arrowup']) ? -0.2 : 0; // Rear squats when accelerating
+        
+        playerCar.userData.wheels.forEach((wheel, idx) => {
+            const isFront = idx < 2; // First 2 wheels are front
+            
+            // Base suspension oscillation
+            const wobble = Math.sin(now * suspensionRate + wheel.userData.wobbleOffset) * 0.3;
+            
+            // Speed-dependent vibration
+            const jitter = absSpeed > 30 ? (Math.random() - 0.5) * (absSpeed / 150) : 0;
+            
+            // Cornering load transfer
+            const isLeft = (idx % 2) === 0;
+            const corneringLoad = isLeft ? -gameState.carTilt * 2 : gameState.carTilt * 2;
+            
+            // Apply different compression to front vs rear
+            const weightTransferEffect = isFront ? compressionFromBrake : compressionFromAccel;
+            
+            wheel.position.y = wheel.userData.baseY + wobble + jitter + corneringLoad - compressionFromSpeed + weightTransferEffect;
         });
     }
 
