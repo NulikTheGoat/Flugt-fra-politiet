@@ -647,6 +647,7 @@ export function startGame() {
     
     updateHealthUI();
     gameState.arrested = false;
+    gameState.hasStartedMoving = false; // Reset movement flag
     gameState.startTime = Date.now();
     gameState.lastMoneyCheckTime = Date.now();
     gameState.lastPoliceSpawnTime = Date.now();
@@ -699,6 +700,7 @@ export function startMultiplayerGame(spawnPos) {
     
     updateHealthUI();
     gameState.arrested = false;
+    gameState.hasStartedMoving = false; // Reset movement flag
     gameState.startTime = Date.now();
     gameState.lastMoneyCheckTime = Date.now();
     gameState.lastPoliceSpawnTime = Date.now();
@@ -751,7 +753,10 @@ function animate() {
     const delta = Math.min((now - lastTime) / 16.67, 2); 
     lastTime = now;
 
-    if (!gameState.arrested) {
+    // Only update game logic if game has started (startTime set)
+    const gameStarted = gameState.startTime > 0;
+    
+    if (!gameState.arrested && gameStarted) {
         // Player Physics
         updatePlayer(delta, now);
         
