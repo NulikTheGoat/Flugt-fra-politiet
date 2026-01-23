@@ -35,71 +35,72 @@ const commentaryState = {
 };
 
 // System prompt for the commentator
-const SYSTEM_PROMPT = `You are an excited sports commentator for an illegal street racing game called "Flugt fra Politiet" (Escape from Police).
-You're dramatic, cheerful, and love to hype up the player's actions.
-Keep responses SHORT - maximum 1-2 sentences, under 25 words total.
-Use racing/action movie references and puns.
-Always be positive and encouraging, even when things go wrong.
-Speak in present tense as if watching live.
-Mix in occasional Danish phrases like "Fantastisk!", "Helt vildt!", "Nej hvor fedt!" for local flavor.
-Never use hashtags or emojis in your commentary.`;
+const SYSTEM_PROMPT = `Du er en begejstret sportskommentator til et ulovligt gaderæs-spil kaldet "Flugt fra Politiet".
+Du er dramatisk, munter og elsker at hype spillerens handlinger.
+SKRIV ALTID PÅ DANSK!
+Hold svarene KORTE - maksimalt 1-2 sætninger, under 25 ord i alt.
+Brug racerløbs- og actionfilm-referencer og ordspil.
+Vær altid positiv og opmuntrende, selv når tingene går galt.
+Tal i nutid som om du ser det live.
+Brug udtryk som "Fantastisk!", "Helt vildt!", "Nej hvor fedt!", "Av for den!", "Sikke en tur!".
+Brug aldrig hashtags eller emojis i din kommentar.`;
 
 // Fallback phrases if API fails
 const FALLBACK_PHRASES = {
     [EVENTS.DRIFT_START]: [
-        "Sliding into action like a pro!",
-        "That drift is pure poetry in motion!",
-        "Sideways is the only way!"
+        "Han glider ind som en professionel!",
+        "Det drift er ren poesi i bevægelse!",
+        "Sidelæns er den eneste vej!"
     ],
     [EVENTS.DRIFT_COMBO]: [
-        "Combo city! Keep it going!",
-        "The drift multiplier is OFF THE CHARTS!",
-        "Drift king in the making!"
+        "Combo-tid! Bliv ved!",
+        "Drift-multiplikatoren er HELT OPPE!",
+        "En drift-konge i støbeskeen!"
     ],
     [EVENTS.SPEED_MILESTONE]: [
-        "PEDAL TO THE METAL!",
-        "This speedster knows no limits!",
-        "Faster than a speeding ticket!"
+        "SPEEDEREN I BUND!",
+        "Denne fartdjævel kender ingen grænser!",
+        "Hurtigere end en fartbøde!"
     ],
     [EVENTS.POLICE_KILLED]: [
-        "Another one bites the dust!",
-        "That cop car just got RETIRED!",
-        "Police down! Helt vildt!"
+        "Endnu en bider i græsset!",
+        "Den politibil blev lige PENSIONERET!",
+        "Politi nede! Helt vildt!"
     ],
     [EVENTS.POLICE_LOOT]: [
-        "Ka-ching! That's some sweet justice money!",
-        "Finders keepers, officer!",
-        "Collecting that cop cash!"
+        "Ka-ching! Det er sød retfærdighed!",
+        "Den der finder, må beholde, betjent!",
+        "Samler politikassen ind!"
     ],
     [EVENTS.CRASH]: [
-        "A little bump never hurt anyone... much!",
-        "Paint is overrated anyway!",
-        "That'll buff out... probably!"
+        "Et lille bump har aldrig skadet nogen... meget!",
+        "Lakken er overvurderet alligevel!",
+        "Det kan nok fikses... måske!"
     ],
     [EVENTS.HEAT_INCREASE]: [
-        "Things are heating up! More cops incoming!",
-        "They're bringing backup! GOOD!",
-        "The heat is ON!"
+        "Det varmer op! Flere betjente på vej!",
+        "De sender forstærkning! GODT!",
+        "Nu bliver det hedt!"
     ],
     [EVENTS.LOW_HEALTH]: [
-        "Getting a bit crispy there! Watch out!",
-        "Damage control needed ASAP!",
-        "Still in the game, still fighting!"
+        "Det bliver lidt sprødt derovre! Pas på!",
+        "Skadekontrol nødvendig NU!",
+        "Stadig i spillet, stadig kæmpende!"
     ],
     [EVENTS.BUILDING_DESTROYED]: [
-        "PROPERTY DAMAGE! Insurance companies hate this!",
-        "That building had it coming!",
-        "Who needs structural integrity anyway?!"
+        "EJENDOMSSKADE! Forsikringsselskaber hader det her!",
+        "Den bygning havde fortjent det!",
+        "Hvem har brug for strukturel integritet?!"
     ],
     [EVENTS.GAME_START]: [
-        "Ladies and gentlemen, START YOUR ENGINES!",
-        "The chase is ON! Let's make some chaos!",
-        "Time to show these cops what we're made of!"
+        "Mine damer og herrer, START JERES MOTORER!",
+        "Jagten er i gang! Lad os skabe kaos!",
+        "Tid til at vise politiet hvad vi er lavet af!"
     ],
     [EVENTS.ARRESTED]: [
-        "Caught! But what a wild ride!",
-        "They got you this time... but you'll be back!",
-        "Game over, but legends never die!"
+        "Fanget! Men sikke en vild tur!",
+        "De fik dig denne gang... men du vender tilbage!",
+        "Game over, men legender dør aldrig!"
     ]
 };
 
