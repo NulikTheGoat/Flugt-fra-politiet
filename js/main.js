@@ -2,12 +2,13 @@ import { gameState, keys } from './state.js';
 import { gameConfig } from './config.js';
 import { scene, camera, renderer } from './core.js';
 import { cars } from './constants.js';
-import { createPlayerCar, rebuildPlayerCar, updatePlayer, playerCar, setUICallbacks, createOtherPlayerCar, updateOtherPlayerCar, removeOtherPlayerCar } from './player.js';
+import { createPlayerCar, rebuildPlayerCar, updatePlayer, playerCar, setUICallbacks, createOtherPlayerCar, updateOtherPlayerCar, removeOtherPlayerCar, interpolateOtherPlayers } from './player.js';
 import { spawnPoliceCar, updatePoliceAI, updateProjectiles, firePlayerProjectile, syncPoliceFromNetwork, getPoliceStateForNetwork, resetPoliceNetworkIds } from './police.js';
 import { createGround, createTrees, createBuildings, updateBuildingChunks, updateCollectibles, cleanupSmallDebris } from './world.js';
 import { updateHUD, updateHealthUI, DOM, goToShop, showGameOver, setStartGameCallback, triggerDamageEffect, setMultiplayerShopCallback } from './ui.js';
 import { updateSpeedEffects, updateSparks, updateTireMarks } from './particles.js';
 import * as Network from './network.js';
+import { physicsWorld } from './physics/physicsEngine.js';
 
 // Initialize - attach renderer to gameContainer
 document.getElementById('gameContainer').appendChild(renderer.domElement);
@@ -791,6 +792,9 @@ function animate() {
         updateBuildingChunks(delta);
         cleanupSmallDebris();
 
+        // Physics (Cannon)
+        physicsWorld.update(delta);
+
         // Collectibles & Heat
         updateCollectibles();
 
@@ -812,6 +816,8 @@ function animate() {
         // Update other players HUD in multiplayer
         if (gameState.isMultiplayer) {
             updateOtherPlayersHUD();
+            // Smoothly interpolate other players
+            interpolateOtherPlayers(delta);
         }
     }
     

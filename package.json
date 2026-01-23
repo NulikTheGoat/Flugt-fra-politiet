@@ -23,6 +23,7 @@
   },
   "homepage": "https://github.com/NulikTheGoat/Flugt-fra-politiet#readme",
   "dependencies": {
+    "cannon-es": "^0.20.0",
     "ws": "^8.19.0"
   },
   "devDependencies": {
