@@ -558,14 +558,14 @@ export function updatePoliceAI(delta) {
             const relVelZ = playerVelZ - policeVelZ;
             const relVelNormal = relVelX * nx + relVelZ * nz;
             
+            // Mass ratio (police cars are heavier for SWAT/Military)
+            const playerMass = 1.0;
+            const policeMass = policeCar.userData.type === 'swat' ? 1.5 : 
+                              policeCar.userData.type === 'military' ? 1.3 : 1.0;
+            const totalMass = playerMass + policeMass;
+            
             // Only process collision if objects are moving toward each other
             if (relVelNormal < 0) {
-                // Mass ratio (police cars are heavier for SWAT/Military)
-                const playerMass = 1.0;
-                const policeMass = policeCar.userData.type === 'swat' ? 1.5 : 
-                                  policeCar.userData.type === 'military' ? 1.3 : 1.0;
-                const totalMass = playerMass + policeMass;
-                
                 // Coefficient of restitution (bounciness) - partial elastic collision
                 const restitution = 0.3;
                 
