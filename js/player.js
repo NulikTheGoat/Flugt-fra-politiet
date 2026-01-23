@@ -3,9 +3,12 @@ import { scene, THREE } from './core.js';
 import { cars } from './constants.js';
 import { sharedGeometries, sharedMaterials } from './assets.js';
 import { createSmoke, createSpark, createTireMark, updateTireMarks } from './particles.js';
+import { physicsWorld } from './physics/physicsEngine.js';
 
 // Reusable Vector3 to avoid allocations in hot path
 const _smokePos = new THREE.Vector3();
+const _carBox = new THREE.Box3();
+const _carSize = new THREE.Vector3();
 
 let uiCallbacks = {
     triggerDamageEffect: () => {},
@@ -152,6 +155,13 @@ export function createPlayerCar(color = 0xff0000, type = 'standard') {
     scene.add(carGroup);
     // Assign to exported variable
     playerCar = carGroup;
+
+    // Register physics body (kinematic, driven by custom movement)
+    _carBox.setFromObject(carGroup).getSize(_carSize);
+    physicsWorld.addKinematicBody(carGroup, 'box', {
+        material: 'car',
+        size: { width: _carSize.x, height: _carSize.y, depth: _carSize.z }
+    });
     return carGroup;
 }
 
@@ -330,6 +340,13 @@ export function updatePlayer(delta, now) {
     // Move
     playerCar.position.x += gameState.velocityX * delta * slowMultiplier;
     playerCar.position.z += gameState.velocityZ * delta * slowMultiplier;
+
+    // Sync kinematic physics body to match manual movement
+    physicsWorld.syncKinematicBody(playerCar, {
+        x: gameState.velocityX,
+        y: 0,
+        z: gameState.velocityZ
+    });
     
     // Visuals
     gameState.wheelAngle = steerInput * 0.4;
@@ -472,21 +489,70 @@ export function createOtherPlayerCar(color = 0x00ff00, type = 'standard') {
 export function updateOtherPlayerCar(mesh, state) {
     if (!mesh || !state) return;
     
-    // Smooth interpolation towards target position
-    const lerpFactor = 0.3;
-    mesh.position.x += (state.x - mesh.position.x) * lerpFactor;
-    mesh.position.z += (state.z - mesh.position.z) * lerpFactor;
+    // Initialize lerp target if not exists
+    if (!mesh.userData.targetState) {
+        mesh.userData.targetState = { ...state };
+        mesh.position.set(state.x, state.y, state.z);
+        mesh.rotation.y = state.rotY !== undefined ? state.rotY : state.rotation;
+        return;
+    }
     
-    // Smooth rotation interpolation (support both rotY and rotation field names)
-    let targetRotation = state.rotY !== undefined ? state.rotY : state.rotation;
-    let currentRotation = mesh.rotation.y;
+    // Store target state for interpolation
+    mesh.userData.targetState = {
+        x: state.x,
+        y: state.y,
+        z: state.z,
+        rotY: state.rotY !== undefined ? state.rotY : state.rotation,
+        timestamp: Date.now()
+    };
+}
+
+// Global cached vectors to avoid GC
+const _targetPos = new THREE.Vector3();
+const _currentPos = new THREE.Vector3();
+
+// Call this every frame to smooth movement
+export function interpolateOtherPlayers(delta) {
+    const lerpSpeed = 10; // Adjust for smoothness vs responsiveness
     
-    // Handle rotation wraparound
-    let diff = targetRotation - currentRotation;
-    if (diff > Math.PI) diff -= Math.PI * 2;
-    if (diff < -Math.PI) diff += Math.PI * 2;
-    
-    mesh.rotation.y += diff * lerpFactor;
+    gameState.otherPlayers.forEach(player => {
+        if (!player.mesh || !player.mesh.userData.targetState) return;
+        
+        const mesh = player.mesh;
+        const target = mesh.userData.targetState;
+        
+        // Position interpolation
+        _targetPos.set(target.x, target.y, target.z);
+        _currentPos.copy(mesh.position);
+        
+        const dist = _currentPos.distanceTo(_targetPos);
+        
+        // Teleport if too far (e.g. respawn), otherwise smooth lerp
+        if (dist > 50) {
+            mesh.position.copy(_targetPos);
+        } else {
+            mesh.position.lerp(_targetPos, lerpSpeed * delta);
+        }
+        
+        // Rotation interpolation
+        let currentRot = mesh.rotation.y;
+        let targetRot = target.rotY;
+        
+        // Handle wraparound
+        let diff = targetRot - currentRot;
+        while (diff > Math.PI) diff -= Math.PI * 2;
+        while (diff < -Math.PI) diff += Math.PI * 2;
+        
+        mesh.rotation.y += diff * lerpSpeed * delta;
+        
+        // Simple wheel spin if moving
+        if (player.mesh.userData.wheels && dist > 0.1) {
+            const spinSpeed = dist * 2;
+            player.mesh.userData.wheels.forEach(wheel => {
+               wheel.rotation.x += spinSpeed * delta; 
+            });
+        }
+    });
 }
 
 // Remove another player's car from the scene

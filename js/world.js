@@ -5,6 +5,7 @@ import { sharedGeometries, sharedMaterials } from './assets.js';
 import { playerCar, takeDamage } from './player.js';
 import { createSmoke, createSpark } from './particles.js';
 import { addMoney } from './ui.js';
+import { physicsWorld } from './physics/physicsEngine.js';
 
 export function createGround() {
     const groundGeometry = new THREE.PlaneGeometry(10000, 10000);
@@ -636,6 +637,18 @@ export function updateBuildingChunks(delta) {
                  chunk.userData.isFallenDebris = true;
                  if (!gameState.fallenDebris) gameState.fallenDebris = [];
                  gameState.fallenDebris.push(chunk);
+
+                 if (!chunk.userData.physicsBody) {
+                     chunk.userData.physicsBody = physicsWorld.addBody(chunk, 'box', {
+                         mass: 5,
+                         material: 'debris',
+                         size: {
+                             width: chunk.userData.width || 10,
+                             height: chunk.userData.height || 5,
+                             depth: chunk.userData.depth || 10
+                         }
+                     });
+                 }
              }
         }
     }
@@ -748,7 +761,7 @@ export function updateBuildingChunks(delta) {
         }
     }
     
-    // Collision with fallen debris (no damage, solid push, shatter once)
+    // Collision with fallen debris (solid push, shatter on impact)
     if (gameState.fallenDebris && gameState.fallenDebris.length > 0) {
         for (let i = gameState.fallenDebris.length - 1; i >= 0; i--) {
             const debris = gameState.fallenDebris[i];
@@ -758,12 +771,11 @@ export function updateBuildingChunks(delta) {
             const dz = debris.position.z - carPos.z;
             const distSq = dx * dx + dz * dz;
             
-            // Use actual debris size for collision, with minimum size
-            const debrisSize = Math.max(
-                (debris.userData.width || 10),
-                (debris.userData.depth || 10)
-            ) / 2;
-            const collisionDist = carRadius + debrisSize + 2; // Add buffer
+            // Use actual debris size for collision - larger collision radius
+            const debrisWidth = debris.userData.width || 10;
+            const debrisDepth = debris.userData.depth || 10;
+            const debrisSize = Math.max(debrisWidth, debrisDepth) / 2;
+            const collisionDist = carRadius + debrisSize + 5; // Larger buffer for reliable collision
             
             if (distSq < collisionDist * collisionDist) {
                 const dist = Math.sqrt(distSq) || 1;
@@ -776,34 +788,45 @@ export function updateBuildingChunks(delta) {
                 // Push CAR back (solid collision - no passing through!)
                 const overlap = collisionDist - dist;
                 if (overlap > 0) {
-                    playerCar.position.x += normX * overlap * 1.2;
-                    playerCar.position.z += normZ * overlap * 1.2;
+                    playerCar.position.x += normX * overlap * 1.5;
+                    playerCar.position.z += normZ * overlap * 1.5;
                 }
                 
-                // Shatter into smaller pieces if going fast enough
-                if (carSpeed > 8) {
+                // Shatter into smaller pieces if going fast enough (lowered threshold)
+                if (carSpeed > 5) {
                     // Remove from fallen debris
                     gameState.fallenDebris.splice(i, 1);
                     scene.remove(debris);
+                    physicsWorld.removeBody(debris);
                     
                     // Create smaller debris pieces - more pieces at higher speed
-                    const numPieces = Math.min(12, Math.floor(carSpeed / 3));
+                    const numPieces = Math.min(15, Math.floor(carSpeed / 2) + 3);
                     shatterDebris(debris, carSpeed, numPieces);
                     
-                    // Speed reduction based on speed (no damage!)
-                    gameState.speed *= 0.85;
-                    gameState.screenShake = Math.min(0.3, carSpeed / 40);
+                    // Speed reduction and visual feedback
+                    gameState.speed *= 0.8;
+                    gameState.screenShake = Math.min(0.5, carSpeed / 25);
+                    
+                    // Add smoke and sparks for impact feedback
+                    createSmoke(debris.position);
+                    createDebrisSparks(debris.position, Math.floor(carSpeed / 4));
                 } else {
                     // Slow collision - stop the car more and push debris
-                    gameState.speed *= 0.6;
+                    gameState.speed *= 0.5;
                     
                     // Push debris based on car momentum
-                    const pushForce = Math.max(2, carSpeed * 0.5);
-                    debris.position.x += (-normX) * pushForce;
-                    debris.position.z += (-normZ) * pushForce;
+                    const pushForce = Math.max(3, carSpeed * 0.8);
+                    physicsWorld.applyImpulse(debris, {
+                        x: (-normX) * pushForce,
+                        y: 0.5,
+                        z: (-normZ) * pushForce
+                    });
                     
                     // Add some rotation to pushed debris
-                    debris.rotation.y += (Math.random() - 0.5) * 0.3;
+                    debris.rotation.y += (Math.random() - 0.5) * 0.5;
+                    
+                    // Minor screen shake for feedback
+                    gameState.screenShake = 0.15;
                 }
             }
         }
