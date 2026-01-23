@@ -2,6 +2,7 @@
 // Tracks game events and requests AI commentary
 
 import { gameState } from './state.js';
+import { camera } from './core.js';
 
 // Event types
 export const EVENTS = {
@@ -674,6 +675,54 @@ export function updateCommentary() {
         Math.random() < 0.01) { // Low chance per frame
         triggerNewMission();
     }
+    
+    // Update visual positions for dynamic bubbles (Sheriff Radio)
+    updateBubblePositions();
+}
+
+function updateBubblePositions() {
+    const bubble = document.getElementById('policeScannerBubble');
+    if (!bubble || bubble.style.opacity === '0') return;
+
+    // Look for active Sheriff
+    const sheriff = gameState.policeCars.find(p => p.userData.type === 'sheriff' && !p.userData.dead);
+    
+    if (sheriff && camera) {
+        // Project 3D position to 2D screen
+        const vector = sheriff.position.clone();
+        vector.y += 30; // Float above car
+        vector.project(camera);
+
+        const x = (vector.x * .5 + .5) * window.innerWidth;
+        const y = (-(vector.y * .5) + .5) * window.innerHeight;
+
+        // Check if car is in front of camera
+        if (vector.z < 1) {
+            bubble.style.position = 'fixed'; // Use fixed to ignore scroll if any, though canvas handles it
+            bubble.style.left = `${x}px`;
+            bubble.style.top = `${y}px`;
+            bubble.style.bottom = 'auto'; // Clear default
+            bubble.style.transform = 'translate(-50%, -100%)'; // Center above
+            
+            // Add a "tail" style dynamically if needed
+            bubble.style.borderBottomLeftRadius = '0';
+        } else {
+            // Behind camera? Hide or fallback? fallback to corner
+            resetScannerPosition(bubble);
+        }
+    } else {
+        // Fallback to corner if no Sheriff
+        resetScannerPosition(bubble);
+    }
+}
+
+function resetScannerPosition(bubble) {
+    bubble.style.position = 'fixed';
+    bubble.style.bottom = '20px';
+    bubble.style.left = '20px';
+    bubble.style.top = 'auto';
+    bubble.style.transform = 'none';
+    bubble.style.borderBottomLeftRadius = '5px'; // Restore radius
 }
 
 // Enable/disable commentary
@@ -1133,10 +1182,29 @@ function showPoliceScannerBubble(text) {
         document.body.appendChild(bubble);
     }
     
+    // Check if Sheriff talks
+    const sheriff = gameState.policeCars.find(p => p.userData.type === 'sheriff' && !p.userData.dead);
+    if (sheriff) {
+         // Style for Sheriff Speech
+         bubble.style.background = 'rgba(50, 40, 0, 0.95)'; // Gold-ish background
+         bubble.style.color = '#ffd700'; // Gold text
+         bubble.style.border = '2px solid #ffd700';
+         bubble.querySelector('div').textContent = "SHERIFF COMMAND CHANNEL"; // Change header
+    } else {
+         // Reset standard police style
+         bubble.style.background = 'rgba(0, 20, 0, 0.9)';
+         bubble.style.color = '#00ff00';
+         bubble.style.border = '1px solid #00ff00';
+         bubble.querySelector('div').textContent = "POLICE FREQUENCY 112.5 MHz";
+    }
+
     const content = bubble.querySelector('#policeScannerContent');
     content.textContent = "";
     bubble.style.opacity = "1";
     
+    // Force immediate position update
+    updateBubblePositions();
+
     // Typewriter effect
     let i = 0;
     const typeInterval = setInterval(() => {
@@ -1147,8 +1215,6 @@ function showPoliceScannerBubble(text) {
             clearInterval(typeInterval);
         }
     }, 20);
-    
-    // Static noise sound effect could be added here
     
     // Hide after duration
     setTimeout(() => {

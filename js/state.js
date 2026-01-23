@@ -9,7 +9,7 @@ export const gameState = {
     maxSpeedWarning: 70,
     arrestDistance: 30,
     arrested: false,
-    startTime: Date.now(),
+    startTime: 0, // Game hasn't started yet (set when solo/multiplayer selected)
     elapsedTime: 0,
     money: 0,
     rebirthPoints: 0,

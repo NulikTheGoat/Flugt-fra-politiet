@@ -2,7 +2,8 @@ export const enemies = {
     standard: { color: 0x0000ff, speed: 250, scale: 1, name: 'Politibil', health: 50 },
     interceptor: { color: 0x111111, speed: 300, scale: 1, name: 'Interceptor', health: 40 },
     swat: { color: 0x333333, speed: 220, scale: 1.5, name: 'SWAT', health: 150 },
-    military: { color: 0x556b2f, speed: 350, scale: 1.2, name: 'Militær', health: 300 }
+    military: { color: 0x556b2f, speed: 350, scale: 1.2, name: 'Militær', health: 300 },
+    sheriff: { color: 0x8b6914, speed: 180, scale: 1.3, name: 'Sheriff', health: 800 } // Dark Goldenrod, very tanky, slower
 };
 
 export const cars = {
