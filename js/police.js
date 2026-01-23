@@ -8,6 +8,7 @@ import { playerCar, takeDamage } from './player.js';
 import { normalizeAngleRadians, clamp } from './utils.js';
 import { addMoney, showGameOver } from './ui.js';
 import * as Network from './network.js';
+import { logEvent, EVENTS } from './commentary.js';
 
 const projectileGeometry = new THREE.SphereGeometry(2, 8, 8);
 
@@ -279,6 +280,7 @@ export function updatePoliceAI(delta) {
                             otherCar.userData.deathTime = now;
                             addMoney(gameState.heatLevel * 100);
                             gameState.policeKilled = (gameState.policeKilled || 0) + 1;
+                            logEvent(EVENTS.POLICE_KILLED, otherCar.userData.type);
                         }
                     }
                     
@@ -291,6 +293,7 @@ export function updatePoliceAI(delta) {
                         policeCar.userData.deathTime = now;
                         addMoney(gameState.heatLevel * 100);
                         gameState.policeKilled = (gameState.policeKilled || 0) + 1;
+                        logEvent(EVENTS.POLICE_KILLED, policeCar.userData.type);
                     }
                 }
             } else if (distSq < preferredDist * preferredDist && !otherCar.userData.dead) {
@@ -316,6 +319,7 @@ export function updatePoliceAI(delta) {
              policeCar.userData.deathTime = Date.now();
              addMoney(gameState.heatLevel * 100);
              gameState.policeKilled = (gameState.policeKilled || 0) + 1;
+             logEvent(EVENTS.POLICE_KILLED, policeCar.userData.type);
              createSmoke(policeCar.position);
              gameState.screenShake = 0.5;
              return; 
@@ -453,6 +457,7 @@ export function updatePoliceAI(delta) {
                 // Damage to player
                 const playerDamage = Math.max(gameConfig.minCrashDamage, speedKmh * gameConfig.playerCrashDamageMultiplier);
                 takeDamage(playerDamage);
+                logEvent(EVENTS.CRASH, 'police car');
                 
                 // Damage to police
                 const policeDamage = Math.max(gameConfig.minCrashDamage, speedKmh * gameConfig.policeCrashDamageMultiplier);
@@ -463,6 +468,7 @@ export function updatePoliceAI(delta) {
                     policeCar.userData.deathTime = now;
                     addMoney(gameState.heatLevel * 100);
                     gameState.policeKilled = (gameState.policeKilled || 0) + 1;
+                    logEvent(EVENTS.POLICE_KILLED, policeCar.userData.type);
                 }
                 
                 createSmoke(playerCar.position);
@@ -503,6 +509,7 @@ export function updatePoliceAI(delta) {
                     policeCar.userData.deathTime = Date.now();
                     addMoney(gameState.heatLevel * 100);
                     gameState.policeKilled = (gameState.policeKilled || 0) + 1;
+                    logEvent(EVENTS.POLICE_KILLED, policeCar.userData.type);
                 }
                 
                 const damage = Math.max(5, speedKmh * 0.3);

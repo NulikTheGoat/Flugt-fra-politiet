@@ -50,6 +50,33 @@
             box-shadow: 0 0 50px rgba(0, 102, 255, 0.3);
         }
 
+        .judge-verdict {
+            margin: 20px 0;
+            padding: 15px;
+            background: #f4e1c1;
+            color: #3d2b1f;
+            font-family: 'Courier New', Courier, monospace;
+            font-weight: bold;
+            border-radius: 5px;
+            box-shadow: 2px 2px 5px rgba(0,0,0,0.3);
+            border: 2px solid #8b5a2b;
+            min-height: 60px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+            line-height: 1.4;
+            transform: rotate(-1deg);
+            max-width: 90%;
+            margin-left: auto;
+            margin-right: auto;
+        }
+        .judge-verdict::before {
+            content: '⚖️';
+            margin-right: 10px;
+            font-size: 24px;
+        }
+
         .lobby-content h1 {
             text-align: center;
             color: #0088ff;
@@ -1077,6 +1104,21 @@
             color: #fff;
         }
 
+        @keyframes spinAndGrow {
+            0% {
+                transform: scale(0.1) rotate(720deg);
+                opacity: 0;
+            }
+            100% {
+                transform: scale(1) rotate(-2deg);
+                opacity: 1;
+            }
+        }
+
+        .newspaper-animation {
+            animation: spinAndGrow 1.5s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+        }
+
         /* Stats Bars */
         .stats-container {
             display: flex;
@@ -1403,8 +1445,27 @@
 
     <div id="gameOver">
         <h1 id="gameOverTitle">Du blev arresteret!</h1>
+        
+        <!-- NEWSPAPER SECTION -->
+        <div id="newspaper" style="display: none; background: #eae1d5; color: black; padding: 15px; margin: 20px auto; max-width: 400px; box-shadow: 0 5px 20px rgba(0,0,0,0.5); transform: rotate(-2deg); border: 1px solid #c0b9ad;">
+            <div style="border-bottom: 2px solid #333; margin-bottom: 10px; padding-bottom: 5px; display: flex; justify-content: space-between; align-items: flex-end;">
+                <span style="font-family: 'Times New Roman', serif; font-weight: 900; font-size: 24px; text-transform: uppercase; letter-spacing: -1px;">DAGENS DRAMA</span>
+                <span style="font-size: 10px; font-family: sans-serif; opacity: 0.7;">Pris: 15 kr.</span>
+            </div>
+            
+            <div id="newspaperHeadline" style="font-family: 'Impact', sans-serif; font-size: 32px; line-height: 1.0; text-transform: uppercase; margin-bottom: 10px; text-align: center; color: #cc0000; text-shadow: 1px 1px 0px rgba(0,0,0,0.1);">
+                TRYKKER EKSTRA OPLAG...
+            </div>
+            
+            <div id="newspaperSubhead" style="font-family: 'Georgia', serif; font-style: italic; font-size: 14px; line-height: 1.4; border-top: 1px solid #999; border-bottom: 1px solid #999; padding: 10px 0;">
+                Vent venligst...
+            </div>
+        </div>
+
         <p id="gameOverMessage">Du blev fanget af politiet.</p>
         
+        <div id="judgeVerdict" class="judge-verdict" style="display:none;">Dommeren voterer...</div>
+
         <div id="gameOverStats">
             <div class="stat-row" style="animation-delay: 0.2s">
                 <span class="stat-icon">⏱️</span>

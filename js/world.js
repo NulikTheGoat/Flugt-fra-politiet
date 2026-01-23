@@ -5,6 +5,7 @@ import { sharedGeometries, sharedMaterials } from './assets.js';
 import { playerCar, takeDamage } from './player.js';
 import { createSmoke, createSpark } from './particles.js';
 import { addMoney } from './ui.js';
+import { logEvent, EVENTS } from './commentary.js';
 
 export function createGround() {
     const groundGeometry = new THREE.PlaneGeometry(10000, 10000);
@@ -707,6 +708,9 @@ export function updateBuildingChunks(delta) {
                                      }
                                      
                                      createTreeDebris(chunk.position, carSpeed);
+                                     
+                                     // Log tree destruction for commentary
+                                     logEvent(EVENTS.TREE_DESTROYED, null, { speed: carSpeed });
                                  } else {
                                      // Tree shakes but doesn't fall
                                      gameState.screenShake = 0.2;
@@ -735,6 +739,9 @@ export function updateBuildingChunks(delta) {
 
                                  // Create building debris particles based on speed
                                  createBuildingDebris(chunk.position, chunk.material.color, carSpeed);
+                                 
+                                 // Log building destruction for commentary
+                                 logEvent(EVENTS.BUILDING_DESTROYED, null, { speed: carSpeed });
                                  
                                  gameState.speed *= 0.95; 
                                  takeDamage(Math.floor(carSpeed * 0.1) + 5);
