@@ -1321,7 +1321,7 @@ export function updateCollectibles() {
             const baseValue = gameConfig.coinBaseValue;
             const timeBonus = Math.floor(time / 10) * 10; 
             const rebirthMult = (gameState.rebirthPoints || 0) + 1;
-            addMoney((baseValue + timeBonus) * rebirthMult);
+            addMoney((baseValue + timeBonus) * rebirthMult, true);
         }
     }
 }

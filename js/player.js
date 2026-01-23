@@ -379,6 +379,21 @@ export function updatePlayer(delta, now) {
     } else {
         gameState.driftFactor = Math.max(gameState.driftFactor - 0.06 * delta, 0);
     }
+
+    // --- DRIFT SCORING ---
+    if (gameState.driftFactor > 0.3 && absSpeed > 20) {
+        // Accumulate score
+        gameState.currentDriftScore += Math.floor(gameState.driftFactor * absSpeed * 0.1);
+        gameState.driftCombo = Math.min(5, 1 + Math.floor(gameState.currentDriftScore / 500));
+    } else {
+        // Bank score if we have one and stopped drifting
+        if (gameState.currentDriftScore > 50) {
+            import('./ui.js').then(module => module.addMoney(Math.floor(gameState.currentDriftScore / 10), true));
+            // Visual feedback could be added here
+        }
+        gameState.currentDriftScore = 0;
+        gameState.driftCombo = 1;
+    }
     
     // Steering physics
     // Steering: more agile at low speed, less agile at high speed
