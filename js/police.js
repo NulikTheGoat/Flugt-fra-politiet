@@ -164,6 +164,9 @@ export function updatePoliceAI(delta) {
     let minDistance = 10000;
 
     gameState.policeCars.forEach((policeCar, index) => {
+        // Shared constants for this police car's update
+        const gridSize = gameState.chunkGridSize;
+        
         if (policeCar.userData.dead) {
              // Dead police cars slow down and stop
              policeCar.userData.speed *= Math.pow(0.9, delta || 1);
@@ -371,7 +374,6 @@ export function updatePoliceAI(delta) {
         const checkZ = policeCar.position.z + Math.cos(policeCar.rotation.y) * lookAheadDist;
         
         let hasObstacle = false;
-        const gridSize = gameState.chunkGridSize;
         const checkGridX = Math.floor(checkX / gridSize);
         const checkGridZ = Math.floor(checkZ / gridSize);
         
@@ -459,7 +461,6 @@ export function updatePoliceAI(delta) {
         policeCar.position.x += Math.sin(policeCar.rotation.y) * policeMove;
 
         // Police vs Building Collision
-        const gridSize = gameState.chunkGridSize;
         const px = Math.floor(policeCar.position.x / gridSize);
         const pz = Math.floor(policeCar.position.z / gridSize);
         
