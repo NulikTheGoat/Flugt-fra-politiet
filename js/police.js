@@ -352,12 +352,71 @@ export function updatePoliceAI(delta) {
         // Heat 1: baseline, Heat 6: 2.5x more aggressive
         let aggressionMultiplier = 1 + (gameState.heatLevel - 1) * 0.3; 
         
-        let targetDirection = Math.atan2(dx, dz);
+        // --- PREDICTIVE TARGETING (ALL EXCEPT SHERIFF) ---
+        // Police predict where player will be and try to intercept
+        let targetDirection;
+        
+        if (policeCar.userData.type === 'sheriff') {
+            // Sheriff just tracks current position
+            targetDirection = Math.atan2(dx, dz);
+        } else {
+            // Predict player's future position based on velocity
+            const predictionTime = distance / (policeSpeed * 0.016); // Estimate time to reach
+            const predictedX = playerCar.position.x + (gameState.velocityX * predictionTime * 30); // Scale factor
+            const predictedZ = playerCar.position.z + (gameState.velocityZ * predictionTime * 30);
+            
+            // Aim for predicted position
+            const predDx = predictedX - policeCar.position.x;
+            const predDz = predictedZ - policeCar.position.z;
+            targetDirection = Math.atan2(predDx, predDz);
+            
+            // At close range, switch to direct targeting for final approach
+            if (distance < 150) {
+                targetDirection = Math.atan2(dx, dz);
+            }
+        }
+        
         let policeSpeed = (policeCar.userData.speed || 250);
 
+        // --- OBSTACLE AVOIDANCE (ALL POLICE) ---
+        // Proactive lookahead to avoid buildings - varies by type
+        let lookAheadDistance;
+        let evasiveTurnMultiplier;
+        
+        if (policeCar.userData.type === 'sheriff') {
+            lookAheadDistance = 80;  // Cautious and far-seeing
+            evasiveTurnMultiplier = 3.0;  // Smooth evasion
+        } else if (policeCar.userData.type === 'interceptor') {
+            lookAheadDistance = 60;  // Fast reaction needed
+            evasiveTurnMultiplier = 2.5;
+        } else if (policeCar.userData.type === 'swat' || policeCar.userData.type === 'military') {
+            lookAheadDistance = 50;  // More aggressive, shorter lookahead
+            evasiveTurnMultiplier = 2.0;
+        } else {
+            lookAheadDistance = 55;  // Standard police
+            evasiveTurnMultiplier = 2.2;
+        }
+        
+        const lookX = policeCar.position.x + Math.sin(policeCar.rotation.y) * lookAheadDistance;
+        const lookZ = policeCar.position.z + Math.cos(policeCar.rotation.y) * lookAheadDistance;
+        
+        const gridSize = gameState.chunkGridSize;
+        const key = `${Math.floor(lookX / gridSize)},${Math.floor(lookZ / gridSize)}`;
+        
+        // Check if upcoming grid has un-hit chunks (obstacles)
+        const hasObstacle = gameState.chunkGrid[key] && gameState.chunkGrid[key].some(c => !c.userData.isHit && c.position.y > 0);
+        
+        if (hasObstacle) {
+            // Obstacle detected! Force evasive turn
+            // Turn 90 degrees (PI/2) to avoid
+            targetDirection = policeCar.rotation.y + Math.PI / 2; 
+            // Boost turn speed for evasive maneuver
+            aggressionMultiplier *= evasiveTurnMultiplier; 
+        }
+        
         // --- SHERIFF AI: "The Observer" ---
         if (policeCar.userData.type === 'sheriff') {
-            aggressionMultiplier = 0.8; // Turn slower, be calmer
+            aggressionMultiplier *= 0.8; // Turn slower baseline (overridden by obstacle avoidance)
             
             const optimalDistance = 400;
             const buffer = 50;
@@ -366,38 +425,17 @@ export function updatePoliceAI(delta) {
             if (distance < optimalDistance - buffer) {
                 // Too close: Slow down massively to let player pull away
                 policeSpeed *= 0.5;
-                // If VERY close, maybe steer away?
-                if (distance < 200) {
-                    targetDirection += Math.PI; // Turn away
+                // If VERY close, steer away
+                if (distance < 200 && !hasObstacle) { // Don't conflict with obstacle avoidance
+                    targetDirection += Math.PI; // Turn away from player
                 }
             } else if (distance > optimalDistance + buffer) {
-                // Too far: Speed up slightly (but capped by max speed)
+                // Too far: Speed up slightly
                 policeSpeed *= 1.1; 
             } else {
                 // In sweet spot: Match player speed approx
-                policeSpeed = Math.abs(gameState.speed * 3.6 / 0.016); // Rough estimate
+                policeSpeed = Math.abs(gameState.speed * 3.6 / 0.016);
                 if (policeSpeed > 200) policeSpeed = 200;
-            }
-
-            // 2. Obstacle Avoidance (Proactive)
-            // Look ahead to see if we are about to hit a building
-            const lookAhead = 80;
-            const lookX = policeCar.position.x + Math.sin(policeCar.rotation.y) * lookAhead;
-            const lookZ = policeCar.position.z + Math.cos(policeCar.rotation.y) * lookAhead;
-            
-            const gridSize = gameState.chunkGridSize;
-            const key = `${Math.floor(lookX / gridSize)},${Math.floor(lookZ / gridSize)}`;
-            
-            // Check if upcoming grid has un-hit chunks (obstacles)
-            const hasObstacle = gameState.chunkGrid[key] && gameState.chunkGrid[key].some(c => !c.userData.isHit && c.position.y > 0);
-            
-            if (hasObstacle) {
-                // Obstacle detected! Force turn.
-                // We divert 45 degrees relative to current heading
-                // To decide Left or Right, we check which matches targetDirection better, or just constant turn
-                targetDirection = policeCar.rotation.y + Math.PI / 2; 
-                // Boost turn speed for evasive maneuver
-                aggressionMultiplier = 3.0; 
             }
         
         } else {
@@ -408,6 +446,11 @@ export function updatePoliceAI(delta) {
             // At high heat levels, standard police try to ram
             if (gameState.heatLevel >= 3 && distance < 100 && distance > 30) {
                 policeSpeed *= 1.3;
+            }
+            
+            // BURST SPEED when getting close (within 200 units but not too close)
+            if (distance < 200 && distance > 80) {
+                policeSpeed *= 1.2; // 20% speed boost for closing distance
             }
         }
         
