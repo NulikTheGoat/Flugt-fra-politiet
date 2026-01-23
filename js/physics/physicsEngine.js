@@ -5,7 +5,8 @@ class PhysicsEngine {
     constructor() {
         this.world = new CANNON.World();
         this.world.gravity.set(0, -9.82, 0); // Standard gravity
-        this.world.broadphase = new CANNON.NaiveBroadphase();
+        this.world.broadphase = new CANNON.SAPBroadphase(this.world);
+        this.world.allowSleep = true;
         this.world.solver.iterations = 10;
 
         // Materials
