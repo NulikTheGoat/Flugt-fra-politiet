@@ -298,6 +298,127 @@ export function createTrees() {
     });
 }
 
+
+// Create a randomized "Pølsevogn" (Hotdog Stand) at a given position
+export function createHotdogStands() {
+    const standPositions = [
+        [100, 100], [-100, 100], [100, -100], [-100, -100], // Near center
+        [500, 500], [-500, -500], [500, -500], [-500, 500], // Mid range
+        [1200, 0], [-1200, 0], [0, 1200], [0, -1200],       // Outer axes
+        [800, 800], [-800, -800], [-800, 800], [800, -800], // Diagonal
+        [150, -450], [-350, 200], [600, -100], [-100, 700]  // Random spots
+    ];
+
+    standPositions.forEach(pos => {
+        // Randomize slightly
+        const x = pos[0] + (Math.random() - 0.5) * 100;
+        const z = pos[1] + (Math.random() - 0.5) * 100;
+        
+        const group = new THREE.Group();
+        group.position.set(x, 0, z);
+        group.rotation.y = Math.random() * Math.PI * 2;
+        
+        // --- Visual Mesh Construction ---
+        
+        // Cart Body (White box)
+        const bodyGeo = new THREE.BoxGeometry(20, 15, 12);
+        const bodyMat = new THREE.MeshLambertMaterial({ color: 0xFFFFFF }); // White
+        const body = new THREE.Mesh(bodyGeo, bodyMat);
+        body.position.set(0, 10, 0);
+        group.add(body);
+        
+        // Red Stripe/Details
+        const stripeGeo = new THREE.BoxGeometry(20.2, 3, 12.2);
+        const redMat = new THREE.MeshLambertMaterial({ color: 0xD32F2F }); // Red
+        const stripe = new THREE.Mesh(stripeGeo, redMat);
+        stripe.position.set(0, 8, 0);
+        group.add(stripe);
+        
+        // Wheels
+        const wheelGeo = new THREE.CylinderGeometry(4, 4, 14, 16);
+        const wheelMat = new THREE.MeshLambertMaterial({ color: 0x333333 });
+        const wheels = new THREE.Mesh(wheelGeo, wheelMat);
+        wheels.rotation.z = Math.PI / 2;
+        wheels.position.set(0, 4, 0);
+        group.add(wheels);
+        
+        // Umbrella Stick
+        const stickGeo = new THREE.CylinderGeometry(0.5, 0.5, 25);
+        const stickMat = new THREE.MeshLambertMaterial({ color: 0xCCCCCC });
+        const stick = new THREE.Mesh(stickGeo, stickMat);
+        stick.position.set(0, 20, 0);
+        group.add(stick);
+        
+        // Umbrella Top (Red/White stripes effectively simulated by single color for now or simple cone)
+        const umbrellaGeo = new THREE.ConeGeometry(12, 5, 8);
+        const umbrellaMat = new THREE.MeshLambertMaterial({ color: 0xFFFFFF }); // White base
+        const umbrella = new THREE.Mesh(umbrellaGeo, umbrellaMat);
+        umbrella.position.set(0, 32, 0);
+        group.add(umbrella);
+        
+        // Second cone for stripe effect (Red)
+        const umbrellaStripeGeo = new THREE.ConeGeometry(12.1, 4, 8);
+        const umbrellaStripe = new THREE.Mesh(umbrellaStripeGeo, redMat);
+        umbrellaStripe.position.set(0, 31, 0);
+        group.add(umbrellaStripe);
+        
+        // --- Physics/Collision Setup ---
+        // We create an invisible bounding box for collision detection,
+        // but we attach the visual group to it or make the group itself the interactive object?
+        // The existing system uses single Meshes (for trees) or chunks. 
+        // Let's wrap it in a single physics object for simplicity, or just treat the body as the collider.
+        
+        // To make the whole group fly apart, it's complex. 
+        // Simpler approach: Treat 'body' as the main collider, and link the rest visually.
+        // OR: Make a single Mesh by merging geometries if performance needed, but for 20 props, Group is fine?
+        // Wait, the collision logic checks `chunk.position` and `chunk.userData`.
+        // `chunk` needs to be an Object3D in the scene.
+        
+        // Let's make the 'body' the main physics object, and attach other parts to it.
+        // That way when body moves/rotates physically, parts follow.
+        
+        scene.add(body); // Add body directly to scene as the "physics object"
+        
+        // Attach other parts to body
+        // Body is at (0, 10, 0) relative to group. 
+        // Converting relative positions to be children of body:
+        stripe.position.y -= 10; body.add(stripe);
+        wheels.position.y -= 10; body.add(wheels);
+        stick.position.y -= 10; body.add(stick);
+        umbrella.position.y -= 10; body.add(umbrella);
+        umbrellaStripe.position.y -= 10; body.add(umbrellaStripe);
+        
+        // Set body world position (it was 0,10,0 in group, so at x, 10, z in world)
+        body.position.set(x, 10, z);
+        body.rotation.y = Math.random() * Math.PI * 2;
+        body.castShadow = true;
+        
+        // Physics Data
+        body.matrixAutoUpdate = false; // Static until hit
+        body.updateMatrix();
+        
+        body.userData = {
+            isHotdogStand: true, // Identify it
+            isHit: false,
+            health: 1, // Fragile! 1 hit to smash
+            velocity: new THREE.Vector3(),
+            rotVelocity: new THREE.Vector3(),
+            width: 20,
+            height: 35, // Approx height including umbrella
+            depth: 12
+        };
+        
+        gameState.chunks.push(body);
+        
+        // Grid registration
+        const gridX = Math.floor(x / gameState.chunkGridSize);
+        const gridZ = Math.floor(z / gameState.chunkGridSize);
+        const key = `${gridX},${gridZ}`;
+        if (!gameState.chunkGrid[key]) gameState.chunkGrid[key] = [];
+        gameState.chunkGrid[key].push(body);
+    });
+}
+
 // Bygnings typer med deres karakteristika
 const BUILDING_TYPES = {
     GENERIC: { name: 'generic', colors: [0xE55039, 0xE58E26, 0x4A69BD, 0x60A3BC, 0x78E08F] }, // Colorful bricks
@@ -897,6 +1018,41 @@ export function updateBuildingChunks(delta) {
                                      }
                                      
                                      createTreeDebris(chunk.position, carSpeed);
+                                 } 
+                             }
+                             // Special handling for Hotdog stands
+                             else if (chunk.userData.isHotdogStand) {
+                                 chunk.userData.isHit = true;
+                                 chunk.matrixAutoUpdate = true;
+                                 gameState.activeChunks.push(chunk);
+                                 
+                                 // Fly away!
+                                 chunk.userData.velocity.set(
+                                    Math.sin(carAngle) * (carSpeed * 0.8 + 10),
+                                    15 + Math.random() * 10, // Fly high
+                                    Math.cos(carAngle) * (carSpeed * 0.8 + 10)
+                                 );
+                                 
+                                 chunk.userData.rotVelocity.set(
+                                    Math.random() - 0.5,
+                                    Math.random() - 0.5,
+                                    Math.random() - 0.5
+                                 );
+                                 
+                                 // Add money for vandalism!
+                                 if(typeof addMoney === 'function') { 
+                                     // Need to import or pass addMoney ref, or just trigger UI update
+                                     // Actually world.js imports addMoney from ui.js
+                                     addMoney(50);
+                                     // Maybe log event
+                                     logEvent(EVENTS.COLLISION, "SMADREDE PØLSEVOGN!!");
+                                 }
+                                 
+                                 // Particles
+                                 for(let p=0; p<5; p++) {
+                                     createTreeDebris(chunk.position, carSpeed); // Reuse generic debris for now
+                                 }
+                             }
                                      
                                      // Log tree destruction for commentary
                                      logEvent(EVENTS.TREE_DESTROYED, null, { speed: carSpeed });
