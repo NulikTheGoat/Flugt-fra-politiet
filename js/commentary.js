@@ -408,6 +408,7 @@ async function requestCommentary() {
 
 // Use fallback phrases when API fails
 function useFallbackCommentary() {
+    console.warn('[Commentary] LLM Connection Failed - Using FALLBACK content');
     const recentEvents = commentaryState.eventBuffer.slice(-3);
     if (recentEvents.length === 0) return;
     
@@ -632,6 +633,7 @@ export async function generateVerdict(stats) {
 }
 
 function getJudgeFallback() {
+    console.warn('[Judge] LLM Connection Failed - Using FALLBACK verdict');
     return JUDGE_FALLBACKS[Math.floor(Math.random() * JUDGE_FALLBACKS.length)];
 }
 
@@ -680,6 +682,7 @@ async function triggerPoliceScanner() {
 }
 
 function usePoliceFallback() {
+    console.warn('[Police] LLM Connection Failed - Using FALLBACK scanner message');
     const phrase = POLICE_FALLBACKS[Math.floor(Math.random() * POLICE_FALLBACKS.length)];
     showPoliceScannerBubble(phrase);
 }
