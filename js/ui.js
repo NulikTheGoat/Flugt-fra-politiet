@@ -39,6 +39,90 @@ export const DOM = {
     gameOverShopBtn: document.getElementById('gameOverShopBtn')
 };
 
+// ==========================================
+// HIGH SCORE SYSTEM
+// ==========================================
+
+function getHighScores() {
+    try {
+        const stored = localStorage.getItem('flugt_highscores');
+        return stored ? JSON.parse(stored) : [];
+    } catch (e) {
+        console.error("Failed to load highscores", e);
+        return [];
+    }
+}
+
+function saveHighScore(time) {
+    if (!time || time < 1) return;
+    
+    let scores = getHighScores();
+    // Format date as DD/MM
+    const date = new Date().toLocaleDateString('da-DK', { day: '2-digit', month: '2-digit' });
+    
+    scores.push({ time, date });
+    
+    // Sort descending by time
+    scores.sort((a, b) => b.time - a.time);
+    
+    // Keep top 5
+    scores = scores.slice(0, 5);
+    
+    localStorage.setItem('flugt_highscores', JSON.stringify(scores));
+    updateHighScoreDisplay();
+}
+
+function formatTime(seconds) {
+    const m = Math.floor(seconds / 60);
+    const s = Math.floor(seconds % 60);
+    return `${m}:${s.toString().padStart(2, '0')}`;
+}
+
+function updateHighScoreDisplay() {
+    let container = document.getElementById('highscoreContainer');
+    if (!container) {
+        container = document.createElement('div');
+        container.id = 'highscoreContainer';
+        container.style.cssText = `
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: rgba(0, 0, 0, 0.7);
+            color: #fff;
+            padding: 10px 15px;
+            border-radius: 8px;
+            font-family: 'Courier New', monospace;
+            z-index: 1000;
+            border: 1px solid #444;
+            min-width: 150px;
+            pointer-events: none;
+        `;
+        document.body.appendChild(container);
+    }
+
+    const scores = getHighScores();
+    if (scores.length === 0) {
+        container.innerHTML = `<div style="text-align:center;color:#aaa;font-size:12px;">INGEN REKORDER</div>`;
+        return;
+    }
+
+    let html = `<div style="text-align:center;font-weight:bold;margin-bottom:8px;border-bottom:1px solid #666;padding-bottom:4px;font-size:18px;color:#f1c40f;">TOP 5 TIDER</div>`;
+    
+    scores.forEach((score, index) => {
+        const color = index === 0 ? '#ffd700' : (index === 1 ? '#c0c0c0' : (index === 2 ? '#cd7f32' : '#fff'));
+        html += `
+            <div style="display:flex;justify-content:space-between;font-size:14px;margin-bottom:4px;color:${color};font-weight:bold;">
+                <span>${index + 1}. ${score.date}</span>
+                <span>${formatTime(score.time)}</span>
+            </div>
+        `;
+    });
+
+    container.innerHTML = html;
+}
+
+// Initial display load
+document.addEventListener('DOMContentLoaded', updateHighScoreDisplay);
 
 export function updateHUD(policeDistance) {
     const speedKmh = Math.round(gameState.speed * 3.6);
@@ -295,6 +379,9 @@ export function showGameOver(customMessage) {
     const finalKilled = gameState.policeKilled || 0;
     const finalHeat = gameState.heatLevel;
     
+    // Save High Score
+    saveHighScore(finalTime);
+
     // Reset values for animation
     DOM.gameOverTime.textContent = '0';
     DOM.gameOverMoney.textContent = '0';

@@ -262,28 +262,7 @@ export function createHotdogStands() {
     const standPositions = [
         // Near spawn - easy to find!
         [80, 80],
-        [-80, 80],
-        [80, -80],
-        [-80, -80],
-        // Along edges of road
-        [200, 200],
-        [-200, 200],
-        [200, -200],
-        [-200, -200],
-        // Further out
-        [400, 0],
-        [-400, 0],
-        [0, 400],
-        [0, -400],
-        [600, 300],
-        [-600, 300],
-        [600, -300],
-        [-600, -300],
-        // Spread around map
-        [900, 500],
-        [-900, 500],
-        [500, 900],
-        [-500, -900],
+        [-80, -80]
     ];
 
     standPositions.forEach(pos => {
@@ -802,15 +781,15 @@ export function updateBuildingChunks(delta) {
                                  
                                  // Fly away!
                                  chunk.userData.velocity.set(
-                                    Math.sin(carAngle) * (carSpeed * 0.8 + 10),
-                                    15 + Math.random() * 10, // Fly high
-                                    Math.cos(carAngle) * (carSpeed * 0.8 + 10)
+                                    Math.sin(carAngle) * (carSpeed * 0.3 + 5), // Reduced force
+                                    5 + Math.random() * 5, // Reduced height
+                                    Math.cos(carAngle) * (carSpeed * 0.3 + 5)
                                  );
                                  
                                  chunk.userData.rotVelocity.set(
-                                    Math.random() - 0.5,
-                                    Math.random() - 0.5,
-                                    Math.random() - 0.5
+                                    (Math.random() - 0.5) * 0.2, // Reduced rotation spin
+                                    (Math.random() - 0.5) * 0.2,
+                                    (Math.random() - 0.5) * 0.2
                                  );
                                  
                                  // Add money for vandalism!
@@ -820,7 +799,7 @@ export function updateBuildingChunks(delta) {
                                  }
                                  
                                  // Particles
-                                 for(let p=0; p<5; p++) {
+                                 for(let p=0; p<2; p++) { // Reduced particles
                                      createTreeDebris(chunk.position, carSpeed); // Reuse generic debris for now
                                  }
                              } else {
