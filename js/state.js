@@ -18,6 +18,7 @@ export const gameState = {
     lastMoneyCheckTime: 0,
     lastPoliceSpawnTime: 0,
     policeCars: [],
+    collectibles: [], // Array for active coin meshes
     chunks: [],
     chunkGrid: {},
     activeChunks: [],
@@ -37,6 +38,8 @@ export const gameState = {
     velocityZ: 0,
     angularVelocity: 0,
     driftFactor: 0,
+    currentDriftScore: 0, // Current drift session score
+    driftCombo: 1,        // Multiplier for long drifts
     tireMarks: [],
     carTilt: 0,
     wheelAngle: 0,

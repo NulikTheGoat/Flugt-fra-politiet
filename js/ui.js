@@ -57,6 +57,12 @@ export function updateHUD(policeDistance) {
     if (gameState.driftFactor > 0.3) {
         DOM.driftIndicator.style.display = 'block';
         DOM.driftIndicator.style.opacity = Math.min(1, gameState.driftFactor * 1.5);
+        if (gameState.currentDriftScore > 0) {
+            DOM.driftIndicator.textContent = `DRIFT ${gameState.currentDriftScore}`;
+            DOM.driftIndicator.style.color = gameState.driftCombo > 1 ? '#ff00ff' : '#ffff00';
+        } else {
+             DOM.driftIndicator.textContent = 'DRIFTING!';
+        }
     } else {
         DOM.driftIndicator.style.display = 'none';
     }
@@ -70,7 +76,12 @@ export function updateHUD(policeDistance) {
         elapsedSeconds = Math.floor((now - gameState.startTime) / 1000);
     }
     DOM.time.textContent = elapsedSeconds;
-    DOM.heatLevel.textContent = gameState.heatLevel;
+    
+    // Heat Level Visuals (Stars/Flames)
+    const heatIcon = gameState.heatLevel > 3 ? '🔥' : '⭐️';
+    let heatText = '';
+    for(let i=0; i<gameState.heatLevel; i++) heatText += heatIcon;
+    DOM.heatLevel.textContent = heatText;
     
     // Count active and dead police cars
     let deadCount = 0;
@@ -121,13 +132,13 @@ export function updateHUD(policeDistance) {
 }
 
 // Helper to add money and animate
-export function addMoney(amount) {
+export function addMoney(amount, ignoreSpeed = false) {
     if (amount <= 0) return;
     if (gameState.arrested) return; // Stop money gain when arrested/game over
     
     // No points when speed is below 5% of max speed
     const speedPercent = Math.abs(gameState.speed) / gameState.maxSpeed;
-    if (speedPercent < 0.05) return;
+    if (!ignoreSpeed && speedPercent < 0.05) return;
     
     gameState.money += amount;
     
