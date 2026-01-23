@@ -682,9 +682,10 @@ export function updateBuildingChunks(delta) {
              chunk.matrixAutoUpdate = false;
              chunk.updateMatrix(); // Ensure final position is locked
 
-             // Mark as fallen debris - solid but no damage, can be shattered
+             // Mark as fallen debris - solid but no damage, can be shattered once
              if (!chunk.userData.isSmallDebris) {
                  chunk.userData.isFallenDebris = true;
+                 chunk.userData.hasShattered = false; // Track if it has been shattered already
                  if (!gameState.fallenDebris) gameState.fallenDebris = [];
                  gameState.fallenDebris.push(chunk);
              }
@@ -693,7 +694,13 @@ export function updateBuildingChunks(delta) {
 
     // Collisions with standing building chunks
     const carPos = playerCar.position;
-    const carRadius = 15; 
+    const carRadius = 15;
+    
+    // Speed-based collision detection radius to prevent tunneling at high speeds
+    const carSpeed = Math.abs(gameState.speed);
+    const SPEED_TO_COLLISION_RATIO = 30; // Speed units needed to double collision radius
+    const speedFactor = Math.max(1, carSpeed / SPEED_TO_COLLISION_RATIO);
+    const effectiveCarRadius = carRadius * speedFactor;
     
     const gridSize = gameState.chunkGridSize;
     const px = Math.floor(carPos.x / gridSize);
@@ -709,15 +716,18 @@ export function updateBuildingChunks(delta) {
                 const chunk = chunks[i];
                 if(chunk.userData.isHit) continue; 
                 
-                if (Math.abs(chunk.position.x - carPos.x) < 40 && Math.abs(chunk.position.z - carPos.z) < 40) {
+                // Expand bounding box check based on speed
+                const checkRadius = 40 * speedFactor;
+                if (Math.abs(chunk.position.x - carPos.x) < checkRadius && Math.abs(chunk.position.z - carPos.z) < checkRadius) {
                      const dx = chunk.position.x - carPos.x;
                      const dz = chunk.position.z - carPos.z;
                      const distSq = dx*dx + dz*dz;
                      
-                     if (distSq < (carRadius + chunk.userData.width/2 + 5)**2) {
+                     // Use speed-adjusted collision radius to prevent tunneling
+                     const collisionRadius = effectiveCarRadius + chunk.userData.width/2 + 5;
+                     if (distSq < collisionRadius * collisionRadius) {
                          if (Math.abs(chunk.position.y - carPos.y) < (chunk.userData.height/2 + 10)) {
                              
-                             const carSpeed = Math.abs(gameState.speed);
                              const carAngle = playerCar.rotation.y;
                              const angleToChunk = Math.atan2(dx, dz);
                              
@@ -853,47 +863,56 @@ export function updateBuildingChunks(delta) {
                 (debris.userData.width || 10),
                 (debris.userData.depth || 10)
             ) / 2;
-            const collisionDist = carRadius + debrisSize + 2; // Add buffer
+            
+            // Speed-based collision detection to prevent tunneling at high speeds
+            const SPEED_BUFFER_MULTIPLIER = 0.3; // Buffer scales 30% of current speed
+            const speedBasedBuffer = Math.max(2, carSpeed * SPEED_BUFFER_MULTIPLIER);
+            const collisionDist = effectiveCarRadius + debrisSize + speedBasedBuffer;
             
             if (distSq < collisionDist * collisionDist) {
                 const dist = Math.sqrt(distSq) || 1;
-                const carSpeed = Math.abs(gameState.speed);
                 
                 // Calculate push direction (away from debris center)
                 const normX = -dx / dist;
                 const normZ = -dz / dist;
                 
                 // Push CAR back (solid collision - no passing through!)
+                const TUNNELING_PREVENTION_MULTIPLIER = 1.5; // Stronger push to prevent high-speed tunneling
                 const overlap = collisionDist - dist;
                 if (overlap > 0) {
-                    playerCar.position.x += normX * overlap * 1.2;
-                    playerCar.position.z += normZ * overlap * 1.2;
+                    playerCar.position.x += normX * overlap * TUNNELING_PREVENTION_MULTIPLIER;
+                    playerCar.position.z += normZ * overlap * TUNNELING_PREVENTION_MULTIPLIER;
                 }
                 
-                // Shatter into smaller pieces if going fast enough
-                if (carSpeed > 8) {
+                // Only shatter if not already shattered and going fast enough
+                if (!debris.userData.hasShattered && carSpeed > 10) {
+                    // Mark as shattered to prevent re-shattering
+                    debris.userData.hasShattered = true;
+                    
                     // Remove from fallen debris
                     gameState.fallenDebris.splice(i, 1);
                     scene.remove(debris);
                     
                     // Create smaller debris pieces - more pieces at higher speed
-                    const numPieces = Math.min(12, Math.floor(carSpeed / 3));
+                    const numPieces = Math.min(10, 4 + Math.floor(carSpeed / 4));
                     shatterDebris(debris, carSpeed, numPieces);
                     
                     // Speed reduction based on speed (no damage!)
                     gameState.speed *= 0.85;
                     gameState.screenShake = Math.min(0.3, carSpeed / 40);
                 } else {
-                    // Slow collision - stop the car more and push debris
-                    gameState.speed *= 0.6;
+                    // Slow collision OR already shattered - just push the car and debris
+                    gameState.speed *= 0.65; // More significant slowdown for solid collision
                     
-                    // Push debris based on car momentum
-                    const pushForce = Math.max(2, carSpeed * 0.5);
-                    debris.position.x += (-normX) * pushForce;
-                    debris.position.z += (-normZ) * pushForce;
-                    
-                    // Add some rotation to pushed debris
-                    debris.rotation.y += (Math.random() - 0.5) * 0.3;
+                    // Push debris based on car momentum (only if not already shattered)
+                    if (!debris.userData.hasShattered) {
+                        const pushForce = Math.max(2, carSpeed * 0.4);
+                        debris.position.x += (-normX) * pushForce;
+                        debris.position.z += (-normZ) * pushForce;
+                        
+                        // Add some rotation to pushed debris
+                        debris.rotation.y += (Math.random() - 0.5) * 0.3;
+                    }
                 }
             }
         }
@@ -1074,16 +1093,19 @@ export function createBuildingDebris(position, buildingColor, carSpeed) {
             Math.random() * Math.PI
         );
         
-        // Spread pattern based on impact
-        const spreadAngle = Math.random() * Math.PI * 2;
-        const spreadForce = 3 + Math.random() * carSpeed * 0.4;
+        // More realistic spread pattern - debris follows impact direction with limited spread
+        // Instead of random 360° spread, debris mostly goes in the impact direction
+        const DEBRIS_SPREAD_ANGLE_RADIANS = Math.PI * 0.4; // ±36 degrees (72° total cone)
+        const impactAngle = Math.atan2(impactX, impactZ);
+        const spreadAngle = impactAngle + (Math.random() - 0.5) * DEBRIS_SPREAD_ANGLE_RADIANS;
+        const spreadForce = 2 + Math.random() * carSpeed * 0.25; // Reduced spread force
         
         chunk.userData = {
             isSmallDebris: true,
             velocity: new THREE.Vector3(
-                impactX * carSpeed * 0.25 + Math.sin(spreadAngle) * spreadForce,
-                3 + Math.random() * (carSpeed * 0.3),
-                impactZ * carSpeed * 0.25 + Math.cos(spreadAngle) * spreadForce
+                impactX * carSpeed * 0.3 + Math.sin(spreadAngle) * spreadForce,
+                3 + Math.random() * (carSpeed * 0.2), // Reduced vertical velocity
+                impactZ * carSpeed * 0.3 + Math.cos(spreadAngle) * spreadForce
             ),
             rotVelocity: new THREE.Vector3(
                 (Math.random() - 0.5) * 0.8,

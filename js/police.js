@@ -378,34 +378,48 @@ export function updatePoliceAI(delta) {
                     
                     const cdx = chunk.position.x - policeCar.position.x;
                     const cdz = chunk.position.z - policeCar.position.z;
-                    const chunkDist = Math.sqrt(cdx*cdx + cdz*cdz);
+                    const chunkDistSq = cdx*cdx + cdz*cdz;
                     
-                    if (chunkDist < 30 && Math.abs(chunk.position.y - 15) < chunk.userData.height) {
+                    // Speed-based collision detection radius (similar to player)
+                    const POLICE_SPEED_CONVERSION_FACTOR = 16.67; // Convert police speed (px/sec) to player speed units
+                    const SPEED_TO_COLLISION_RATIO = 30; // Speed units needed to double collision radius
+                    const policeSpeedUnits = policeSpeed / POLICE_SPEED_CONVERSION_FACTOR;
+                    const policeSpeedFactor = Math.max(1, policeSpeedUnits / SPEED_TO_COLLISION_RATIO);
+                    const policeCollisionRadius = 15 * policeSpeedFactor;
+                    const chunkCollisionRadius = policeCollisionRadius + chunk.userData.width/2 + 5;
+                    
+                    if (chunkDistSq < chunkCollisionRadius * chunkCollisionRadius && 
+                        Math.abs(chunk.position.y - 15) < chunk.userData.height/2 + 10) {
                         // Police hit a building chunk
                         chunk.userData.isHit = true;
+                        chunk.matrixAutoUpdate = true; // Enable physics updates
                         gameState.activeChunks.push(chunk);
 
                         // Create debris
-                        createBuildingDebris(chunk.position, chunk.material.color, policeSpeed);
+                        createBuildingDebris(chunk.position, chunk.material.color, policeSpeedUnits);
                         
                         const policeAngle = policeCar.rotation.y;
-                        const impactSpeed = policeSpeed * 0.01;
+                        const chunkDist = Math.sqrt(chunkDistSq);
+                        const IMPACT_SPEED_MULTIPLIER = 0.2; // Scale police speed to match player physics
+                        const impactSpeed = policeSpeedUnits * IMPACT_SPEED_MULTIPLIER;
                         
                         chunk.userData.velocity.set(
-                            Math.sin(policeAngle) * impactSpeed + (cdx/chunkDist) * 3,
-                            3 + Math.random() * 3,
-                            Math.cos(policeAngle) * impactSpeed + (cdz/chunkDist) * 3
+                            Math.sin(policeAngle) * impactSpeed + (cdx/chunkDist) * 5,
+                            5 + Math.random() * 5, // Match player physics
+                            Math.cos(policeAngle) * impactSpeed + (cdx/chunkDist) * 5
                         );
                         
                         chunk.userData.rotVelocity.set(
-                            (Math.random() - 0.5) * 0.3,
-                            (Math.random() - 0.5) * 0.3,
-                            (Math.random() - 0.5) * 0.3
+                            (Math.random() - 0.5) * 0.5, // Match player physics
+                            (Math.random() - 0.5) * 0.5,
+                            (Math.random() - 0.5) * 0.5
                         );
                         
-                        // Damage police car
-                        policeCar.userData.health -= 15;
+                        // Damage police car (consistent with player damage)
+                        const damage = Math.floor(policeSpeedUnits * 0.1) + 5;
+                        policeCar.userData.health -= damage;
                         createSmoke(chunk.position);
+                        gameState.screenShake = 0.3;
                         
                         if (policeCar.userData.health <= 0) {
                             policeCar.userData.dead = true;
