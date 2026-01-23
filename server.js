@@ -38,7 +38,7 @@ loadEnv();
 
 // MPS API Configuration
 const MPS_CONFIG = {
-    url: process.env.MPS_URL || 'https://models.assistant.legogroup.io',
+    endpoint: process.env.MPS_ENDPOINT,
     apiKey: process.env.MPS_API_KEY || '',
     deployment: process.env.MPS_DEPLOYMENT || 'anthropic.claude-haiku-4-5-20251001-v1:0',
     maxTokens: parseInt(process.env.MPS_MAX_TOKENS) || 256,
@@ -131,7 +131,11 @@ const httpServer = http.createServer(async (req, res) => {
                     max_tokens: MPS_CONFIG.maxTokens
                 };
                 
-                const endpoint = `${MPS_CONFIG.url}/anthropic/v1/messages`;
+                if (!MPS_CONFIG.endpoint) {
+                    throw new Error('MPS_ENDPOINT is not configured');
+                }
+
+                const endpoint = MPS_CONFIG.endpoint;
                 const headers = {
                     'Authorization': `Bearer ${MPS_CONFIG.apiKey}`,
                     'api-key': MPS_CONFIG.apiKey,

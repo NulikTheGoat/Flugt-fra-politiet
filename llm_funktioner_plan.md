@@ -30,9 +30,9 @@ Når spilleren bliver ARRESTED, bruger vi statistikken fra spillet til at genere
     *   "Dommeren var målløs over de 45 ødelagte lygtepæle. Kørekortet er brændt offentligt."
 
 ## 3. 🗺️ Den Sarkastiske GPS
-- [ ] Tilføje GPS stemme/tekst UI
-- [ ] Lave triggers for lavt liv, crash og tomgang
-- [ ] Skrive personlighedsprompt til LLM
+- [x] Tilføje GPS stemme/tekst UI
+- [x] Lave triggers for lavt liv, crash og tomgang
+- [x] Skrive personlighedsprompt til LLM
 
 Giv bilen en personlighed (lidt som KITT fra Knight Rider, men træt af livet).
 

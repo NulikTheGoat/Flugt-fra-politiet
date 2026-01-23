@@ -47,7 +47,10 @@ const commentaryState = {
     isDrifting: false,
     activeBubbles: [], // Track active bubbles for stacking
     lastPoliceMessageTime: 0,
-    policeMessageCooldown: 12000 // 12 seconds cooldown for police radio (less frequent than commentary)
+    policeMessageCooldown: 12000, // 12 seconds cooldown for police radio
+    lastGPSMessageTime: 0,
+    gpsCooldown: 15000, // 15 seconds cooldown for GPS
+    lastMovementTime: 0 // Track idle time
 };
 
 // System prompt for the commentator
@@ -79,6 +82,28 @@ SKRIV EN KORT DOM PÅ DANSK (max 30 ord).
 Inddrag deres "forbrydelser" (fart, ødelæggelse, varighed af flugt).
 Idøm en straf (fængsel, samfundstjeneste, bøde, eller en skør straf).
 Eksempel: "For at smadre 4 politibiler og køre som en galning, idømmes du at vaske politigårdens biler i 10 år med en tandbørste!"`;
+
+// System prompt for Sarcastic GPS
+const GPS_PROMPT = `Du er en sarkastisk og livstræt GPS i en flugtbil.
+Du taler direkte til føreren (spilleren).
+SKRIV KUN PÅ DANSK (maks 15 ord).
+Du er sur, nedladende og ironisk.
+Du hader når bilen bliver skadet, og du synes føreren kører elendigt.
+Ingen emojis.`;
+
+// Fallback phrases for GPS
+const GPS_FALLBACKS = [
+    "Drej til højre... ind i fængslet, måske?",
+    "Min kofanger græder lige nu.",
+    "Beregner ny rute væk fra din kørefærdighed.",
+    "Har du overvejet at tage bussen?",
+    "Advarsel: Idiot bag rattet.",
+    "Du kører som en brækket arm.",
+    "Kunne vi undgå at ramme ting? Tak.",
+    "Jeg har ikke nok RAM til din dumhed.",
+    "Du behøver ikke ramme samtlige træer.",
+    "Skal vi køre eller holder vi picnic?"
+];
 
 // Fallback phrases for Judge
 const JUDGE_FALLBACKS = [
@@ -223,6 +248,14 @@ export function logEvent(type, value = null, context = {}) {
     
     commentaryState.eventBuffer.push(event);
     console.log('[Commentary] Event logged:', type, value);
+
+    // Specific triggers for Sarcastic GPS
+    if (type === EVENTS.CRASH) {
+        // Chance to trigger GPS on crash
+        if (Math.random() < 0.7) { // 70% chance
+            triggerGPSComment('CRASH');
+        }
+    }
     
     // Trim buffer to last 20 events
     if (commentaryState.eventBuffer.length > 20) {
@@ -235,6 +268,13 @@ export function checkStateEvents() {
     const currentSpeed = Math.round(gameState.speed * 3.6);
     const now = Date.now();
     
+    // GPS Idle Check
+    if (currentSpeed > 5 || !commentaryState.lastMovementTime) {
+        commentaryState.lastMovementTime = now;
+    } else if (now - commentaryState.lastMovementTime > 10000) { // 10 seconds idle
+        triggerGPSComment('IDLE');
+    }
+
     // Speed milestones (50, 100, 150, 200 km/h)
     const milestones = [50, 100, 150, 200];
     for (const milestone of milestones) {
@@ -268,6 +308,8 @@ export function checkStateEvents() {
     if (gameState.health < 30 && gameState.health > 10 && !commentaryState.lastHealthWarning) {
         logEvent(EVENTS.LOW_HEALTH, gameState.health);
         commentaryState.lastHealthWarning = true;
+        // GPS complaint
+        triggerGPSComment('LOW_HEALTH', { health: Math.round(gameState.health) });
     } else if (gameState.health >= 50) {
         commentaryState.lastHealthWarning = false;
     }
@@ -584,6 +626,8 @@ export function resetCommentary() {
     commentaryState.isDrifting = false;
     commentaryState.highSpeedStart = null;
     commentaryState.criticalHealthWarning = false;
+    commentaryState.lastGPSMessageTime = 0;
+    commentaryState.lastMovementTime = Date.now();
     
     // Clear any existing bubbles
     hideCommentaryBubble();
@@ -635,6 +679,113 @@ export async function generateVerdict(stats) {
 function getJudgeFallback() {
     console.warn('[Judge] LLM Connection Failed - Using FALLBACK verdict');
     return JUDGE_FALLBACKS[Math.floor(Math.random() * JUDGE_FALLBACKS.length)];
+}
+
+// ==========================================
+// GPS FUNCTIONS
+// ==========================================
+
+async function triggerGPSComment(triggerType, contextData = {}) {
+    const now = Date.now();
+    if (now - commentaryState.lastGPSMessageTime < commentaryState.gpsCooldown) return;
+    
+    commentaryState.lastGPSMessageTime = now;
+    
+    let summary = "";
+    switch(triggerType) {
+        case 'IDLE':
+            summary = "Spilleren holder stille og laver ingenting.";
+            break;
+        case 'LOW_HEALTH':
+            summary = `Bilen er ved at gå i stykker! Kun ${contextData.health}% liv tilbage.`;
+            break;
+        case 'CRASH':
+            summary = "Spilleren crashede ind i noget hårdt.";
+            break;
+        case 'BAD_DRIVING':
+            summary = "Spilleren kører forfærdeligt lige nu.";
+            break;
+        default:
+            summary = "Spilleren gør noget irriterende.";
+    }
+
+    try {
+        const response = await fetch('/api/commentary', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ 
+                systemPrompt: GPS_PROMPT,
+                eventSummary: summary 
+            })
+        });
+        
+        if (response.ok) {
+            const data = await response.json();
+            if (data.commentary) {
+                showGPSBubble(data.commentary);
+            }
+        } else {
+            useGPSFallback();
+        }
+    } catch (error) {
+        useGPSFallback();
+    }
+}
+
+function useGPSFallback() {
+    console.warn('[GPS] LLM Connection Failed - Using FALLBACK message');
+    const phrase = GPS_FALLBACKS[Math.floor(Math.random() * GPS_FALLBACKS.length)];
+    showGPSBubble(phrase);
+}
+
+function showGPSBubble(text) {
+    let bubble = document.getElementById('gpsBubble');
+    if (!bubble) {
+        bubble = document.createElement('div');
+        bubble.id = 'gpsBubble';
+        bubble.style.cssText = `
+            position: fixed;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: linear-gradient(180deg, #2c3e50 0%, #000000 100%);
+            color: #3498db;
+            padding: 8px 20px;
+            border: 2px solid #3498db;
+            border-radius: 20px;
+            font-family: 'Verdana', sans-serif;
+            font-size: 14px;
+            font-weight: bold;
+            z-index: 9998;
+            box-shadow: 0 0 15px rgba(52, 152, 219, 0.5);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            opacity: 0;
+            transition: opacity 0.5s;
+        `;
+        
+        // Icon
+        const icon = document.createElement('span');
+        icon.textContent = "🗺️";
+        icon.style.fontSize = "18px";
+        bubble.appendChild(icon);
+        
+        const content = document.createElement('span');
+        content.id = 'gpsContent';
+        bubble.appendChild(content);
+        
+        document.body.appendChild(bubble);
+    }
+    
+    const content = bubble.querySelector('#gpsContent');
+    content.textContent = text;
+    bubble.style.opacity = "1";
+    
+    // Hide after duration
+    setTimeout(() => {
+        bubble.style.opacity = "0";
+    }, 5000);
 }
 
 // ==========================================
