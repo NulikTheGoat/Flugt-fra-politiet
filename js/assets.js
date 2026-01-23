@@ -25,7 +25,8 @@ export const sharedGeometries = {
     taillight: new THREE.BoxGeometry(3, 2, 1),
     exhaust: new THREE.CylinderGeometry(1, 1, 3, 8),
     spoiler: new THREE.BoxGeometry(22, 1, 6),
-    spoilerStand: new THREE.BoxGeometry(1, 4, 1)
+    spoilerStand: new THREE.BoxGeometry(1, 4, 1),
+    lootIcon: new THREE.TorusGeometry(8, 2, 8, 16)
 };
 
 export const sharedMaterials = {
@@ -46,7 +47,8 @@ export const sharedMaterials = {
     smoke: new THREE.MeshBasicMaterial({ color: 0x333333, transparent: true, opacity: 0.6 }),
     fire: new THREE.MeshBasicMaterial({ color: 0xff4400, transparent: true, opacity: 0.8 }),
     speedParticle: new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.6 }),
-    tireMark: new THREE.MeshBasicMaterial({ color: 0x111111, transparent: true, opacity: 0.7, side: THREE.DoubleSide })
+    tireMark: new THREE.MeshBasicMaterial({ color: 0x111111, transparent: true, opacity: 0.7, side: THREE.DoubleSide }),
+    lootGlow: new THREE.MeshBasicMaterial({ color: 0x00ff00, transparent: true, opacity: 0.8 })
 };
 
 // Initialize enemy materials

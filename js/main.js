@@ -3,7 +3,7 @@ import { gameConfig } from './config.js';
 import { scene, camera, renderer } from './core.js';
 import { cars } from './constants.js';
 import { createPlayerCar, rebuildPlayerCar, updatePlayer, playerCar, setUICallbacks, createOtherPlayerCar, updateOtherPlayerCar, removeOtherPlayerCar, interpolateOtherPlayers } from './player.js';
-import { spawnPoliceCar, updatePoliceAI, updateProjectiles, firePlayerProjectile, syncPoliceFromNetwork, getPoliceStateForNetwork, resetPoliceNetworkIds } from './police.js';
+import { spawnPoliceCar, updatePoliceAI, updateProjectiles, firePlayerProjectile, syncPoliceFromNetwork, getPoliceStateForNetwork, resetPoliceNetworkIds, updateMoneyPopups } from './police.js';
 import { createGround, createTrees, createBuildings, updateBuildingChunks, updateCollectibles, cleanupSmallDebris } from './world.js';
 import { updateHUD, updateHealthUI, DOM, goToShop, showGameOver, setStartGameCallback, triggerDamageEffect, setMultiplayerShopCallback } from './ui.js';
 import { updateSpeedEffects, updateSparks, updateTireMarks } from './particles.js';
@@ -803,6 +803,16 @@ function animate() {
         
         // Police AI (host runs AI, clients receive sync)
         const policeDistance = updatePoliceAI(delta);
+        
+        // Update money popups (floating +kr text)
+        updateMoneyPopups();
+
+        // Client-side interpolation for police (smooth movement)
+        if (gameState.isMultiplayer && !gameState.isHost) {
+            import('./police.js').then(m => {
+                if(m.updateNetworkPolice) m.updateNetworkPolice(delta);
+            });
+        }
         
         // Host broadcasts police state
         if (gameState.isMultiplayer && gameState.isHost) {

@@ -26,7 +26,6 @@ export const gameState = {
     smallDebris: [],
     chunkGridSize: 200,
     heatLevel: 1,
-    collectibles: [],
     projectiles: [],
     slowEffect: 0,
     slowDuration: 0,
