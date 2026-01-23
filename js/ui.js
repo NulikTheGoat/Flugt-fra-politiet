@@ -57,19 +57,29 @@ function saveHighScore(time) {
     if (!time || time < 1) return;
     
     let scores = getHighScores();
-    // Format date as DD/MM
-    const date = new Date().toLocaleDateString('da-DK', { day: '2-digit', month: '2-digit' });
     
-    scores.push({ time, date });
+    // Check if score qualifies for top 5
+    const qualifies = scores.length < 5 || time > scores[scores.length - 1].time;
     
-    // Sort descending by time
-    scores.sort((a, b) => b.time - a.time);
-    
-    // Keep top 5
-    scores = scores.slice(0, 5);
-    
-    localStorage.setItem('flugt_highscores', JSON.stringify(scores));
-    updateHighScoreDisplay();
+    if (qualifies) {
+        // Simple prompt for name
+        let playerName = prompt("NY REKORD! Indtast dit navn:", "Anonym");
+        if (!playerName || playerName.trim() === "") playerName = "Anonym";
+        
+        // Format date as DD/MM
+        const date = new Date().toLocaleDateString('da-DK', { day: '2-digit', month: '2-digit' });
+        
+        scores.push({ name: playerName.substring(0, 10), time, date });
+        
+        // Sort descending by time
+        scores.sort((a, b) => b.time - a.time);
+        
+        // Keep top 5
+        scores = scores.slice(0, 5);
+        
+        localStorage.setItem('flugt_highscores', JSON.stringify(scores));
+        updateHighScoreDisplay();
+    }
 }
 
 function formatTime(seconds) {
@@ -94,7 +104,7 @@ function updateHighScoreDisplay() {
             font-family: 'Courier New', monospace;
             z-index: 1000;
             border: 1px solid #444;
-            min-width: 150px;
+            min-width: 280px;
             pointer-events: none;
         `;
         document.body.appendChild(container);
@@ -110,9 +120,10 @@ function updateHighScoreDisplay() {
     
     scores.forEach((score, index) => {
         const color = index === 0 ? '#ffd700' : (index === 1 ? '#c0c0c0' : (index === 2 ? '#cd7f32' : '#fff'));
+        const name = score.name || 'Spiller';
         html += `
-            <div style="display:flex;justify-content:space-between;font-size:14px;margin-bottom:4px;color:${color};font-weight:bold;">
-                <span>${index + 1}. ${score.date}</span>
+            <div style="display:flex;justify-content:space-between;align-items:center;font-size:14px;margin-bottom:4px;color:${color};font-weight:bold;">
+                <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:160px;">${index + 1}. ${name}</span>
                 <span>${formatTime(score.time)}</span>
             </div>
         `;
