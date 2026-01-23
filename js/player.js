@@ -197,6 +197,7 @@ export function takeDamage(amount) {
 }
 
 // Main update loop for player logic (Physics, controls)
+// Enhanced with industry-standard car physics simulation
 export function updatePlayer(delta, now) {
     if (!playerCar || gameState.arrested) return;
 

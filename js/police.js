@@ -163,6 +163,12 @@ export function updatePoliceAI(delta) {
 
     let minDistance = 10000;
 
+    // Enhanced AI system with industry best practices:
+    // - Predictive intercept targeting
+    // - Formation pursuit tactics
+    // - Look-ahead obstacle avoidance
+    // - Dynamic cornering behavior
+    // - Realistic momentum-based collisions
     gameState.policeCars.forEach((policeCar, index) => {
         // Shared constants for this police car's update
         const gridSize = gameState.chunkGridSize;
