@@ -1031,7 +1031,7 @@ export function updateBuildingChunks(delta) {
                                  gameState.screenShake = 0.4;
                                  createSmoke(chunk.position);
                              }
-                             // Special handling for Hotdog stands
+                             // Special handling for Hotdog stands (Destructible)
                              else if (chunk.userData.isHotdogStand) {
                                  chunk.userData.isHit = true;
                                  chunk.matrixAutoUpdate = true;
