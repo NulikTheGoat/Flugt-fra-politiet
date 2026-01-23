@@ -87,6 +87,24 @@ const BOSS_FALLBACKS = {
     ]
 };
 
+// System prompt for Newspaper
+const NEWSPAPER_PROMPT = `Du er en journalist for formiddagsavisen "Dagens Drama".
+Du skal skrive en SENSATIONALISTISK FORSIDE-OVERSKRIFT og en underoverskrift om en biljagt der lige er sluttet.
+SKRIV PÅ DANSK.
+Format: "OVERSKRIFT: [Kort, stor overskrift, maks 5 ord]\\nUNDEROVERSKRIFT: [Sjov, tabloidoverskrift, maks 15 ord]"
+Brug store bogstaver og udråbstegn. Vær overdrevet dramatisk.
+Eksempel:
+OVERSKRIFT: VANVIDSBILIST AMOK!
+UNDEROVERSKRIFT: "Han kørte som om han havde stjålet både bilen og benzinen!" siger chokeret vidne.`;
+
+// Fallback phrases for Newspaper
+const NEWSPAPER_FALLBACKS = [
+    { headline: "KAOS I GADERNE!", subheadline: "Mystisk bilist skaber ravage i midtbyen - politiet målløse!" },
+    { headline: "VEJENS SKRÆK FANGET!", subheadline: "Efter timelang jagt er fartsynderen endelig bag tremmer." },
+    { headline: "REKORD I ØDELÆGGELSE!", subheadline: "Forsikringsselskaber græder: Skader for millioner efter vanvidskørsel." },
+    { headline: "AMOK-KØRER STOPPET!", subheadline: "Byrådet indkalder til krisemøde efter nattens begivenheder." }
+];
+
 // System prompt for the commentator
 const SYSTEM_PROMPT = `Du er en begejstret sportskommentator til et ulovligt gaderæs-spil kaldet "Flugt fra Politiet".
 Du er dramatisk, munter og elsker at hype spillerens handlinger.
@@ -698,6 +716,43 @@ export const _internal = {
     commentaryState,
     FALLBACK_PHRASES
 }; 
+
+// ==========================================
+// NEWSPAPER FUNCTIONS
+// ==========================================
+
+export async function generateNewspaper(stats) {
+    const summary = `Biljagt afsluttet.
+    Varighed: ${Math.floor(stats.time)} sekunder.
+    Smadrede politibiler: ${stats.policeKilled}.
+    Max Speed: ${stats.maxSpeed} km/t.
+    Skade på byen: ${stats.heatLevel >= 4 ? 'TOTAL ØDELÆGGELSE' : 'MODERAT'}.`;
+
+    const text = await callLLM(NEWSPAPER_PROMPT, summary);
+    if (text) {
+        // Parse the response tailored to format "OVERSKRIFT: ... \nUNDEROVERSKRIFT: ..."
+        const lines = text.split('\n');
+        let headline = "EKSTRA OPLAG!";
+        let subheadline = "Læs alt om det vilde ræs her.";
+        
+        lines.forEach(line => {
+            if (line.includes('OVERSKRIFT:') && !line.includes('UNDER')) {
+                headline = line.replace('OVERSKRIFT:', '').trim();
+            } else if (line.includes('UNDEROVERSKRIFT:')) {
+                subheadline = line.replace('UNDEROVERSKRIFT:', '').trim();
+            }
+        });
+        
+        return { headline, subheadline };
+    }
+    
+    return getNewspaperFallback();
+}
+
+function getNewspaperFallback() {
+    console.warn('[Newspaper] LLM Connection Failed - Using FALLBACK headline');
+    return NEWSPAPER_FALLBACKS[Math.floor(Math.random() * NEWSPAPER_FALLBACKS.length)];
+}
 
 // ==========================================
 // JUDGE / GAME OVER FUNCTIONS

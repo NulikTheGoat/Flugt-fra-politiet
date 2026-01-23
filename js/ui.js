@@ -1,5 +1,5 @@
 import { gameState } from './state.js';
-import { generateVerdict } from './commentary.js';
+import { generateVerdict, generateNewspaper } from './commentary.js';
 import { gameConfig } from './config.js';
 import { clamp, darkenColor } from './utils.js';
 import { cars } from './constants.js';
@@ -147,6 +147,26 @@ export function showGameOver(customMessage) {
     DOM.gameOverMessage.textContent = customMessage || 'Du blev fanget af politiet og sat i fængsel!';
     DOM.gameOver.style.display = 'block';
     
+    // Newspaper Headline (New Feature)
+    const newspaperElement = document.getElementById('newspaper');
+    if (newspaperElement) {
+        // Reset to loading state
+        document.getElementById('newspaperHeadline').textContent = "TRYKKER EKSTRA OPLAG...";
+        document.getElementById('newspaperSubhead').textContent = "Vent venligst...";
+        newspaperElement.style.display = 'block';
+
+        generateNewspaper({
+            time: gameState.elapsedTime,
+            policeKilled: gameState.policeKilled,
+            heatLevel: gameState.heatLevel,
+            money: gameState.money,
+            maxSpeed: Math.round((gameState.maxSpeedAchieved || 0) * 3.6) // Assuming we track this, or just current speed
+        }).then(paper => {
+            document.getElementById('newspaperHeadline').textContent = paper.headline;
+            document.getElementById('newspaperSubhead').textContent = paper.subheadline;
+        });
+    }
+
     // Judge Verdict
     const judgeElement = document.getElementById('judgeVerdict');
     if (judgeElement) {

@@ -68,6 +68,8 @@ Using LEGO MPS (Model Prediction Service) with Anthropic Claude:
 - [ ] Tune commentary frequency
 - [ ] Add variety to prompts
 - [ ] Test with different game scenarios
+
+### Phase 6: Voice
 - [ ] Add text to speech ( maybe whisper or something like it)
 
 ## Event Data Structure

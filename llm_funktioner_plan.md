@@ -56,8 +56,8 @@ En kriminel bagmand sender SMS'er til spilleren med tilfældige mini-missioner g
 *   **Belønning:** Hvis spilleren gør det, giver "The Boss" ekstra penge (vi kan parse LLM'ens svar for at se om missionen gav mening, eller bare give penge når spilleren udfører handlingen).
 
 ## 5. 📰 Dagens Avis (Highscore Context)
-- [ ] Lave Avis-forside UI til Highscore skærm
-- [ ] Trigger ved ny highscore
+- [x] Lave Avis-forside UI til Highscore skærm
+- [x] Trigger ved ny highscore
 
 Når man sætter en ny Highscore, genererer LLM'en en forside-overskrift til "Ekstra Bladet" eller "BT".
 
