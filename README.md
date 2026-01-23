@@ -204,8 +204,18 @@ The longer you survive, the harder it gets!
 |-------|--------------|
 | 🟢 Level 1 | Normal police cars |
 | 🟡 Level 2 | Fast interceptors join |
-| 🟠 Level 3 | Big SWAT trucks appear |
+| 🟠 Level 3 | Big SWAT trucks appear + **AI SHERIFF** can spawn! |
 | 🔴 Level 4+ | Military vehicles that SHOOT at you! |
+
+### ⭐ AI Sheriff (NEW!)
+At Heat Level 3+, the **Sheriff** may join the chase! This special unit:
+- Uses AI to command other police cars
+- Issues tactical orders in real-time
+- Coordinates police pursuit strategies
+- Shows as "⭐ SHERIFF AKTIV" in the HUD
+- Commands appear in gold text on the police scanner
+
+See [SHERIFF_SETUP.md](SHERIFF_SETUP.md) for setup instructions.
 
 ---
 
@@ -216,6 +226,7 @@ The longer you survive, the harder it gets!
 - **Crash into police** - Going fast? Ram them to damage their cars!
 - **Collect coins** - More time = more money per coin
 - **Watch your health** - When it's low, your car gets slower and harder to control
+- **Beware the Sheriff** - When the AI Sheriff spawns, police become much more coordinated!
 
 ---
 
