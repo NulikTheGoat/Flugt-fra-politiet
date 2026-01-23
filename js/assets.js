@@ -17,7 +17,15 @@ export const sharedGeometries = {
     spark: new THREE.BoxGeometry(1, 1, 3),
     speedParticle: new THREE.BoxGeometry(0.5, 0.5, 3),
     smoke: new THREE.BoxGeometry(3, 3, 3),
-    tireMark: new THREE.PlaneGeometry(3, 8)
+    tireMark: new THREE.PlaneGeometry(3, 8),
+    // New Details
+    bumper: new THREE.BoxGeometry(22, 2, 4),
+    sideMirror: new THREE.BoxGeometry(3, 2, 2),
+    headlight: new THREE.BoxGeometry(3, 2, 1),
+    taillight: new THREE.BoxGeometry(3, 2, 1),
+    exhaust: new THREE.CylinderGeometry(1, 1, 3, 8),
+    spoiler: new THREE.BoxGeometry(22, 1, 6),
+    spoilerStand: new THREE.BoxGeometry(1, 4, 1)
 };
 
 export const sharedMaterials = {
@@ -25,6 +33,11 @@ export const sharedMaterials = {
     coin: new THREE.MeshLambertMaterial({ color: 0xffd700 }),
     redLight: new THREE.MeshBasicMaterial({ color: 0xff0000 }),
     blueLight: new THREE.MeshBasicMaterial({ color: 0x0000ff }),
+    taillight: new THREE.MeshLambertMaterial({ color: 0xff0000, emissive: 0xff0000, emissiveIntensity: 2.0 }), // Glowing red
+    headlight: new THREE.MeshLambertMaterial({ color: 0xffffaa, emissive: 0xffffaa, emissiveIntensity: 2.5 }), // Glowing yellow-white
+    window: new THREE.MeshPhongMaterial({ color: 0x111111, shininess: 100, specular: 0xffffff }), // Dark glass
+    bumper: new THREE.MeshLambertMaterial({ color: 0x333333 }),
+    chrome: new THREE.MeshPhongMaterial({ color: 0xcccccc, shininess: 150, specular: 0xffffff }),
     projectile: new THREE.MeshBasicMaterial({ color: 0xff4400 }),
     spark: new THREE.MeshBasicMaterial({ color: 0xffaa00 }),
     white: new THREE.MeshLambertMaterial({ color: 0xffffff }),
