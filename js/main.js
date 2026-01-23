@@ -8,6 +8,8 @@ import { createGround, createTrees, createBuildings, updateBuildingChunks, updat
 import { updateHUD, updateHealthUI, DOM, goToShop, showGameOver, setStartGameCallback, triggerDamageEffect, setMultiplayerShopCallback } from './ui.js';
 import { updateSpeedEffects, updateSparks, updateTireMarks } from './particles.js';
 import * as Network from './network.js';
+import { updateCommentary, resetCommentary, logEvent, EVENTS } from './commentary.js';
+
 
 // Initialize - attach renderer to gameContainer
 document.getElementById('gameContainer').appendChild(renderer.domElement);
@@ -677,6 +679,9 @@ export function startGame() {
     // Update car model and color
     rebuildPlayerCar();
     
+    // Initialize commentary system
+    resetCommentary();
+    
     // Spawn first police car
     spawnPoliceCar();
 }
@@ -813,6 +818,9 @@ function animate() {
         if (gameState.isMultiplayer) {
             updateOtherPlayersHUD();
         }
+        
+        // Update commentary system
+        updateCommentary();
     }
     
     // Visual FX

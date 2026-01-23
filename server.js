@@ -1,6 +1,7 @@
 // LAN Multiplayer Server for Flugt fra Politiet
 // Persistent "floating" server - always running, anyone can join
 const http = require('http');
+const https = require('https');
 const fs = require('fs');
 const path = require('path');
 const { WebSocketServer } = require('ws');
@@ -11,8 +12,164 @@ const WS_PORT = 3001;
 // Default room code - always available
 const DEFAULT_ROOM = 'SPIL';
 
+// Load environment variables from .env file
+function loadEnv() {
+    try {
+        const envPath = path.join(__dirname, '.env');
+        if (fs.existsSync(envPath)) {
+            const envContent = fs.readFileSync(envPath, 'utf8');
+            envContent.split('\n').forEach(line => {
+                line = line.trim();
+                if (line && !line.startsWith('#')) {
+                    const [key, ...valueParts] = line.split('=');
+                    const value = valueParts.join('=').trim();
+                    if (key && value) {
+                        process.env[key.trim()] = value;
+                    }
+                }
+            });
+            console.log('✅ Environment variables loaded from .env');
+        }
+    } catch (err) {
+        console.warn('⚠️ Could not load .env file:', err.message);
+    }
+}
+loadEnv();
+
+// MPS API Configuration
+const MPS_CONFIG = {
+    url: process.env.MPS_URL || 'https://models.assistant.legogroup.io',
+    apiKey: process.env.MPS_API_KEY || '',
+    deployment: process.env.MPS_DEPLOYMENT || 'anthropic.claude-haiku-4-5-20251001-v1:0',
+    maxTokens: parseInt(process.env.MPS_MAX_TOKENS) || 256,
+    anthropicVersion: process.env.MPS_ANTHROPIC_VERSION || '2023-06-01'
+};
+
+// Commentary rate limiting
+let lastCommentaryRequest = 0;
+const COMMENTARY_COOLDOWN = 5000; // 5 seconds
+
+// Helper function to make HTTPS requests
+function httpsPost(url, headers, body) {
+    return new Promise((resolve, reject) => {
+        const urlObj = new URL(url);
+        const options = {
+            hostname: urlObj.hostname,
+            port: urlObj.port || 443,
+            path: urlObj.pathname,
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Content-Length': Buffer.byteLength(body),
+                ...headers
+            }
+        };
+        
+        const req = https.request(options, (res) => {
+            let data = '';
+            res.on('data', chunk => data += chunk);
+            res.on('end', () => {
+                resolve({ status: res.statusCode, data });
+            });
+        });
+        
+        req.on('error', reject);
+        req.write(body);
+        req.end();
+    });
+}
+
 // Simple HTTP server for static files + discovery endpoint
-const httpServer = http.createServer((req, res) => {
+const httpServer = http.createServer(async (req, res) => {
+    // Handle CORS preflight
+    if (req.method === 'OPTIONS') {
+        res.writeHead(200, {
+            'Access-Control-Allow-Origin': '*',
+            'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+            'Access-Control-Allow-Headers': 'Content-Type'
+        });
+        res.end();
+        return;
+    }
+    
+    // Commentary API endpoint
+    if (req.url === '/api/commentary' && req.method === 'POST') {
+        // Rate limiting
+        const now = Date.now();
+        if (now - lastCommentaryRequest < COMMENTARY_COOLDOWN) {
+            res.writeHead(429, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' });
+            res.end(JSON.stringify({ error: 'Rate limited', retryAfter: COMMENTARY_COOLDOWN - (now - lastCommentaryRequest) }));
+            return;
+        }
+        
+        // Check if API key is configured
+        if (!MPS_CONFIG.apiKey) {
+            res.writeHead(503, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' });
+            res.end(JSON.stringify({ error: 'API not configured' }));
+            return;
+        }
+        
+        let body = '';
+        req.on('data', chunk => body += chunk);
+        req.on('end', async () => {
+            try {
+                const { systemPrompt, eventSummary } = JSON.parse(body);
+                
+                if (!eventSummary) {
+                    res.writeHead(400, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' });
+                    res.end(JSON.stringify({ error: 'Missing eventSummary' }));
+                    return;
+                }
+                
+                lastCommentaryRequest = now;
+                
+                // Build MPS request payload
+                const payload = {
+                    model: MPS_CONFIG.deployment,
+                    system: systemPrompt || 'You are an excited sports commentator. Keep responses under 25 words.',
+                    messages: [{ role: 'user', content: eventSummary }],
+                    max_tokens: MPS_CONFIG.maxTokens
+                };
+                
+                const endpoint = `${MPS_CONFIG.url}/anthropic/v1/messages`;
+                const headers = {
+                    'Authorization': `Bearer ${MPS_CONFIG.apiKey}`,
+                    'api-key': MPS_CONFIG.apiKey,
+                    'anthropic-version': MPS_CONFIG.anthropicVersion
+                };
+                
+                console.log('[Commentary] Requesting from MPS...');
+                const mpsResponse = await httpsPost(endpoint, headers, JSON.stringify(payload));
+                
+                if (mpsResponse.status !== 200) {
+                    console.error('[Commentary] MPS error:', mpsResponse.status, mpsResponse.data);
+                    res.writeHead(502, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' });
+                    res.end(JSON.stringify({ error: 'LLM request failed', status: mpsResponse.status }));
+                    return;
+                }
+                
+                const mpsData = JSON.parse(mpsResponse.data);
+                let commentary = '';
+                
+                // Extract text from Anthropic response format
+                if (mpsData.content && Array.isArray(mpsData.content) && mpsData.content[0]?.text) {
+                    commentary = mpsData.content[0].text;
+                }
+                
+                console.log('[Commentary] Received:', commentary);
+                
+                res.writeHead(200, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' });
+                res.end(JSON.stringify({ commentary }));
+                
+            } catch (err) {
+                console.error('[Commentary] Error:', err);
+                res.writeHead(500, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' });
+                res.end(JSON.stringify({ error: 'Internal server error' }));
+            }
+        });
+        return;
+    }
+    
     // Discovery endpoint for LAN server scanning
     if (req.url === '/api/discover') {
         const room = rooms.get(DEFAULT_ROOM);
