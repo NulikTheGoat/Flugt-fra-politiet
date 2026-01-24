@@ -43,12 +43,12 @@ test.describe('🎮 Core Gameplay', () => {
         
         // Core state checks
         expect(state.speed).toBe(0);
-        expect(state.health).toBe(100); // Standard car health
+        expect(state.health).toBe(30); // Bicycle health
         expect(state.money).toBe(0);
         expect(state.heatLevel).toBe(1);
         expect(state.arrested).toBe(false);
-        expect(state.selectedCar).toBe('standard');
-        expect(state.maxSpeed).toBe(22); // Standard car maxSpeed
+        expect(state.selectedCar).toBe('bicycle');
+        expect(state.maxSpeed).toBe(8); // Bicycle maxSpeed
     });
 
     test('Player can accelerate and decelerate', async ({ page }) => {

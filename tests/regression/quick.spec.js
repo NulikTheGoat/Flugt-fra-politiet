@@ -42,11 +42,11 @@ test.describe('🎯 Core Systems', () => {
         
         console.log('Initial state:', state);
         expect(state.speed).toBe(0);
-        expect(state.health).toBe(100);
+        expect(state.health).toBe(30);  // Bicycle health
         expect(state.money).toBe(0);
         expect(state.heatLevel).toBe(1);
-        expect(state.maxSpeed).toBe(22);
-        expect(state.selectedCar).toBe('standard');
+        expect(state.maxSpeed).toBe(8);  // Bicycle maxSpeed
+        expect(state.selectedCar).toBe('bicycle');
     });
 
     test('Movement and physics work', async ({ page }) => {

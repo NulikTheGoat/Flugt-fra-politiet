@@ -7,10 +7,46 @@ export const enemies = {
 };
 
 export const cars = {
+    // === STARTER KØRETØJER ===
+    bicycle: {
+        name: 'Cykel',
+        price: 0,           // Gratis starter!
+        maxSpeed: 8,        // ~30 km/h display
+        acceleration: 0.04,
+        handling: 0.08,
+        health: 30,
+        color: 0x32CD32,    // Lime green
+        type: 'bicycle',
+        scale: 0.6
+    },
+    scooter_electric: {
+        name: 'El-løbehjul',
+        price: 200,
+        maxSpeed: 11,       // ~40 km/h display
+        acceleration: 0.06,
+        handling: 0.10,
+        health: 25,
+        color: 0x00CED1,    // Dark turquoise
+        type: 'scooter',
+        scale: 0.5
+    },
+    scooter: {
+        name: 'Knallert',
+        price: 600,
+        maxSpeed: 14,       // ~50 km/h display
+        acceleration: 0.07,
+        handling: 0.06,
+        health: 50,
+        color: 0xFFD700,    // Gold
+        type: 'scooter',
+        scale: 0.7
+    },
+    
+    // === BILER ===
     standard: {
         name: 'Standard Bil',
-        price: 0,
-        maxSpeed: 22,      // ~80 km/h display
+        price: 1500,        // Nu koster den penge!
+        maxSpeed: 22,       // ~80 km/h display
         acceleration: 0.08,
         handling: 0.05,
         health: 100,
@@ -18,58 +54,58 @@ export const cars = {
     },
     sport: {
         name: 'Sportsvogn',
-        price: 1500,        // Reduced from 2500
-        maxSpeed: 30,      // ~110 km/h display
+        price: 3500,
+        maxSpeed: 30,       // ~110 km/h display
         acceleration: 0.12,
         handling: 0.07,
-        health: 80,
+        health: 90,
         color: 0xffff00
     },
     muscle: {
         name: 'Muscle Car',
-        price: 4000,        // Reduced from 8000
-        maxSpeed: 28,      // ~100 km/h display
+        price: 7000,
+        maxSpeed: 28,       // ~100 km/h display
         acceleration: 0.14,
         handling: 0.04,
-        health: 120,
+        health: 130,
         color: 0x0000ff
     },
     super: {
         name: 'Superbil',
-        price: 12000,       // Reduced from 25000
-        maxSpeed: 42,      // ~150 km/h display
+        price: 18000,
+        maxSpeed: 42,       // ~150 km/h display
         acceleration: 0.18,
         handling: 0.09,
-        health: 70,
+        health: 100,        // Buffed from 70
         color: 0xff00ff
     },
     hyper: {
         name: 'Hyperbil',
-        price: 35000,       // Reduced from 75000
-        maxSpeed: 55,      // ~200 km/h display
+        price: 45000,
+        maxSpeed: 55,       // ~200 km/h display
         acceleration: 0.25,
         handling: 0.12,
-        health: 150,
+        health: 120,        // Nerfed from 150
         color: 0x00ffff
     },
     tank: {
         name: 'Kampvogn',
-        price: 80000,       // Reduced from 200000
-        maxSpeed: 17,      // ~60 km/h display
+        price: 100000,
+        maxSpeed: 17,       // ~60 km/h display
         acceleration: 0.05,
         handling: 0.08,
-        health: 500,
+        health: 300,        // Nerfed from 500 - stadig tanky!
         color: 0x2f4f4f,
         type: 'tank',
         reqRebirth: 0
     },
     ufo: {
         name: 'UFO Prototype',
-        price: 150000,      // Reduced from 500000
-        maxSpeed: 83,      // ~300 km/h display
+        price: 200000,
+        maxSpeed: 83,       // ~300 km/h display
         acceleration: 0.5,
         handling: 0.2,
-        health: 150,
+        health: 100,        // Nerfed from 150 - glass cannon
         color: 0x999999,
         type: 'ufo',
         reqRebirth: 1
