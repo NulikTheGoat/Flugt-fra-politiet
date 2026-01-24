@@ -4,17 +4,33 @@ A fast-paced 3D car chase game! Outrun the cops, collect coins, upgrade your rid
 
 ---
 
+## 🎮 Available Versions
+
+**🆕 Luanti Version (Current)**: Now available as a Luanti (formerly Minetest) game!
+- **See**: [luanti_game/README.md](luanti_game/README.md) for installation and gameplay
+- **Tech**: Lua, Luanti voxel engine
+- **Benefits**: Better multiplayer, voxel world, desktop game engine
+
+**🌐 Web Version (Legacy)**: Original Three.js browser version
+- **Tech Stack**: Three.js r128 • JavaScript ES6 • WebSocket • Node.js
+- **How to play**: See instructions below
+
+For information about the technology migration, see [MIGRATION_GUIDE.md](MIGRATION_GUIDE.md).
+
+---
+
 ## 📚 Documentation
 
-**For Players**: Continue reading below for how to play and setup instructions.
+**For Players**: 
+- **Luanti Version**: See [luanti_game/README.md](luanti_game/README.md)
+- **Web Version**: Continue reading below
 
 **For Developers & LLMs**: Check out our comprehensive documentation:
+- **[MIGRATION_GUIDE.md](MIGRATION_GUIDE.md)** - Technology migration overview (Three.js → Luanti)
 - **[PROJECT_CONTEXT.md](PROJECT_CONTEXT.md)** - Project overview, structure, and quick reference for LLMs
 - **[CODE_ARCHITECTURE.md](CODE_ARCHITECTURE.md)** - Technical deep dive into the codebase
 - **[DEVELOPER_GUIDE.md](DEVELOPER_GUIDE.md)** - Step-by-step guide for developers
 - **[CHANGELOG.md](CHANGELOG.md)** - Version history and release notes
-
-**Tech Stack**: Three.js r128 • JavaScript ES6 • WebSocket • Node.js
 
 ---
 
@@ -325,3 +341,18 @@ See our planning documents:
 ---
 
 **Have fun escaping! 🚗💨**
+
+---
+
+## 🆕 New Luanti Version Available!
+
+We now have a **Luanti (voxel engine) version** of the game with:
+- ✨ Voxel-based 3D world
+- 🏗️ Built-in multiplayer networking  
+- 🎮 Desktop game engine (no browser needed)
+- 🌍 Procedurally generated city
+- 🚀 Enhanced performance
+
+**Try it out**: See [luanti_game/README.md](luanti_game/README.md) for installation instructions!
+
+**Learn more**: Read the [MIGRATION_GUIDE.md](MIGRATION_GUIDE.md) for details about the technology migration.
