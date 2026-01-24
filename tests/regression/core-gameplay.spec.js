@@ -48,19 +48,19 @@ test.describe('🎮 Core Gameplay', () => {
         expect(state.heatLevel).toBe(1);
         expect(state.arrested).toBe(false);
         expect(state.selectedCar).toBe('onfoot');
-        expect(state.maxSpeed).toBe(4); // On foot maxSpeed
+        expect(state.maxSpeed).toBe(2.5); // On foot maxSpeed (jogging)
     });
 
     test('Player can accelerate and decelerate', async ({ page }) => {
-        // Accelerate
+        // Accelerate (on foot is slower, so wait longer)
         await page.keyboard.down('w');
-        await page.waitForTimeout(2000);
+        await page.waitForTimeout(3000);
         
         const acceleratedSpeed = await page.evaluate(() => window.gameState?.speed);
-        console.log(`Speed after 2s acceleration: ${acceleratedSpeed?.toFixed(2)} (${Math.round((acceleratedSpeed || 0) * 3.6)} km/h)`);
+        console.log(`Speed after 3s acceleration: ${acceleratedSpeed?.toFixed(2)} (${Math.round((acceleratedSpeed || 0) * 3.6)} km/h)`);
         
-        // Car accelerates gradually, expect at least some movement
-        expect(acceleratedSpeed).toBeGreaterThan(1);
+        // On foot accelerates gradually, expect at least some movement (lower threshold)
+        expect(acceleratedSpeed).toBeGreaterThan(0.5);
         
         // Release and coast
         await page.keyboard.up('w');
@@ -181,9 +181,13 @@ test.describe('🏥 Health System', () => {
 
     test('Health starts at car maximum', async ({ page }) => {
         const health = await page.evaluate(() => window.gameState?.health);
-        const carHealth = await page.evaluate(() => window.cars?.standard?.health);
+        const selectedCar = await page.evaluate(() => window.gameState?.selectedCar);
+        const carHealth = await page.evaluate(() => {
+            const selected = window.gameState?.selectedCar || 'onfoot';
+            return window.cars?.[selected]?.health;
+        });
         
-        console.log(`Starting health: ${health}, Expected: ${carHealth}`);
+        console.log(`Starting health: ${health}, Selected: ${selectedCar}, Expected: ${carHealth}`);
         expect(health).toBe(carHealth);
     });
 

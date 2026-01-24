@@ -11,8 +11,8 @@ export const cars = {
     onfoot: {
         name: 'Til Fods',
         price: 0,           // Gratis starter!
-        maxSpeed: 4,        // ~15 km/h display (running speed)
-        acceleration: 0.03,
+        maxSpeed: 2.5,      // ~9 km/h display (jogging speed)
+        acceleration: 0.02,
         handling: 0.15,     // Very agile on foot
         health: 20,
         color: 0xFFAA00,    // Orange (person)
@@ -21,9 +21,9 @@ export const cars = {
     },
     bicycle: {
         name: 'Cykel',
-        price: 100,         // Cheap upgrade
-        maxSpeed: 8,        // ~30 km/h display
-        acceleration: 0.04,
+        price: 50,          // Very cheap first upgrade
+        maxSpeed: 7,        // ~25 km/h display
+        acceleration: 0.035,
         handling: 0.08,
         health: 30,
         color: 0x32CD32,    // Lime green
@@ -32,9 +32,9 @@ export const cars = {
     },
     scooter_electric: {
         name: 'El-løbehjul',
-        price: 300,
-        maxSpeed: 11,       // ~40 km/h display
-        acceleration: 0.06,
+        price: 150,         // Affordable second upgrade
+        maxSpeed: 10,       // ~36 km/h display
+        acceleration: 0.05,
         handling: 0.10,
         health: 25,
         color: 0x00CED1,    // Dark turquoise
@@ -43,9 +43,9 @@ export const cars = {
     },
     scooter: {
         name: 'Knallert',
-        price: 700,
-        maxSpeed: 14,       // ~50 km/h display
-        acceleration: 0.07,
+        price: 400,         // Mid-range upgrade
+        maxSpeed: 13,       // ~47 km/h display
+        acceleration: 0.065,
         handling: 0.06,
         health: 50,
         color: 0xFFD700,    // Gold

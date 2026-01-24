@@ -23,12 +23,12 @@ export const gameState = {
     // === Physics & Movement ===
     // Default values match 'onfoot' (starter) from constants.js
     speed: 0,
-    maxSpeed: 4,            // On foot: 4 (~15 km/h)
-    maxReverseSpeed: 2,     // Slow reverse on foot
-    acceleration: 0.03,     // On foot: 0.03
+    maxSpeed: 2.5,          // On foot: 2.5 (~9 km/h jogging)
+    maxReverseSpeed: 1.5,   // Slow reverse on foot
+    acceleration: 0.02,     // On foot: 0.02
     friction: 0.97,
     brakePower: 0.88,
-    maxSpeedWarning: 3,     // Warning threshold for on foot
+    maxSpeedWarning: 2,     // Warning threshold for on foot
     velocityX: 0,
     velocityZ: 0,
     angularVelocity: 0,

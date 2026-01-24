@@ -45,7 +45,7 @@ test.describe('🎯 Core Systems', () => {
         expect(state.health).toBe(20);  // On foot health
         expect(state.money).toBe(0);
         expect(state.heatLevel).toBe(1);
-        expect(state.maxSpeed).toBe(4);  // On foot maxSpeed
+        expect(state.maxSpeed).toBe(2.5);  // On foot maxSpeed (jogging)
         expect(state.selectedCar).toBe('onfoot');
     });
 
