@@ -626,7 +626,7 @@ export function updatePlayer(delta, now) {
     const baseGrip = 1.15 - gripLoss;
     const tiregrip = Math.max(0.6, baseGrip + gameState.weightTransfer * 0.2);
     
-    // Steering
+    // Steering (raw input)
     let steerInput = 0;
     if (keys['a'] || keys['arrowleft']) steerInput = 1;
     if (keys['d'] || keys['arrowright']) steerInput = -1;
@@ -635,6 +635,10 @@ export function updatePlayer(delta, now) {
     // High speed = less responsive steering (more realistic)
     const steeringSensitivity = 1.0 - (speedRatio * 0.5);
     steerInput *= steeringSensitivity;
+
+    // When reversing, yaw direction should be inverted (realistic reverse steering).
+    // Keep wheel visuals based on raw steering input; only invert the effect on rotation.
+    const steerInputForYaw = (gameState.speed < -0.5) ? -steerInput : steerInput;
     
     // Acceleration with improved traction model
     if (keys['w'] || keys['arrowup']) {
@@ -689,7 +693,7 @@ export function updatePlayer(delta, now) {
     const downforce = speedRatio > 0.5 ? (speedRatio - 0.5) * 0.3 : 0;
     const stabilityBonus = 1 + downforce;
     
-    const targetAngularVelocity = steerInput * steerStrength * (absSpeed / 20);
+    const targetAngularVelocity = steerInputForYaw * steerStrength * (absSpeed / 20);
     
     // Smoother steering response with stability
     const steerResponsiveness = 0.15 * stabilityBonus;
@@ -754,6 +758,7 @@ export function updatePlayer(delta, now) {
     playerCar.position.z += gameState.velocityZ * delta * slowMultiplier;
     
     // === VISUAL EFFECTS ===
+    // Visual steering should match user input (do not invert in reverse).
     gameState.wheelAngle = steerInput * 0.4;
 
     const isCar = isCarLikeType(visualType) || visualType === 'tank' || visualType === 'ufo';

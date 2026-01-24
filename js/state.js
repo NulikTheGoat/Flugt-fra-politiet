@@ -68,6 +68,7 @@
  * @property {number} collisionDistance
  * @property {boolean} policeEngaged
  * @property {number} destructionCount
+ * @property {boolean} hasHitObject
  *
  * @property {any[]} chunks
  * @property {Record<string, any>} chunkGrid
@@ -144,6 +145,8 @@ export const gameState = {
     policeEngaged: false,
     // Track destruction/vandalism for engagement + stats
     destructionCount: 0,
+    // True once player collides with any non-ground world object (buildings/trees/debris/etc)
+    hasHitObject: false,
     
     // === World & Environment ===
     chunks: [],

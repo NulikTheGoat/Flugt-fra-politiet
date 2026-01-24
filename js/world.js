@@ -719,6 +719,10 @@ export function updateBuildingChunks(delta) {
                      const collisionDist = (carRadius + chunk.userData.width/2 + 5);
                      if (distSq < collisionDist * collisionDist) {
                          if (Math.abs(chunk.position.y - carPos.y) < (chunk.userData.height/2 + 10)) {
+
+                             // Any non-ground chunk collision should count as a "hit" for police engagement.
+                             // This is especially important for on-foot (cannot destroy) but also applies to cars.
+                             if (!gameState.hasHitObject) gameState.hasHitObject = true;
                              
                              const carSpeed = Math.abs(gameState.speed);
                              const carAngle = playerCar.rotation.y;
@@ -884,6 +888,9 @@ export function updateBuildingChunks(delta) {
             if (distSq < collisionDist * collisionDist) {
                 const dist = Math.sqrt(distSq) || 1;
                 const carSpeed = Math.abs(gameState.speed);
+
+                // Debris collision counts as a "hit" for police engagement.
+                if (!gameState.hasHitObject) gameState.hasHitObject = true;
                 
                 // Calculate push direction (away from debris center)
                 const normX = -dx / dist;

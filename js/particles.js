@@ -225,23 +225,30 @@ export function updateSpeedParticles(delta) {
 export function updateSpeedEffects(delta) {
     if(!playerCar) return;
 
+    const visualType = playerCar.userData.visualType || gameState.selectedCar;
+    const isOnFoot = visualType === 'onfoot' || gameState.selectedCar === 'onfoot';
+
     const speedRatio = Math.abs(gameState.speed) / gameState.maxSpeed;
     
-    // Dynamic FOV - increases with speed for sense of motion
-    const targetFOV = gameState.baseFOV + speedRatio * 20;
+    // On foot: keep camera stable (no speed FX spawning)
+    const targetFOV = isOnFoot ? gameState.baseFOV : (gameState.baseFOV + speedRatio * 20);
     gameState.currentFOV += (targetFOV - gameState.currentFOV) * 0.1;
     camera.fov = gameState.currentFOV;
     camera.updateProjectionMatrix();
     
-    // Screen shake at high speeds
-    if (speedRatio > 0.8) {
-        gameState.screenShake = (speedRatio - 0.8) * 5;
+    // Screen shake at high speeds (cars only)
+    if (!isOnFoot) {
+        if (speedRatio > 0.8) {
+            gameState.screenShake = (speedRatio - 0.8) * 5;
+        } else {
+            gameState.screenShake *= 0.9;
+        }
     } else {
-        gameState.screenShake *= 0.9;
+        gameState.screenShake *= 0.85;
     }
     
-    // Spawn sparks when going fast
-    if (speedRatio > 0.7 && Math.random() < speedRatio * 0.3) {
+    // Spawn sparks when going fast (cars only)
+    if (!isOnFoot && speedRatio > 0.7 && Math.random() < speedRatio * 0.3) {
         createSpark();
     }
     
@@ -251,8 +258,8 @@ export function updateSpeedEffects(delta) {
         scene.remove(oldSpark);
     }
     
-    // Spawn speed particles when moving
-    if (speedRatio > 0.2) {
+    // Spawn speed particles when moving (cars only)
+    if (!isOnFoot && speedRatio > 0.2) {
         const particleCount = Math.floor(speedRatio * 3);
         for (let i = 0; i < particleCount; i++) {
             if (Math.random() < 0.4) createSpeedParticle();

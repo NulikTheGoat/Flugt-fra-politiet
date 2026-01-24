@@ -762,6 +762,7 @@ function resetRunState(opts = {}) {
     // Police engagement gating (no cops until player earns money or vandalizes)
     gameState.policeEngaged = false;
     gameState.destructionCount = 0;
+    gameState.hasHitObject = false;
 
     gameState.arrestCountdown = 0;
     gameState.arrestStartTime = 0;
@@ -825,8 +826,8 @@ function animate() {
     const gameStarted = gameState.startTime > 0;
     
     if (!gameState.arrested && gameStarted) {
-        // Engage police once player has earned money or destroyed something
-        if (!gameState.policeEngaged && ((gameState.money || 0) > 0 || (gameState.destructionCount || 0) > 0)) {
+        // Engage police once player has earned money OR hit something non-ground OR destroyed something
+        if (!gameState.policeEngaged && ((gameState.money || 0) > 0 || (gameState.hasHitObject === true) || (gameState.destructionCount || 0) > 0)) {
             gameState.policeEngaged = true;
 
             // Spawn first police immediately on engagement (host only in multiplayer)
