@@ -7,10 +7,21 @@ export const enemies = {
 };
 
 export const cars = {
-    // === STARTER KØRETØJER ===
+    // === STARTER ===
+    onfoot: {
+        name: 'Til Fods',
+        price: 0,           // Gratis starter!
+        maxSpeed: 4,        // ~15 km/h display (running speed)
+        acceleration: 0.03,
+        handling: 0.15,     // Very agile on foot
+        health: 20,
+        color: 0xFFAA00,    // Orange (person)
+        type: 'onfoot',
+        scale: 0.4
+    },
     bicycle: {
         name: 'Cykel',
-        price: 0,           // Gratis starter!
+        price: 100,         // Cheap upgrade
         maxSpeed: 8,        // ~30 km/h display
         acceleration: 0.04,
         handling: 0.08,
@@ -21,7 +32,7 @@ export const cars = {
     },
     scooter_electric: {
         name: 'El-løbehjul',
-        price: 200,
+        price: 300,
         maxSpeed: 11,       // ~40 km/h display
         acceleration: 0.06,
         handling: 0.10,
@@ -32,7 +43,7 @@ export const cars = {
     },
     scooter: {
         name: 'Knallert',
-        price: 600,
+        price: 700,
         maxSpeed: 14,       // ~50 km/h display
         acceleration: 0.07,
         handling: 0.06,

@@ -21,28 +21,28 @@
 // Game State
 export const gameState = {
     // === Physics & Movement ===
-    // Default values match 'bicycle' (starter vehicle) from constants.js
+    // Default values match 'onfoot' (starter) from constants.js
     speed: 0,
-    maxSpeed: 8,            // Bicycle: 8 (~30 km/h)
-    maxReverseSpeed: 4,     // Slower reverse on bicycle
-    acceleration: 0.04,     // Bicycle: 0.04
+    maxSpeed: 4,            // On foot: 4 (~15 km/h)
+    maxReverseSpeed: 2,     // Slow reverse on foot
+    acceleration: 0.03,     // On foot: 0.03
     friction: 0.97,
     brakePower: 0.88,
-    maxSpeedWarning: 6,     // Warning threshold for bicycle
+    maxSpeedWarning: 3,     // Warning threshold for on foot
     velocityX: 0,
     velocityZ: 0,
     angularVelocity: 0,
     driftFactor: 0,
     carTilt: 0,
     wheelAngle: 0,
-    handling: 0.08,         // Bicycle: 0.08
+    handling: 0.15,         // On foot: 0.15 (very agile)
     
     // === Player State ===
-    health: 30,             // Bicycle health
+    health: 20,             // On foot health
     money: 0,
     rebirthPoints: 0,
     totalMoney: 0,
-    selectedCar: 'bicycle', // Start on bicycle!
+    selectedCar: 'onfoot',  // Start on foot!
     arrestDistance: 30,
     arrested: false,
     arrestCountdown: 0,
