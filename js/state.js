@@ -18,7 +18,86 @@
  *   gameState.money += 100;  // Direct access
  */
 
-// Game State
+/**
+ * NOTE FOR CONTRIBUTORS (and LLMs):
+ * - `speed`, `maxSpeed`, `velocityX`, `velocityZ` are in *world units per second*.
+ * - HUD shows km/h as `Math.round(speed * 3.6)`.
+ * - `selectedCar` is the key into `window.cars`/`cars`.
+ * - Some fields are vehicle-specific:
+ *   - `driftFactor`, `weightTransfer`, `carTilt`, `wheelAngle` are primarily for car-like vehicles.
+ *   - On-foot movement uses strafing (velocityX changes) and may have `angularVelocity` ~ 0.
+ */
+
+/**
+ * @typedef {Object} GameState
+ * @property {number} speed
+ * @property {number} maxSpeed
+ * @property {number} maxReverseSpeed
+ * @property {number} acceleration
+ * @property {number} friction
+ * @property {number} brakePower
+ * @property {number} maxSpeedWarning
+ * @property {number} velocityX
+ * @property {number} velocityZ
+ * @property {number} angularVelocity
+ * @property {number} driftFactor
+ * @property {number} carTilt
+ * @property {number} wheelAngle
+ * @property {number} handling
+ *
+ * @property {number} health
+ * @property {number} money
+ * @property {number} rebirthPoints
+ * @property {number} totalMoney
+ * @property {string} selectedCar
+ * @property {number} arrestDistance
+ * @property {boolean} arrested
+ * @property {number} arrestCountdown
+ * @property {number} arrestStartTime
+ * @property {boolean} hasStartedMoving
+ *
+ * @property {number} startTime
+ * @property {number} elapsedTime
+ * @property {number} lastMoneyCheckTime
+ *
+ * @property {number} heatLevel
+ * @property {any[]} policeCars
+ * @property {number} lastPoliceSpawnTime
+ * @property {number} policeKilled
+ * @property {number} maxPoliceOnScreen
+ * @property {number} collisionDistance
+ * @property {boolean} policeEngaged
+ * @property {number} destructionCount
+ *
+ * @property {any[]} chunks
+ * @property {Record<string, any>} chunkGrid
+ * @property {any[]} activeChunks
+ * @property {any[]} fallenDebris
+ * @property {any[]} smallDebris
+ * @property {number} chunkGridSize
+ * @property {any[]} collectibles
+ *
+ * @property {any[]} projectiles
+ * @property {number} slowEffect
+ * @property {number} slowDuration
+ *
+ * @property {any[]} sparks
+ * @property {any[]} tireMarks
+ * @property {any[]} speedParticles
+ * @property {number} baseFOV
+ * @property {number} currentFOV
+ * @property {number} screenShake
+ * @property {boolean} is2DMode
+ *
+ * @property {boolean} isMultiplayer
+ * @property {boolean} isHost
+ * @property {string|null} playerId
+ * @property {string|null} roomCode
+ * @property {Map<string, any>} otherPlayers
+ * @property {number} playerColor
+ */
+
+/** @type {GameState} */
 export const gameState = {
     // === Physics & Movement ===
     // Default values match 'onfoot' (starter) from constants.js
@@ -61,6 +140,10 @@ export const gameState = {
     policeKilled: 0,
     maxPoliceOnScreen: 0,
     collisionDistance: 25,
+    // Police should only engage once player has earned money or destroyed something
+    policeEngaged: false,
+    // Track destruction/vandalism for engagement + stats
+    destructionCount: 0,
     
     // === World & Environment ===
     chunks: [],

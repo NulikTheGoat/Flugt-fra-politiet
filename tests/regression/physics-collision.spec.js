@@ -18,9 +18,16 @@ test.describe('⚡ Physics Simulation', () => {
     test.beforeEach(async ({ page }) => {
         await page.goto('http://localhost:3000');
         await page.waitForSelector('canvas', { timeout: 10000 });
+
+        // Use a car-like vehicle for physics/drift/weight-transfer assertions.
+        await page.evaluate(() => {
+            window.gameState.selectedCar = 'standard';
+        });
+
         const soloBtn = page.locator('#soloModeBtn');
         if (await soloBtn.isVisible()) await soloBtn.click();
-        await page.waitForTimeout(500);
+        await page.waitForFunction(() => !!window.gameState?.startTime, { timeout: 5000 });
+        await page.waitForTimeout(200);
     });
 
     test('Velocity components update correctly', async ({ page }) => {

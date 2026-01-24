@@ -311,9 +311,12 @@ export function addMoney(amount) {
     if (amount <= 0) return;
     if (gameState.arrested) return; // Stop money gain when arrested/game over
     
-    // No points when speed is below 5% of max speed
-    const speedPercent = Math.abs(gameState.speed) / gameState.maxSpeed;
-    if (speedPercent < 0.05) return;
+    // No points when speed is below 5% of max speed (prevents AFK farming)
+    // Exception: on-foot / very slow vehicles should still be able to progress.
+    const max = Math.max(0.0001, gameState.maxSpeed || 1);
+    const speedPercent = Math.abs(gameState.speed) / max;
+    const isVerySlow = max <= 3; // on-foot is 2.5
+    if (!isVerySlow && speedPercent < 0.05) return;
     
     gameState.money += amount;
     
@@ -601,22 +604,97 @@ export function renderShop() {
         else if (carCategory === 'premium') categoryBadge = `<span class="car-type-badge">PREMIUM</span>`;
         else if (carCategory === 'sport') categoryBadge = `<span class="car-type-badge">SPORT</span>`;
 
-        carCard.innerHTML = `
-            <div class="car-preview-box">
-                <div class="floor-grid"></div>
-                <div class="car-model-3d">
-                    <div class="car-body" style="background: linear-gradient(135deg, ${colorHex} 0%, ${darkerColor} 100%);">
-                        <div class="car-wheel front-left"></div>
-                        <div class="car-wheel front-right"></div>
-                        <div class="car-wheel back-left"></div>
-                        <div class="car-wheel back-right"></div>
-                        <div class="car-headlight left"></div>
-                        <div class="car-headlight right"></div>
-                        <div class="car-taillight left"></div>
-                        <div class="car-taillight right"></div>
+        const vehicleType = car.type || key;
+        const previewHTML = (() => {
+            // Keep the same "garage" framing, but swap the model depending on vehicle type.
+            if (vehicleType === 'onfoot') {
+                return `
+                    <div class="car-preview-box preview-onfoot">
+                        <div class="floor-grid"></div>
+                        <div class="vehicle-model vehicle-onfoot" style="--accent:${colorHex};">
+                            <div class="person-head"></div>
+                            <div class="person-body"></div>
+                            <div class="person-leg left"></div>
+                            <div class="person-leg right"></div>
+                        </div>
+                    </div>
+                `;
+            }
+            if (vehicleType === 'bicycle') {
+                return `
+                    <div class="car-preview-box preview-bike">
+                        <div class="floor-grid"></div>
+                        <div class="vehicle-model vehicle-bike" style="--accent:${colorHex};">
+                            <div class="bike-wheel left"></div>
+                            <div class="bike-wheel right"></div>
+                            <div class="bike-frame"></div>
+                            <div class="bike-handle"></div>
+                        </div>
+                    </div>
+                `;
+            }
+            if (vehicleType === 'scooter') {
+                return `
+                    <div class="car-preview-box preview-scooter">
+                        <div class="floor-grid"></div>
+                        <div class="vehicle-model vehicle-scooter" style="--accent:${colorHex};">
+                            <div class="scooter-wheel left"></div>
+                            <div class="scooter-wheel right"></div>
+                            <div class="scooter-deck"></div>
+                            <div class="scooter-stem"></div>
+                            <div class="scooter-handle"></div>
+                        </div>
+                    </div>
+                `;
+            }
+            if (vehicleType === 'tank') {
+                return `
+                    <div class="car-preview-box preview-tank">
+                        <div class="floor-grid"></div>
+                        <div class="vehicle-model vehicle-tank" style="--accent:${colorHex};">
+                            <div class="tank-body"></div>
+                            <div class="tank-turret"></div>
+                            <div class="tank-barrel"></div>
+                            <div class="tank-track left"></div>
+                            <div class="tank-track right"></div>
+                        </div>
+                    </div>
+                `;
+            }
+            if (vehicleType === 'ufo') {
+                return `
+                    <div class="car-preview-box preview-ufo">
+                        <div class="floor-grid"></div>
+                        <div class="vehicle-model vehicle-ufo" style="--accent:${colorHex};">
+                            <div class="ufo-disc"></div>
+                            <div class="ufo-dome"></div>
+                            <div class="ufo-lights"></div>
+                        </div>
+                    </div>
+                `;
+            }
+            // Default: car preview
+            return `
+                <div class="car-preview-box">
+                    <div class="floor-grid"></div>
+                    <div class="car-model-3d">
+                        <div class="car-body" style="background: linear-gradient(135deg, ${colorHex} 0%, ${darkerColor} 100%);">
+                            <div class="car-wheel front-left"></div>
+                            <div class="car-wheel front-right"></div>
+                            <div class="car-wheel back-left"></div>
+                            <div class="car-wheel back-right"></div>
+                            <div class="car-headlight left"></div>
+                            <div class="car-headlight right"></div>
+                            <div class="car-taillight left"></div>
+                            <div class="car-taillight right"></div>
+                        </div>
                     </div>
                 </div>
-            </div>
+            `;
+        })();
+
+        carCard.innerHTML = `
+            ${previewHTML}
             
             <div class="card-content">
                 <h3>${car.name} ${categoryBadge}</h3>

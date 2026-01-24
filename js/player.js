@@ -1,5 +1,5 @@
 import { gameState, keys } from './state.js';
-import { scene } from './core.js';
+import { scene, camera } from './core.js';
 import { cars } from './constants.js';
 import { sharedGeometries, sharedMaterials } from './assets.js';
 import { createSmoke, createSpark, createTireMark, updateTireMarks } from './particles.js';
@@ -15,11 +15,267 @@ export function setUICallbacks(callbacks) {
 
 export let playerCar;
 
+function clamp01(v) {
+    return Math.max(0, Math.min(1, v));
+}
+
+function isCarLikeType(type) {
+    return !type || ['standard', 'sport', 'muscle', 'super', 'hyper'].includes(type);
+}
+
+function makeCarLights(carGroup, opts = {}) {
+    const {
+        headlightColor = 0xfff6d5,
+        taillightColor = 0xff2a2a,
+        y = 10,
+        zFront = 23,
+        zRear = -23,
+        x = 8
+    } = opts;
+
+    const headMat = new THREE.MeshBasicMaterial({ color: headlightColor });
+    const tailMat = new THREE.MeshBasicMaterial({ color: taillightColor });
+    const headGeo = new THREE.BoxGeometry(3, 2, 1);
+    const tailGeo = new THREE.BoxGeometry(3, 2, 1);
+
+    const headlights = [];
+    const taillights = [];
+
+    [-x, x].forEach((lx) => {
+        const h = new THREE.Mesh(headGeo, headMat);
+        h.position.set(lx, y, zFront);
+        h.name = 'headlight';
+        carGroup.add(h);
+        headlights.push(h);
+
+        const t = new THREE.Mesh(tailGeo, tailMat);
+        t.position.set(lx, y, zRear);
+        t.name = 'taillight';
+        carGroup.add(t);
+        taillights.push(t);
+    });
+
+    carGroup.userData.headlights = headlights;
+    carGroup.userData.taillights = taillights;
+}
+
+function createOnFootModel(color) {
+    const group = new THREE.Group();
+    group.userData.visualType = 'onfoot';
+    group.userData.allowTilt = false;
+    group.userData.suspensionEnabled = false;
+    group.userData.enableTireMarks = false;
+
+    const shirtMat = new THREE.MeshLambertMaterial({ color });
+    const pantsMat = new THREE.MeshLambertMaterial({ color: 0x1c1f2a });
+    const skinMat = new THREE.MeshLambertMaterial({ color: 0xffd0b0 });
+    const shoeMat = new THREE.MeshLambertMaterial({ color: 0x111111 });
+
+    const head = new THREE.Mesh(new THREE.SphereGeometry(3.2, 16, 12), skinMat);
+    head.position.set(0, 18, 0);
+    head.castShadow = true;
+    group.add(head);
+
+    const torso = new THREE.Mesh(new THREE.BoxGeometry(5.5, 7.5, 3.2), shirtMat);
+    torso.position.set(0, 12, 0);
+    torso.castShadow = true;
+    torso.receiveShadow = true;
+    torso.name = 'carBody';
+    group.add(torso);
+
+    const hip = new THREE.Mesh(new THREE.BoxGeometry(5.2, 2.2, 3.0), pantsMat);
+    hip.position.set(0, 8.2, 0);
+    hip.castShadow = true;
+    group.add(hip);
+
+    const limbGeo = new THREE.CylinderGeometry(0.9, 0.9, 7.5, 10);
+    const armGeo = new THREE.CylinderGeometry(0.7, 0.7, 6.5, 10);
+
+    const leftLeg = new THREE.Mesh(limbGeo, pantsMat);
+    leftLeg.position.set(-1.6, 4.2, 0);
+    leftLeg.castShadow = true;
+    group.add(leftLeg);
+
+    const rightLeg = new THREE.Mesh(limbGeo, pantsMat);
+    rightLeg.position.set(1.6, 4.2, 0);
+    rightLeg.castShadow = true;
+    group.add(rightLeg);
+
+    const leftShoe = new THREE.Mesh(new THREE.BoxGeometry(2.2, 1.1, 3.0), shoeMat);
+    leftShoe.position.set(-1.6, 0.6, 1.0);
+    leftShoe.castShadow = true;
+    group.add(leftShoe);
+
+    const rightShoe = new THREE.Mesh(new THREE.BoxGeometry(2.2, 1.1, 3.0), shoeMat);
+    rightShoe.position.set(1.6, 0.6, 1.0);
+    rightShoe.castShadow = true;
+    group.add(rightShoe);
+
+    const leftArm = new THREE.Mesh(armGeo, shirtMat);
+    leftArm.position.set(-3.8, 12.2, 0);
+    leftArm.rotation.z = 0.15;
+    leftArm.castShadow = true;
+    group.add(leftArm);
+
+    const rightArm = new THREE.Mesh(armGeo, shirtMat);
+    rightArm.position.set(3.8, 12.2, 0);
+    rightArm.rotation.z = -0.15;
+    rightArm.castShadow = true;
+    group.add(rightArm);
+
+    group.userData.walkParts = { leftLeg, rightLeg, leftArm, rightArm, leftShoe, rightShoe };
+    return group;
+}
+
+function createBicycleModel(color, kind = 'bicycle') {
+    const group = new THREE.Group();
+    group.userData.visualType = kind;
+    group.userData.allowTilt = false;
+    group.userData.suspensionEnabled = false;
+    group.userData.enableTireMarks = false;
+
+    const frameMat = new THREE.MeshLambertMaterial({ color });
+    const metalMat = new THREE.MeshLambertMaterial({ color: 0x999999 });
+    const rubberMat = new THREE.MeshLambertMaterial({ color: 0x111111 });
+
+    const wheelGeo = new THREE.CylinderGeometry(6, 6, 1.6, 16);
+    const frontWheel = new THREE.Mesh(wheelGeo, rubberMat);
+    frontWheel.rotation.z = Math.PI / 2;
+    frontWheel.position.set(0, 6.5, 14);
+    frontWheel.castShadow = true;
+    group.add(frontWheel);
+
+    const backWheel = new THREE.Mesh(wheelGeo, rubberMat);
+    backWheel.rotation.z = Math.PI / 2;
+    backWheel.position.set(0, 6.5, -14);
+    backWheel.castShadow = true;
+    group.add(backWheel);
+
+    // Simple frame
+    const tubeGeo = new THREE.CylinderGeometry(0.7, 0.7, 18, 10);
+    const topTube = new THREE.Mesh(tubeGeo, frameMat);
+    topTube.rotation.x = Math.PI / 2;
+    topTube.position.set(0, 10.5, 0);
+    topTube.castShadow = true;
+    group.add(topTube);
+
+    const downTube = new THREE.Mesh(new THREE.CylinderGeometry(0.7, 0.7, 20, 10), frameMat);
+    downTube.rotation.x = Math.PI / 2;
+    downTube.rotation.y = 0.2;
+    downTube.position.set(0, 8.5, 2);
+    downTube.castShadow = true;
+    group.add(downTube);
+
+    const seat = new THREE.Mesh(new THREE.BoxGeometry(3.2, 1.0, 4.0), metalMat);
+    seat.position.set(0, 13, -6);
+    seat.castShadow = true;
+    group.add(seat);
+
+    const handlebar = new THREE.Mesh(new THREE.BoxGeometry(8, 0.8, 1.2), metalMat);
+    handlebar.position.set(0, 12.5, 10.5);
+    handlebar.castShadow = true;
+    handlebar.name = 'handlebar';
+    group.add(handlebar);
+
+    // Rider (minimal)
+    const rider = createOnFootModel(0x2c3e50);
+    rider.scale.set(0.7, 0.7, 0.7);
+    rider.position.set(0, 3, -2);
+    group.add(rider);
+
+    group.userData.rollingWheels = [frontWheel, backWheel];
+    group.userData.steerWheels = [frontWheel];
+    group.userData.steerMesh = handlebar;
+    return group;
+}
+
+function createScooterModel(color) {
+    const group = new THREE.Group();
+    group.userData.visualType = 'scooter';
+    group.userData.allowTilt = false;
+    group.userData.suspensionEnabled = false;
+    group.userData.enableTireMarks = false;
+
+    const deckMat = new THREE.MeshLambertMaterial({ color });
+    const metalMat = new THREE.MeshLambertMaterial({ color: 0x7f8c8d });
+    const rubberMat = new THREE.MeshLambertMaterial({ color: 0x111111 });
+
+    const wheelGeo = new THREE.CylinderGeometry(4.2, 4.2, 1.4, 16);
+    const frontWheel = new THREE.Mesh(wheelGeo, rubberMat);
+    frontWheel.rotation.z = Math.PI / 2;
+    frontWheel.position.set(0, 4.8, 12);
+    frontWheel.castShadow = true;
+    group.add(frontWheel);
+
+    const backWheel = new THREE.Mesh(wheelGeo, rubberMat);
+    backWheel.rotation.z = Math.PI / 2;
+    backWheel.position.set(0, 4.8, -12);
+    backWheel.castShadow = true;
+    group.add(backWheel);
+
+    const deck = new THREE.Mesh(new THREE.BoxGeometry(4.8, 1.2, 22), deckMat);
+    deck.position.set(0, 5.5, 0);
+    deck.castShadow = true;
+    deck.receiveShadow = true;
+    deck.name = 'carBody';
+    group.add(deck);
+
+    const stem = new THREE.Mesh(new THREE.CylinderGeometry(0.6, 0.6, 16, 10), metalMat);
+    stem.position.set(0, 13, 9);
+    stem.castShadow = true;
+    group.add(stem);
+
+    const handlebar = new THREE.Mesh(new THREE.BoxGeometry(10, 0.7, 1.2), metalMat);
+    handlebar.position.set(0, 21, 9);
+    handlebar.castShadow = true;
+    handlebar.name = 'handlebar';
+    group.add(handlebar);
+
+    const rider = createOnFootModel(0x1d3557);
+    rider.scale.set(0.72, 0.72, 0.72);
+    rider.position.set(0, 3, -1);
+    group.add(rider);
+
+    group.userData.rollingWheels = [frontWheel, backWheel];
+    group.userData.steerWheels = [frontWheel];
+    group.userData.steerMesh = handlebar;
+    return group;
+}
+
 export function createPlayerCar(color = 0xff0000, type = 'standard') {
+    const resolvedType = type || 'standard';
+
+    // Non-car starter vehicles
+    if (resolvedType === 'onfoot') {
+        const onFoot = createOnFootModel(color);
+        onFoot.position.set(0, 0, 0);
+        scene.add(onFoot);
+        playerCar = onFoot;
+        return onFoot;
+    }
+    if (resolvedType === 'bicycle') {
+        const bike = createBicycleModel(color, 'bicycle');
+        bike.position.set(0, 0, 0);
+        scene.add(bike);
+        playerCar = bike;
+        return bike;
+    }
+    if (resolvedType === 'scooter') {
+        const scooter = createScooterModel(color);
+        scooter.position.set(0, 0, 0);
+        scene.add(scooter);
+        playerCar = scooter;
+        return scooter;
+    }
+
     const carGroup = new THREE.Group();
     carGroup.position.set(0, 0, 0);
+    carGroup.userData.visualType = resolvedType;
+    carGroup.userData.allowTilt = true;
+    carGroup.userData.suspensionEnabled = true;
+    carGroup.userData.enableTireMarks = true;
 
-    if (type === 'tank') {
+    if (resolvedType === 'tank') {
         // Tank Body
         const bodyGeo = new THREE.BoxGeometry(26, 14, 50);
         const bodyMat = new THREE.MeshLambertMaterial({ color: color });
@@ -62,7 +318,7 @@ export function createPlayerCar(color = 0xff0000, type = 'standard') {
         rightTrack.position.set(14, 6, 0);
         carGroup.add(rightTrack);
 
-    } else if (type === 'ufo') {
+    } else if (resolvedType === 'ufo') {
         // UFO Saucer
         const saucerGeo = new THREE.CylinderGeometry(15, 25, 8, 32);
         const saucerMat = new THREE.MeshPhongMaterial({ 
@@ -99,8 +355,13 @@ export function createPlayerCar(color = 0xff0000, type = 'standard') {
         }
 
     } else {
-        // Standard Car body
-        const body = new THREE.Mesh(sharedGeometries.carBody, new THREE.MeshLambertMaterial({ color: color }));
+        // Standard Car body (with better specular highlights)
+        const bodyMat = new THREE.MeshPhongMaterial({
+            color: color,
+            shininess: 70,
+            specular: 0x333333
+        });
+        const body = new THREE.Mesh(sharedGeometries.carBody, bodyMat);
         body.position.y = 6;
         body.castShadow = true;
         body.receiveShadow = true;
@@ -109,7 +370,11 @@ export function createPlayerCar(color = 0xff0000, type = 'standard') {
 
         // Car roof (slightly darker than body)
         const roofColor = new THREE.Color(color).multiplyScalar(0.8);
-        const roof = new THREE.Mesh(sharedGeometries.carRoof, new THREE.MeshLambertMaterial({ color: roofColor }));
+        const roof = new THREE.Mesh(sharedGeometries.carRoof, new THREE.MeshPhongMaterial({
+            color: roofColor,
+            shininess: 60,
+            specular: 0x222222
+        }));
         roof.position.set(0, 16, -5);
         roof.castShadow = true;
         roof.receiveShadow = true;
@@ -133,7 +398,9 @@ export function createPlayerCar(color = 0xff0000, type = 'standard') {
             [12, 5, -12]
         ];
 
-        carGroup.userData.wheels = []; 
+        carGroup.userData.wheels = [];
+        carGroup.userData.rollingWheels = carGroup.userData.wheels;
+        carGroup.userData.steerWheels = [];
 
         wheelPositions.forEach((pos, index) => {
             const wheel = new THREE.Mesh(sharedGeometries.wheel, sharedMaterials.wheel);
@@ -141,9 +408,44 @@ export function createPlayerCar(color = 0xff0000, type = 'standard') {
             wheel.position.set(...pos);
             wheel.userData.baseY = pos[1];
             wheel.userData.wobbleOffset = index * Math.PI / 2; 
+            wheel.userData.baseRotY = 0;
             carGroup.userData.wheels.push(wheel);
+            if (index < 2) carGroup.userData.steerWheels.push(wheel);
             carGroup.add(wheel);
         });
+
+        // Lights (headlights + brake lights)
+        makeCarLights(carGroup);
+
+        // Variant styling by vehicle tier
+        if (resolvedType === 'sport' || resolvedType === 'super' || resolvedType === 'hyper') {
+            const wing = new THREE.Mesh(new THREE.BoxGeometry(18, 1.2, 3.2), new THREE.MeshLambertMaterial({ color: 0x111111 }));
+            wing.position.set(0, 18, -20);
+            wing.castShadow = true;
+            carGroup.add(wing);
+
+            const splitter = new THREE.Mesh(new THREE.BoxGeometry(20, 1.0, 4.0), new THREE.MeshLambertMaterial({ color: 0x111111 }));
+            splitter.position.set(0, 5.5, 22);
+            splitter.castShadow = true;
+            carGroup.add(splitter);
+        }
+        if (resolvedType === 'muscle') {
+            const scoop = new THREE.Mesh(new THREE.BoxGeometry(6, 2.2, 8), new THREE.MeshLambertMaterial({ color: 0x111111 }));
+            scoop.position.set(0, 13, 4);
+            scoop.castShadow = true;
+            carGroup.add(scoop);
+
+            const stripe = new THREE.Mesh(new THREE.BoxGeometry(3, 0.6, 44), new THREE.MeshLambertMaterial({ color: 0xffffff }));
+            stripe.position.set(0, 12.3, 0);
+            stripe.castShadow = false;
+            carGroup.add(stripe);
+        }
+        if (resolvedType === 'hyper') {
+            const neon = new THREE.Mesh(new THREE.BoxGeometry(16, 0.5, 44), new THREE.MeshBasicMaterial({ color: 0x00ffff }));
+            neon.position.set(0, 4.2, 0);
+            neon.name = 'underglow';
+            carGroup.add(neon);
+        }
     }
 
     scene.add(carGroup);
@@ -159,7 +461,8 @@ export function rebuildPlayerCar(color = null) {
     const carData = cars[gameState.selectedCar];
     // Use provided color or default to car's color
     const carColor = color !== null ? color : carData.color;
-    createPlayerCar(carColor, carData.type);
+    // Pass the key name as a fallback type so tiers can have distinct visuals
+    createPlayerCar(carColor, carData.type || gameState.selectedCar);
 }
 
 export function updatePlayerCarColor(color) {
@@ -201,8 +504,22 @@ export function takeDamage(amount) {
 export function updatePlayer(delta, now) {
     if (!playerCar || gameState.arrested) return;
 
+    const visualType = playerCar.userData.visualType || gameState.selectedCar || 'standard';
+    const isOnFoot = visualType === 'onfoot' || gameState.selectedCar === 'onfoot';
+
     // Car cannot drive when HP is 0 or below
     if (gameState.health <= 0) {
+        // On foot: just stop (no car-like wreck drifting)
+        if (isOnFoot) {
+            gameState.speed *= 0.7;
+            gameState.velocityX *= 0.7;
+            gameState.velocityZ *= 0.7;
+            if (Math.abs(gameState.speed) < 0.05) gameState.speed = 0;
+            playerCar.position.x += gameState.velocityX * delta * 0.5;
+            playerCar.position.z += gameState.velocityZ * delta * 0.5;
+            return;
+        }
+
         gameState.speed *= 0.95; // Slow to a stop
         if (Math.abs(gameState.speed) < 1) gameState.speed = 0;
         // Still update position with remaining momentum
@@ -212,6 +529,74 @@ export function updatePlayer(delta, now) {
         gameState.velocityZ *= 0.95;
         // Smoke effect
         if (Math.random() < 0.3) createSmoke(playerCar.position);
+        return;
+    }
+
+    // ============================================
+    // ON-FOOT RUNNING MODEL (no car steering)
+    // ============================================
+    if (isOnFoot) {
+        // Movement vector relative to camera (XZ plane)
+        const forward = new THREE.Vector3();
+        camera.getWorldDirection(forward);
+        forward.y = 0;
+        if (forward.lengthSq() < 1e-6) forward.set(0, 0, 1);
+        forward.normalize();
+        const right = new THREE.Vector3(forward.z, 0, -forward.x);
+
+        let dirX = 0;
+        let dirZ = 0;
+        if (keys['w'] || keys['arrowup']) { dirX += forward.x; dirZ += forward.z; }
+        if (keys['s'] || keys['arrowdown']) { dirX -= forward.x; dirZ -= forward.z; }
+        if (keys['d'] || keys['arrowright']) { dirX += right.x; dirZ += right.z; }
+        if (keys['a'] || keys['arrowleft']) { dirX -= right.x; dirZ -= right.z; }
+
+        const wantsMove = (dirX * dirX + dirZ * dirZ) > 1e-6;
+        if (wantsMove) {
+            const invLen = 1 / Math.sqrt(dirX * dirX + dirZ * dirZ);
+            dirX *= invLen;
+            dirZ *= invLen;
+        }
+
+        const sprint = (keys['shift'] || keys['shiftleft'] || keys['shiftright']) ? 1.15 : 1;
+        const targetSpeed = gameState.maxSpeed * sprint;
+        const targetVX = wantsMove ? dirX * targetSpeed : 0;
+        const targetVZ = wantsMove ? dirZ * targetSpeed : 0;
+
+        // Smooth acceleration towards target velocity
+        const accelLerp = clamp01((gameState.acceleration || 0.02) * 14 * delta);
+        gameState.velocityX += (targetVX - gameState.velocityX) * accelLerp;
+        gameState.velocityZ += (targetVZ - gameState.velocityZ) * accelLerp;
+
+        // Friction when no input
+        if (!wantsMove) {
+            const friction = Math.pow(gameState.friction || 0.97, delta);
+            gameState.velocityX *= friction;
+            gameState.velocityZ *= friction;
+        }
+
+        // Position update
+        playerCar.position.x += gameState.velocityX * delta;
+        playerCar.position.z += gameState.velocityZ * delta;
+
+        // Update speed scalar for HUD/logic
+        const vSq = gameState.velocityX * gameState.velocityX + gameState.velocityZ * gameState.velocityZ;
+        gameState.speed = Math.sqrt(vSq);
+        gameState.angularVelocity = 0;
+        gameState.driftFactor = 0;
+
+        // Face direction of travel
+        if (gameState.speed > 0.15) {
+            playerCar.rotation.y = Math.atan2(gameState.velocityX, gameState.velocityZ);
+        }
+
+        // Keep grounded
+        playerCar.position.y = 0;
+
+        // Boundaries
+        const boundary = 4000;
+        playerCar.position.x = Math.max(-boundary, Math.min(boundary, playerCar.position.x));
+        playerCar.position.z = Math.max(-boundary, Math.min(boundary, playerCar.position.z));
         return;
     }
 
@@ -353,13 +738,15 @@ export function updatePlayer(delta, now) {
 
     const slowMultiplier = gameState.slowEffect > 0 ? (1 - gameState.slowEffect) : 1;
     
-    // Effects
-    if (gameState.health < 30 && Math.random() < 0.1) {
-        createSmoke(playerCar.position);
-    }
-    if (gameState.health <= 0 && Math.random() < 0.3) {
-         createSmoke(playerCar.position);
-         if(Math.random()<0.1) createSpark(); 
+    // Effects (cars only)
+    if (!isOnFoot) {
+        if (gameState.health < 30 && Math.random() < 0.1) {
+            createSmoke(playerCar.position);
+        }
+        if (gameState.health <= 0 && Math.random() < 0.3) {
+            createSmoke(playerCar.position);
+            if (Math.random() < 0.1) createSpark();
+        }
     }
 
     // Move
@@ -368,21 +755,85 @@ export function updatePlayer(delta, now) {
     
     // === VISUAL EFFECTS ===
     gameState.wheelAngle = steerInput * 0.4;
-    
-    // Body tilt based on cornering forces
-    const corneringForce = gameState.angularVelocity * speedRatio;
-    const targetTilt = -corneringForce * 0.4;
-    gameState.carTilt += (targetTilt - gameState.carTilt) * 0.12 * delta;
-    playerCar.rotation.z = gameState.carTilt;
-    
-    // Tire marks during drift
-    if (gameState.driftFactor > 0.3 && absSpeed > 20) {
-        createTireMark(playerCar.position.x, playerCar.position.z, playerCar.rotation.y);
+
+    const isCar = isCarLikeType(visualType) || visualType === 'tank' || visualType === 'ufo';
+
+    // Body tilt based on cornering forces (cars only)
+    if (playerCar.userData.allowTilt !== false && isCar) {
+        const corneringForce = gameState.angularVelocity * speedRatio;
+        const targetTilt = -corneringForce * 0.4;
+        gameState.carTilt += (targetTilt - gameState.carTilt) * 0.12 * delta;
+        playerCar.rotation.z = gameState.carTilt;
+    } else {
+        playerCar.rotation.z = 0;
+        gameState.carTilt = 0;
     }
-    updateTireMarks(delta);
+
+    // Tire marks during drift (cars only)
+    if (playerCar.userData.enableTireMarks !== false) {
+        if (gameState.driftFactor > 0.3 && absSpeed > 20) {
+            createTireMark(playerCar.position.x, playerCar.position.z, playerCar.rotation.y);
+        }
+        updateTireMarks(delta);
+    }
+
+    // Wheel spin + steering visuals
+    if (playerCar.userData.rollingWheels && playerCar.userData.rollingWheels.length) {
+        const roll = (gameState.speed || 0) * delta * 0.18;
+        playerCar.userData.rollingWheels.forEach((wheel) => {
+            wheel.rotation.x += roll;
+        });
+    }
+    if (playerCar.userData.steerWheels && playerCar.userData.steerWheels.length) {
+        playerCar.userData.steerWheels.forEach((wheel) => {
+            wheel.rotation.y = (wheel.userData.baseRotY || 0) + gameState.wheelAngle;
+        });
+    }
+    if (playerCar.userData.steerMesh) {
+        playerCar.userData.steerMesh.rotation.y = gameState.wheelAngle;
+    }
+
+    // Brake light intensity (cars only)
+    if (playerCar.userData.taillights && playerCar.userData.taillights.length) {
+        const braking = (keys['s'] || keys['arrowdown']) ? 1 : 0;
+        const intensity = 0.4 + braking * 0.8;
+        playerCar.userData.taillights.forEach((light) => {
+            light.material.opacity = 1;
+            light.material.transparent = false;
+            light.scale.setScalar(intensity);
+        });
+    }
+
+    // On-foot walk animation
+    if (visualType === 'onfoot' && playerCar.userData.walkParts) {
+        const { leftLeg, rightLeg, leftArm, rightArm, leftShoe, rightShoe } = playerCar.userData.walkParts;
+        const moving = absSpeed > 0.2;
+        const phaseSpeed = moving ? (absSpeed / Math.max(1, gameState.maxSpeed)) * 10 : 0;
+        playerCar.userData.walkPhase = (playerCar.userData.walkPhase || 0) + phaseSpeed * delta;
+        const phase = playerCar.userData.walkPhase;
+        const swing = moving ? Math.sin(phase) * 0.55 : 0;
+        const armSwing = moving ? Math.sin(phase + Math.PI) * 0.45 : 0;
+
+        leftLeg.rotation.x = swing;
+        rightLeg.rotation.x = -swing;
+        leftArm.rotation.x = armSwing;
+        rightArm.rotation.x = -armSwing;
+        leftShoe.rotation.x = swing * 0.6;
+        rightShoe.rotation.x = -swing * 0.6;
+    }
+
+    // UFO hover + subtle spin
+    if (visualType === 'ufo') {
+        const t = now * 0.002;
+        playerCar.position.y = 3 + Math.sin(t) * 1.5;
+        playerCar.rotation.y += delta * 0.001;
+    } else {
+        // Keep grounded for others
+        playerCar.position.y = 0;
+    }
 
     // === IMPROVED SUSPENSION SIMULATION ===
-    if (playerCar.userData.wheels) {
+    if (playerCar.userData.suspensionEnabled !== false && playerCar.userData.wheels) {
         const suspensionRate = absSpeed * 0.008; // Faster oscillation at higher speeds
         const compressionFromSpeed = Math.min(speedRatio * 0.4, 0.4); // Compress suspension at speed
         const compressionFromBrake = (keys['s'] || keys['arrowdown']) ? 0.3 : 0; // Nose dips when braking

@@ -36,13 +36,15 @@ module.exports = defineConfig({
         screenshot: 'only-on-failure',
         
         // FASTER PAGE LOADS
-        navigationTimeout: 10000,
+        // Some CI/local machines can occasionally exceed 10s while starting WebGL.
+        // Keep navigation more tolerant to avoid flaky `page.goto()` timeouts.
+        navigationTimeout: 20000,
         actionTimeout: 5000,
     },
     
     // Start server before tests
     webServer: {
-        command: 'npm start',
+        command: 'DISABLE_MPS=1 PLAYWRIGHT=1 npm start',
         url: 'http://localhost:3000',
         reuseExistingServer: true,
         timeout: 10000,

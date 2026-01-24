@@ -45,6 +45,7 @@ import { updateSpeedEffects, updateSparks, updateTireMarks } from './particles.j
 import * as Network from './network.js';
 import { updateCommentary, resetCommentary, logEvent, EVENTS } from './commentary.js';
 import { initLevelEditor, openLevelEditor } from './levelEditor.js';
+import { exposeDevtools } from './devtools.js';
 
 // Expose gameState globally for debugging and testing
 window.gameState = gameState;
@@ -679,7 +680,9 @@ createGround();
 createBuildings();
 createHotdogStands();
 createTrees();
-createPlayerCar();
+// Spawn the correct starter model immediately
+const starterCar = cars[gameState.selectedCar] || cars.standard;
+createPlayerCar(starterCar.color, starterCar.type || gameState.selectedCar);
 
 // Initialize Level Editor (Press F2 to open)
 initLevelEditor();
@@ -687,108 +690,16 @@ initLevelEditor();
 export function startGame() {
     DOM.shop.style.display = 'none';
     DOM.gameOver.style.display = 'none';
-    gameState.speed = 0;
-    gameState.money = 0;
-    gameState.heatLevel = 1;
-    
-    // Set ALL stats based on selected car (this was the bug - only health was set!)
-    const carData = cars[gameState.selectedCar];
-    gameState.health = carData.health || 100;
-    gameState.maxSpeed = carData.maxSpeed;
-    gameState.acceleration = carData.acceleration;
-    gameState.handling = carData.handling || 0.05;
-    
-    console.log(`[START] Car: ${gameState.selectedCar}, maxSpeed: ${gameState.maxSpeed} (${Math.round(gameState.maxSpeed * 3.6)} km/h)`);
-    
-    updateHealthUI();
-    gameState.arrested = false;
-    gameState.hasStartedMoving = false; // Reset movement flag
-    gameState.startTime = Date.now();
-    gameState.lastMoneyCheckTime = Date.now();
-    gameState.lastPoliceSpawnTime = Date.now();
-    
-    gameState.policeCars.forEach(car => scene.remove(car));
-    gameState.policeCars = [];
-    
-    gameState.collectibles.forEach(coin => scene.remove(coin));
-    gameState.collectibles = [];
-    
-    gameState.projectiles.forEach(proj => scene.remove(proj));
-    gameState.projectiles = [];
-    
-    gameState.slowEffect = 0;
-    gameState.slowDuration = 0;
-    
-    // Reset arrest countdown
-    gameState.arrestCountdown = 0;
-    gameState.arrestStartTime = 0;
-    
-    // Reset stats
-    gameState.policeKilled = 0;
-    
-    gameState.sparks.forEach(s => scene.remove(s));
-    gameState.sparks = [];
-    gameState.currentFOV = gameState.baseFOV;
-    camera.fov = gameState.baseFOV;
-    camera.updateProjectionMatrix();
-    
-    // Update car model and color
-    rebuildPlayerCar();
-    
-    // Initialize commentary system
-    resetCommentary();
-    
-    // Spawn first police car
-    spawnPoliceCar();
+
+    resetRunState();
 }
 
 // Multiplayer game start (with spawn position)
 export function startMultiplayerGame(spawnPos) {
     DOM.shop.style.display = 'none';
     DOM.gameOver.style.display = 'none';
-    gameState.speed = 0;
-    gameState.money = 0;
-    gameState.heatLevel = 1;
-    
-    // Set ALL stats based on selected car
-    const carData = cars[gameState.selectedCar];
-    gameState.health = carData.health || 100;
-    gameState.maxSpeed = carData.maxSpeed;
-    gameState.acceleration = carData.acceleration;
-    gameState.handling = carData.handling || 0.05;
-    
-    console.log(`[MP START] Car: ${gameState.selectedCar}, maxSpeed: ${gameState.maxSpeed} (${Math.round(gameState.maxSpeed * 3.6)} km/h)`);
-    
-    updateHealthUI();
-    gameState.arrested = false;
-    gameState.hasStartedMoving = false; // Reset movement flag
-    gameState.startTime = Date.now();
-    gameState.lastMoneyCheckTime = Date.now();
-    gameState.lastPoliceSpawnTime = Date.now();
-    
-    gameState.policeCars.forEach(car => scene.remove(car));
-    gameState.policeCars = [];
-    
-    gameState.collectibles.forEach(coin => scene.remove(coin));
-    gameState.collectibles = [];
-    
-    gameState.projectiles.forEach(proj => scene.remove(proj));
-    gameState.projectiles = [];
-    
-    gameState.slowEffect = 0;
-    gameState.slowDuration = 0;
-    gameState.arrestCountdown = 0;
-    gameState.arrestStartTime = 0;
-    gameState.policeKilled = 0;
-    
-    gameState.sparks.forEach(s => scene.remove(s));
-    gameState.sparks = [];
-    gameState.currentFOV = gameState.baseFOV;
-    camera.fov = gameState.baseFOV;
-    camera.updateProjectionMatrix();
-    
-    // Rebuild car with multiplayer color
-    rebuildPlayerCar(gameState.playerColor);
+
+    resetRunState({ multiplayerColor: gameState.playerColor });
     
     // Move to spawn position
     if (playerCar && spawnPos) {
@@ -804,6 +715,75 @@ export function startMultiplayerGame(spawnPos) {
         console.log(`[MULTIPLAYER] Client started game. isHost: ${gameState.isHost}, isMultiplayer: ${gameState.isMultiplayer}`);
     }
 }
+
+/**
+ * Apply the currently selected car's stats into `gameState`.
+ * This is the canonical place for mapping `cars[selectedCar]` → state fields.
+ */
+function applySelectedCarStats() {
+    const carData = cars[gameState.selectedCar];
+    gameState.health = carData.health || 100;
+    gameState.maxSpeed = carData.maxSpeed;
+    gameState.acceleration = carData.acceleration;
+    gameState.handling = carData.handling || 0.05;
+    console.log(`[START] Car: ${gameState.selectedCar}, maxSpeed: ${gameState.maxSpeed} (${Math.round(gameState.maxSpeed * 3.6)} km/h)`);
+}
+
+function clearSceneList(list) {
+    list.forEach(obj => scene.remove(obj));
+    list.length = 0;
+}
+
+/**
+ * Reset state for a new run (solo or multiplayer).
+ * Keep this small and deterministic because tests depend on it.
+ */
+function resetRunState(opts = {}) {
+    gameState.speed = 0;
+    gameState.money = 0;
+    gameState.heatLevel = 1;
+
+    applySelectedCarStats();
+
+    updateHealthUI();
+    gameState.arrested = false;
+    gameState.hasStartedMoving = false;
+    gameState.startTime = Date.now();
+    gameState.lastMoneyCheckTime = Date.now();
+    gameState.lastPoliceSpawnTime = Date.now();
+
+    clearSceneList(gameState.policeCars);
+    clearSceneList(gameState.collectibles);
+    clearSceneList(gameState.projectiles);
+
+    gameState.slowEffect = 0;
+    gameState.slowDuration = 0;
+
+    // Police engagement gating (no cops until player earns money or vandalizes)
+    gameState.policeEngaged = false;
+    gameState.destructionCount = 0;
+
+    gameState.arrestCountdown = 0;
+    gameState.arrestStartTime = 0;
+    gameState.policeKilled = 0;
+
+    clearSceneList(gameState.sparks);
+    gameState.currentFOV = gameState.baseFOV;
+    camera.fov = gameState.baseFOV;
+    camera.updateProjectionMatrix();
+
+    // Rebuild vehicle model
+    if (opts.multiplayerColor) {
+        rebuildPlayerCar(opts.multiplayerColor);
+    } else {
+        rebuildPlayerCar();
+    }
+
+    resetCommentary();
+}
+
+// Single stable entrypoint for tests/debug/LLM tooling
+exposeDevtools({ startGame, startMultiplayerGame });
 
 let lastTime = performance.now();
 
@@ -845,6 +825,17 @@ function animate() {
     const gameStarted = gameState.startTime > 0;
     
     if (!gameState.arrested && gameStarted) {
+        // Engage police once player has earned money or destroyed something
+        if (!gameState.policeEngaged && ((gameState.money || 0) > 0 || (gameState.destructionCount || 0) > 0)) {
+            gameState.policeEngaged = true;
+
+            // Spawn first police immediately on engagement (host only in multiplayer)
+            if (!gameState.isMultiplayer || gameState.isHost) {
+                spawnPoliceCar();
+                gameState.lastPoliceSpawnTime = Date.now();
+            }
+        }
+
         // Player Physics
         updatePlayer(delta, now);
         
@@ -863,7 +854,7 @@ function animate() {
 
         // Spawn Police based on config interval (host only in multiplayer)
         const elapsedSeconds = Math.floor((Date.now() - gameState.startTime) / 1000);
-        const shouldSpawn = (!gameState.isMultiplayer || gameState.isHost) && 
+        const shouldSpawn = gameState.policeEngaged && (!gameState.isMultiplayer || gameState.isHost) && 
             elapsedSeconds > 0 && 
             elapsedSeconds % gameConfig.policeSpawnInterval === 0 && 
             (Date.now() - gameState.lastPoliceSpawnTime) > 500;

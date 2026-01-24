@@ -6,6 +6,21 @@ export const enemies = {
     sheriff: { color: 0x8b6914, speed: 180, scale: 1.3, name: 'Sheriff', health: 800, killReward: 1000, pickupReward: 2000 }
 };
 
+/**
+ * @typedef {Object} CarDefinition
+ * @property {string} name
+ * @property {number} price
+ * @property {number} maxSpeed  // world units per second (HUD shows km/h as maxSpeed*3.6)
+ * @property {number} acceleration
+ * @property {number} handling
+ * @property {number} health
+ * @property {number} color
+ * @property {string=} type
+ * @property {number=} scale
+ * @property {number=} reqRebirth
+ */
+
+/** @type {Record<string, CarDefinition>} */
 export const cars = {
     // === STARTER ===
     onfoot: {

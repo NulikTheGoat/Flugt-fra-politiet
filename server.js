@@ -45,6 +45,32 @@ const MPS_CONFIG = {
     anthropicVersion: process.env.MPS_ANTHROPIC_VERSION || '2023-06-01'
 };
 
+const MPS_DISABLED =
+    process.env.DISABLE_MPS === '1' ||
+    process.env.MPS_DISABLED === '1' ||
+    process.env.PLAYWRIGHT === '1' ||
+    process.env.NODE_ENV === 'test';
+
+function getFallbackCommentary() {
+    const canned = [
+        'Fantastisk! Kaos i gaderne!',
+        'Hold fast—det her bliver vildt!',
+        'Politiet er lige i hælene!',
+        'Du slipper ikke let denne gang!'
+    ];
+    return canned[Math.floor(Math.random() * canned.length)];
+}
+
+function getFallbackSheriffCommand() {
+    const canned = [
+        'CHASE: Hold trykket og hold afstand kort!',
+        'INTERCEPT: Skær vejen af ved næste kryds!',
+        'SURROUND: Omring fra begge sider, nu!',
+        'BLOCK: Spær hovedvejen og pres ham ind!'
+    ];
+    return canned[Math.floor(Math.random() * canned.length)];
+}
+
 // Commentary rate limiting
 let lastCommentaryRequest = 0;
 const COMMENTARY_COOLDOWN = 5000; // 5 seconds
@@ -124,6 +150,13 @@ const httpServer = http.createServer(async (req, res) => {
     
     // Commentary API endpoint
     if (req.url === '/api/commentary' && req.method === 'POST') {
+        if (MPS_DISABLED) {
+            // Avoid external calls/noise during automated tests.
+            res.writeHead(200, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' });
+            res.end(JSON.stringify({ commentary: getFallbackCommentary() }));
+            return;
+        }
+
         // Rate limiting
         const now = Date.now();
         if (now - lastCommentaryRequest < COMMENTARY_COOLDOWN) {
@@ -203,6 +236,13 @@ const httpServer = http.createServer(async (req, res) => {
     
     // Sheriff Command API endpoint
     if (req.url === '/api/sheriff-command' && req.method === 'POST') {
+        if (MPS_DISABLED) {
+            // Avoid external calls/noise during automated tests.
+            res.writeHead(200, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' });
+            res.end(JSON.stringify({ command: getFallbackSheriffCommand() }));
+            return;
+        }
+
         // Rate limiting
         const now = Date.now();
         if (now - lastSheriffRequest < SHERIFF_COOLDOWN) {
