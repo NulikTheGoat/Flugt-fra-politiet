@@ -143,9 +143,13 @@ minetest.register_entity("police_ai:police_car", {
                     y = 0,
                     z = (math.random() - 0.5) * 2,
                 }
-                random_dir = vector.normalize(random_dir)
-                local vel = vector.multiply(random_dir, 5)
-                self.object:set_velocity(vel)
+                -- Check for zero vector before normalizing
+                local dir_length = math.sqrt(random_dir.x^2 + random_dir.z^2)
+                if dir_length > 0.001 then
+                    random_dir = vector.normalize(random_dir)
+                    local vel = vector.multiply(random_dir, 5)
+                    self.object:set_velocity(vel)
+                end
             end
         end
     end,

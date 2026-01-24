@@ -147,6 +147,13 @@ end)
 
 -- Passive income based on heat level
 local passive_income_timer = 0
+
+-- Efficient power of 2 calculation
+local function pow2(n)
+    if n <= 0 then return 1 end
+    return bit and bit.lshift(1, n) or (2 ^ n)
+end
+
 minetest.register_globalstep(function(dtime)
     passive_income_timer = passive_income_timer + dtime
     if passive_income_timer >= flugt.config.passive_income_interval then
@@ -158,7 +165,7 @@ minetest.register_globalstep(function(dtime)
             
             if data.heat_level > 0 and not data.is_arrested then
                 -- Exponential passive income: 2^(heat_level - 1) kr/s
-                local income = math.pow(2, data.heat_level - 1)
+                local income = pow2(data.heat_level - 1)
                 data.money = data.money + income
             end
         end
