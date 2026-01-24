@@ -197,16 +197,34 @@ Just do the Command Prompt steps again!
 
 ---
 
-## 🏎️ Cars You Can Buy
+## 🏎️ Vehicles & Progression
 
-| Car | Price | How Fast | Special Power |
-|-----|-------|----------|---------------|
-| Standard | Free | ⭐⭐ | Nothing special |
-| Compact | 1,500 kr | ⭐⭐⭐ | Easy to turn |
-| Sport | 8,000 kr | ⭐⭐⭐⭐ | Really fast |
-| Muscle | 15,000 kr | ⭐⭐⭐⭐ | Hard to break |
-| Tank | 75,000 kr | ⭐⭐ | Can shoot! Press F |
-| UFO | Special | ⭐⭐⭐⭐⭐ | Alien speed! |
+Start on foot and work your way up to exotic cars!
+
+### Starter Vehicles
+| Vehicle | Price | Speed | Health | Notes |
+|---------|-------|-------|--------|-------|
+| 🚶 Til Fods | 0 kr | ~15 km/h | 20 | Free start - very agile! |
+| 🚲 Cykel | 100 kr | ~30 km/h | 30 | First upgrade |
+| 🛴 El-løbehjul | 300 kr | ~45 km/h | 25 | Fast but fragile |
+| 🏍️ Knallert | 700 kr | ~60 km/h | 35 | Good balance |
+
+### Cars
+| Car | Price | Speed | Health | Special |
+|-----|-------|-------|--------|---------|
+| 🚗 Standard | 2.000 kr | ~90 km/h | 100 | First car |
+| 🏎️ Sport | 8.000 kr | ~130 km/h | 70 | Fast acceleration |
+| 💪 Muscle | 15.000 kr | ~115 km/h | 150 | Tough and powerful |
+| ⚡ Super | 50.000 kr | ~160 km/h | 100 | Very fast |
+| 🚀 Hyper | 100.000 kr | ~180 km/h | 120 | Top speed |
+| 🛡️ Tank | 75.000 kr | ~70 km/h | 300 | Can SHOOT! (Press F) |
+| 🛸 UFO | 200.000 kr | ~200 km/h | 100 | Alien technology |
+
+### Economy Tips
+- 💰 **Passive income** increases exponentially with heat level
+- 🚔 **Kill enemies** for rewards: 150-1000 kr depending on type
+- 📦 **Collect drops** from destroyed enemies: 300-2000 kr
+- 🔥 Higher heat = more money, but more danger!
 
 ---
 
