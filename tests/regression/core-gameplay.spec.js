@@ -15,20 +15,30 @@ const { test, expect } = require('@playwright/test');
  */
 
 test.describe('🎮 Core Gameplay', () => {
-    
-    test.beforeEach(async ({ page }) => {
-        await page.goto('http://localhost:3000');
-        await page.waitForSelector('canvas', { timeout: 10000 });
-        
-        // Start solo game
+
+    const startSoloGame = async (page, selectedCar) => {
+        if (selectedCar) {
+            await page.evaluate((car) => {
+                window.gameState.selectedCar = car;
+            }, selectedCar);
+        }
+
         const soloBtn = page.locator('#soloModeBtn');
         if (await soloBtn.isVisible()) {
             await soloBtn.click();
         }
-        await page.waitForTimeout(500);
+
+        await page.waitForFunction(() => !!window.gameState?.startTime, { timeout: 5000 });
+        await page.waitForTimeout(200);
+    };
+    
+    test.beforeEach(async ({ page }) => {
+        await page.goto('http://localhost:3000');
+        await page.waitForSelector('canvas', { timeout: 10000 });
     });
 
     test('Game initializes with correct default state', async ({ page }) => {
+        await startSoloGame(page);
         const state = await page.evaluate(() => ({
             speed: window.gameState?.speed,
             health: window.gameState?.health,
@@ -52,15 +62,17 @@ test.describe('🎮 Core Gameplay', () => {
     });
 
     test('Player can accelerate and decelerate', async ({ page }) => {
+        // Use a car-like vehicle for this test (on-foot movement has different semantics)
+        await startSoloGame(page, 'standard');
+
         // Accelerate (on foot is slower, so wait longer)
         await page.keyboard.down('w');
-        await page.waitForTimeout(3000);
+        await page.waitForTimeout(2000);
         
         const acceleratedSpeed = await page.evaluate(() => window.gameState?.speed);
         console.log(`Speed after 3s acceleration: ${acceleratedSpeed?.toFixed(2)} (${Math.round((acceleratedSpeed || 0) * 3.6)} km/h)`);
         
-        // On foot accelerates gradually, expect at least some movement (lower threshold)
-        expect(acceleratedSpeed).toBeGreaterThan(0.5);
+        expect(acceleratedSpeed).toBeGreaterThan(1);
         
         // Release and coast
         await page.keyboard.up('w');
@@ -84,6 +96,7 @@ test.describe('🎮 Core Gameplay', () => {
     });
 
     test('Player can steer left and right', async ({ page }) => {
+        await startSoloGame(page, 'standard');
         // Get initial rotation
         const initialRotation = await page.evaluate(() => {
             const car = window.gameState?.playerCar || document.querySelector('canvas')?.__three__?.scene?.children?.find(c => c.name === 'playerCar');
@@ -110,6 +123,7 @@ test.describe('🎮 Core Gameplay', () => {
     });
 
     test('Handbrake causes drift', async ({ page }) => {
+        await startSoloGame(page, 'standard');
         // Accelerate to speed
         await page.keyboard.down('w');
         await page.waitForTimeout(2000);
@@ -132,6 +146,7 @@ test.describe('🎮 Core Gameplay', () => {
     });
 
     test('Speed is capped at maxSpeed', async ({ page }) => {
+        await startSoloGame(page);
         // Get configured max speed
         const configuredMax = await page.evaluate(() => window.gameState?.maxSpeed);
         console.log(`Configured maxSpeed: ${configuredMax}`);
@@ -318,21 +333,33 @@ test.describe('🚗 Police Spawning', () => {
     });
 
     test('Police car spawns after game starts', async ({ page }) => {
-        // Move to trigger police spawn (police don't spawn until player moves)
-        await page.keyboard.down('w');
-        await page.waitForTimeout(3000);
-        await page.keyboard.up('w');
-        
+        // Police now engage only after earning money or causing destruction.
+        // Trigger engagement deterministically by granting money.
+        await page.evaluate(() => {
+            if (window.gameState) window.gameState.money = 100;
+        });
+
+        await page.waitForFunction(
+            () => (window.gameState?.policeCars?.length || 0) >= 1,
+            { timeout: 15000 }
+        );
+
         const policeCount = await page.evaluate(() => window.gameState?.policeCars?.length || 0);
-        console.log(`Police cars after moving: ${policeCount}`);
-        
+        console.log(`Police cars after engagement: ${policeCount}`);
+
         expect(policeCount).toBeGreaterThanOrEqual(1);
     });
 
     test('Police cars have valid properties', async ({ page }) => {
-        await page.keyboard.down('w');
-        await page.waitForTimeout(3000);
-        await page.keyboard.up('w');
+        // Trigger engagement deterministically
+        await page.evaluate(() => {
+            if (window.gameState) window.gameState.money = 100;
+        });
+
+        await page.waitForFunction(
+            () => (window.gameState?.policeCars?.length || 0) >= 1,
+            { timeout: 15000 }
+        );
         
         const policeData = await page.evaluate(() => {
             const cars = window.gameState?.policeCars || [];

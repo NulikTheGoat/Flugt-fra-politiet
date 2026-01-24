@@ -68,13 +68,20 @@ test.describe('🎯 Core Systems', () => {
         console.log('After accelerating:', moving);
         expect(moving.speed).toBeGreaterThan(0);
         
-        // Test steering
+        // Test steering/turning/strafe (on-foot uses strafe, cars use angular velocity)
         await page.keyboard.down('a');
         await page.waitForTimeout(500);
         
-        const angular = await page.evaluate(() => window.gameState?.angularVelocity);
-        console.log('Angular velocity:', angular);
-        expect(Math.abs(angular)).toBeGreaterThan(0);
+        const steeringState = await page.evaluate(() => ({
+            angularVelocity: window.gameState?.angularVelocity,
+            velocityX: window.gameState?.velocityX,
+            selectedCar: window.gameState?.selectedCar
+        }));
+        console.log('Steering state:', steeringState);
+
+        const angular = Math.abs(steeringState.angularVelocity || 0);
+        const lateral = Math.abs(steeringState.velocityX || 0);
+        expect(angular > 0 || lateral > 0).toBe(true);
         
         await page.keyboard.up('a');
         await page.keyboard.up('w');

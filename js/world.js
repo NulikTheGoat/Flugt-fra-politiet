@@ -693,7 +693,9 @@ export function updateBuildingChunks(delta) {
 
     // Collisions with standing building chunks
     const carPos = playerCar.position;
-    const carRadius = 15; 
+    const isOnFoot = gameState.selectedCar === 'onfoot' || playerCar.userData?.visualType === 'onfoot';
+    const canDestroyWorld = !isOnFoot;
+    const carRadius = isOnFoot ? 10 : 15;
     
     const gridSize = gameState.chunkGridSize;
     const px = Math.floor(carPos.x / gridSize);
@@ -714,12 +716,33 @@ export function updateBuildingChunks(delta) {
                      const dz = chunk.position.z - carPos.z;
                      const distSq = dx*dx + dz*dz;
                      
-                     if (distSq < (carRadius + chunk.userData.width/2 + 5)**2) {
+                     const collisionDist = (carRadius + chunk.userData.width/2 + 5);
+                     if (distSq < collisionDist * collisionDist) {
                          if (Math.abs(chunk.position.y - carPos.y) < (chunk.userData.height/2 + 10)) {
                              
                              const carSpeed = Math.abs(gameState.speed);
                              const carAngle = playerCar.rotation.y;
                              const angleToChunk = Math.atan2(dx, dz);
+
+                             // On-foot: collide but never destroy the world
+                             if (!canDestroyWorld) {
+                                 const dist = Math.sqrt(distSq) || 1;
+                                 const overlap = collisionDist - dist;
+                                 if (overlap > 0) {
+                                     // Push player away from the chunk
+                                     playerCar.position.x -= (dx / dist) * overlap * 1.1;
+                                     playerCar.position.z -= (dz / dist) * overlap * 1.1;
+                                 }
+
+                                 // Stop/slow movement on impact
+                                 gameState.speed *= 0.3;
+                                 gameState.velocityX *= 0.3;
+                                 gameState.velocityZ *= 0.3;
+                                 gameState.screenShake = Math.max(gameState.screenShake || 0, 0.05);
+                                 // Tiny damage only (no smoke)
+                                 takeDamage(Math.min(2, Math.floor(carSpeed * 0.05)));
+                                 continue;
+                             }
                              
                              // Special handling for trees
                              if (chunk.userData.isTree) {
@@ -763,6 +786,7 @@ export function updateBuildingChunks(delta) {
                                      
                                      // Log tree destruction for commentary
                                      logEvent(EVENTS.TREE_DESTROYED, null, { speed: carSpeed });
+                                     gameState.destructionCount = (gameState.destructionCount || 0) + 1;
                                  } else {
                                      // Tree shakes but doesn't fall
                                      gameState.screenShake = 0.2;
@@ -796,6 +820,7 @@ export function updateBuildingChunks(delta) {
                                  if(typeof addMoney === 'function') { 
                                      addMoney(50);
                                      logEvent(EVENTS.COLLISION, "SMADREDE PØLSEVOGN!!");
+                                     gameState.destructionCount = (gameState.destructionCount || 0) + 1;
                                  }
                                  
                                  // Particles
@@ -825,6 +850,7 @@ export function updateBuildingChunks(delta) {
                                  
                                  // Log building destruction for commentary
                                  logEvent(EVENTS.BUILDING_DESTROYED, null, { speed: carSpeed });
+                                 gameState.destructionCount = (gameState.destructionCount || 0) + 1;
                                  
                                  gameState.speed *= 0.95; 
                                  takeDamage(Math.floor(carSpeed * 0.1) + 5);
@@ -870,8 +896,8 @@ export function updateBuildingChunks(delta) {
                     playerCar.position.z += normZ * overlap * 1.2;
                 }
                 
-                // Shatter into smaller pieces if going fast enough
-                if (carSpeed > 8) {
+                // Shatter into smaller pieces if going fast enough (not on foot)
+                if (!isOnFoot && carSpeed > 8) {
                     // Remove from fallen debris
                     gameState.fallenDebris.splice(i, 1);
                     scene.remove(debris);
