@@ -1,9 +1,9 @@
 export const enemies = {
-    standard: { color: 0x0000ff, speed: 250, scale: 1, name: 'Politibil', health: 50 },
-    interceptor: { color: 0x111111, speed: 300, scale: 1, name: 'Interceptor', health: 40 },
-    swat: { color: 0x333333, speed: 220, scale: 1.5, name: 'SWAT', health: 150 },
-    military: { color: 0x556b2f, speed: 350, scale: 1.2, name: 'Militær', health: 300 },
-    sheriff: { color: 0x8b6914, speed: 180, scale: 1.3, name: 'Sheriff', health: 800 } // Dark Goldenrod, very tanky, slower
+    standard: { color: 0x0000ff, speed: 250, scale: 1, name: 'Politibil', health: 50, killReward: 150, pickupReward: 300 },
+    interceptor: { color: 0x111111, speed: 300, scale: 1, name: 'Interceptor', health: 40, killReward: 200, pickupReward: 400 },
+    swat: { color: 0x333333, speed: 220, scale: 1.5, name: 'SWAT', health: 150, killReward: 350, pickupReward: 700 },
+    military: { color: 0x556b2f, speed: 350, scale: 1.2, name: 'Militær', health: 300, killReward: 500, pickupReward: 1000 },
+    sheriff: { color: 0x8b6914, speed: 180, scale: 1.3, name: 'Sheriff', health: 800, killReward: 1000, pickupReward: 2000 }
 };
 
 export const cars = {
@@ -18,7 +18,7 @@ export const cars = {
     },
     sport: {
         name: 'Sportsvogn',
-        price: 2500,
+        price: 1500,        // Reduced from 2500
         maxSpeed: 30,      // ~110 km/h display
         acceleration: 0.12,
         handling: 0.07,
@@ -27,7 +27,7 @@ export const cars = {
     },
     muscle: {
         name: 'Muscle Car',
-        price: 8000,
+        price: 4000,        // Reduced from 8000
         maxSpeed: 28,      // ~100 km/h display
         acceleration: 0.14,
         handling: 0.04,
@@ -36,7 +36,7 @@ export const cars = {
     },
     super: {
         name: 'Superbil',
-        price: 25000,
+        price: 12000,       // Reduced from 25000
         maxSpeed: 42,      // ~150 km/h display
         acceleration: 0.18,
         handling: 0.09,
@@ -45,7 +45,7 @@ export const cars = {
     },
     hyper: {
         name: 'Hyperbil',
-        price: 75000,
+        price: 35000,       // Reduced from 75000
         maxSpeed: 55,      // ~200 km/h display
         acceleration: 0.25,
         handling: 0.12,
@@ -54,7 +54,7 @@ export const cars = {
     },
     tank: {
         name: 'Kampvogn',
-        price: 200000,
+        price: 80000,       // Reduced from 200000
         maxSpeed: 17,      // ~60 km/h display
         acceleration: 0.05,
         handling: 0.08,
@@ -65,7 +65,7 @@ export const cars = {
     },
     ufo: {
         name: 'UFO Prototype',
-        price: 500000,
+        price: 150000,      // Reduced from 500000
         maxSpeed: 83,      // ~300 km/h display
         acceleration: 0.5,
         handling: 0.2,

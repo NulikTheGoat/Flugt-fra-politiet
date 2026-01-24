@@ -125,9 +125,9 @@ passiveIncomeFormula: base × (heat ^ 1.5)
 
 ## 📋 Implementation Checklist
 
-- [ ] **Phase 1**: Rebalance car prices
-- [ ] **Phase 2**: Add enemy-based reward scaling
-- [ ] **Phase 3**: Implement exponential passive income
+- [x] **Phase 1**: Rebalance car prices
+- [x] **Phase 2**: Add enemy-based reward scaling
+- [x] **Phase 3**: Implement exponential passive income
 - [ ] **Phase 4**: Add skill-based bonuses (drift, near miss)
 - [ ] **Phase 5**: Add money sinks (optional)
 - [ ] **Testing**: Verify progression feels balanced

@@ -222,8 +222,10 @@ export function updatePoliceAI(delta) {
                  const collisionRadius = 25;
                  
                  if (dist < collisionRadius) {
-                     // AWARD!
-                     const reward = 250;
+                     // AWARD! - Use enemy-specific pickup reward
+                     const enemyType = policeCar.userData.type || 'standard';
+                     const enemyConfig = enemies[enemyType] || enemies.standard;
+                     const reward = enemyConfig.pickupReward || 300;
                      addMoney(reward);
                      
                      // Show floating text animation
@@ -317,7 +319,9 @@ export function updatePoliceAI(delta) {
                         if (otherCar.userData.health <= 0) {
                             otherCar.userData.dead = true;
                             otherCar.userData.deathTime = now;
-                            addMoney(gameState.heatLevel * 100);
+                            const enemyType = otherCar.userData.type || 'standard';
+                            const enemyConfig = enemies[enemyType] || enemies.standard;
+                            addMoney(enemyConfig.killReward || 150);
                             gameState.policeKilled = (gameState.policeKilled || 0) + 1;
                             logEvent(EVENTS.POLICE_KILLED, otherCar.userData.type);
                         }
@@ -330,7 +334,9 @@ export function updatePoliceAI(delta) {
                     if (policeCar.userData.health <= 0) {
                         policeCar.userData.dead = true;
                         policeCar.userData.deathTime = now;
-                        addMoney(gameState.heatLevel * 100);
+                        const enemyType = policeCar.userData.type || 'standard';
+                        const enemyConfig = enemies[enemyType] || enemies.standard;
+                        addMoney(enemyConfig.killReward || 150);
                         gameState.policeKilled = (gameState.policeKilled || 0) + 1;
                         logEvent(EVENTS.POLICE_KILLED, policeCar.userData.type);
                     }
@@ -356,7 +362,9 @@ export function updatePoliceAI(delta) {
         if (currentCar && currentCar.type === 'tank' && distance < 50) {
              policeCar.userData.dead = true;
              policeCar.userData.deathTime = Date.now();
-             addMoney(gameState.heatLevel * 100);
+             const enemyType = policeCar.userData.type || 'standard';
+             const enemyConfig = enemies[enemyType] || enemies.standard;
+             addMoney(enemyConfig.killReward || 150);
              gameState.policeKilled = (gameState.policeKilled || 0) + 1;
              logEvent(EVENTS.POLICE_KILLED, policeCar.userData.type);
              createSmoke(policeCar.position);
@@ -676,7 +684,9 @@ export function updatePoliceAI(delta) {
                 if (policeCar.userData.health <= 0) {
                     policeCar.userData.dead = true;
                     policeCar.userData.deathTime = now;
-                    addMoney(gameState.heatLevel * 100);
+                    const enemyType = policeCar.userData.type || 'standard';
+                    const enemyConfig = enemies[enemyType] || enemies.standard;
+                    addMoney(enemyConfig.killReward || 150);
                     gameState.policeKilled = (gameState.policeKilled || 0) + 1;
                     logEvent(EVENTS.POLICE_KILLED, policeCar.userData.type);
                 }
@@ -717,7 +727,9 @@ export function updatePoliceAI(delta) {
                 if (policeCar.userData.health <= 0) {
                     policeCar.userData.dead = true;
                     policeCar.userData.deathTime = Date.now();
-                    addMoney(gameState.heatLevel * 100);
+                    const enemyType = policeCar.userData.type || 'standard';
+                    const enemyConfig = enemies[enemyType] || enemies.standard;
+                    addMoney(enemyConfig.killReward || 150);
                     gameState.policeKilled = (gameState.policeKilled || 0) + 1;
                     logEvent(EVENTS.POLICE_KILLED, policeCar.userData.type);
                 }
@@ -875,7 +887,9 @@ export function updateProjectiles(delta) {
                     hit = true;
                     police.userData.dead = true;
                     police.userData.deathTime = now;
-                    addMoney(gameState.heatLevel * 100);
+                    const enemyType = police.userData.type || 'standard';
+                    const enemyConfig = enemies[enemyType] || enemies.standard;
+                    addMoney(enemyConfig.killReward || 150);
                     gameState.policeKilled = (gameState.policeKilled || 0) + 1;
                     
                     // Add explosion particles
