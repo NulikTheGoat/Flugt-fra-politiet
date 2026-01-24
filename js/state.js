@@ -21,28 +21,28 @@
 // Game State
 export const gameState = {
     // === Physics & Movement ===
-    // Default values match 'standard' car from constants.js
+    // Default values match 'onfoot' (starter) from constants.js
     speed: 0,
-    maxSpeed: 22,           // Standard car: 22 (≈80 km/h)
-    maxReverseSpeed: 10,    // Adjusted for new scale
-    acceleration: 0.08,     // Standard car: 0.08
+    maxSpeed: 2.5,          // On foot: 2.5 (~9 km/h jogging)
+    maxReverseSpeed: 1.5,   // Slow reverse on foot
+    acceleration: 0.02,     // On foot: 0.02
     friction: 0.97,
     brakePower: 0.88,
-    maxSpeedWarning: 20,    // Warning threshold adjusted
+    maxSpeedWarning: 2,     // Warning threshold for on foot
     velocityX: 0,
     velocityZ: 0,
     angularVelocity: 0,
     driftFactor: 0,
     carTilt: 0,
     wheelAngle: 0,
-    handling: 0.05,         // Standard car: 0.05
+    handling: 0.15,         // On foot: 0.15 (very agile)
     
     // === Player State ===
-    health: 100,
+    health: 20,             // On foot health
     money: 0,
     rebirthPoints: 0,
     totalMoney: 0,
-    selectedCar: 'standard',
+    selectedCar: 'onfoot',  // Start on foot!
     arrestDistance: 30,
     arrested: false,
     arrestCountdown: 0,

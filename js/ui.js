@@ -184,10 +184,12 @@ export function updateHUD(policeDistance) {
     gameState.elapsedTime = elapsedSeconds;
 
     // Give money every configured interval without being arrested (Passive)
-    // Scale passive income with heat level: base * level
+    // Scale passive income exponentially with heat level: base * heat^exponent
     if (elapsedSeconds > 0 && elapsedSeconds % gameConfig.passiveIncomeInterval === 0 && (Date.now() - gameState.lastMoneyCheckTime) > 500) {
         const rebirthMult = (gameState.rebirthPoints || 0) + 1;
-        addMoney((gameConfig.passiveIncomeBase * gameState.heatLevel) * rebirthMult);
+        const heatExponent = gameConfig.passiveIncomeExponent || 1.5;
+        const scaledIncome = Math.round(gameConfig.passiveIncomeBase * Math.pow(gameState.heatLevel, heatExponent));
+        addMoney(scaledIncome * rebirthMult);
         gameState.lastMoneyCheckTime = Date.now();
     }
 

@@ -1341,12 +1341,26 @@ export function cleanupSmallDebris() {
 export function createMoney() {
     const coin = new THREE.Mesh(sharedGeometries.coin, sharedMaterials.coin);
     
-    const mapSize = 3500;
-    coin.position.set(
-        (Math.random() - 0.5) * mapSize * 2,
-        5,
-        (Math.random() - 0.5) * mapSize * 2
-    );
+    // 40% chance to spawn near player (within 200-500 units), rest random on map
+    const nearPlayer = Math.random() < 0.4 && playerCar;
+    
+    if (nearPlayer) {
+        // Spawn in a ring around the player (not too close, not too far)
+        const angle = Math.random() * Math.PI * 2;
+        const distance = 200 + Math.random() * 300; // 200-500 units away
+        coin.position.set(
+            playerCar.position.x + Math.cos(angle) * distance,
+            5,
+            playerCar.position.z + Math.sin(angle) * distance
+        );
+    } else {
+        const mapSize = 3500;
+        coin.position.set(
+            (Math.random() - 0.5) * mapSize * 2,
+            5,
+            (Math.random() - 0.5) * mapSize * 2
+        );
+    }
     coin.rotation.z = Math.PI / 2;
     coin.castShadow = true;
     
@@ -1357,9 +1371,13 @@ export function createMoney() {
 export function updateCollectibles() {
     if (gameState.arrested) return;
 
-    if (Math.random() < 0.02) { 
+    // Higher spawn rate for better early game (8% chance per frame)
+    // Also spawn more coins when player has less money (helps early progression)
+    const spawnChance = gameState.money < 200 ? 0.12 : 0.06;
+    
+    if (Math.random() < spawnChance) { 
          createMoney();
-         if (gameState.collectibles.length > 50) {
+         if (gameState.collectibles.length > 80) {
              const oldCoin = gameState.collectibles.shift();
              scene.remove(oldCoin);
          }

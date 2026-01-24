@@ -19,8 +19,9 @@ export const gameConfig = {
     
     // Economy settings
     passiveIncomeInterval: 10,   // seconds between passive money gains
-    passiveIncomeBase: 100,      // base money per interval (multiplied by heat level)
-    coinBaseValue: 50,           // base value of coins
+    passiveIncomeBase: 100,      // base money per interval (scaled exponentially with heat)
+    passiveIncomeExponent: 1.5,  // heat^exponent scaling for passive income
+    coinBaseValue: 50,          // base value of coins (lower but spawn more often)
 };
 
 // Load config from localStorage if available
@@ -54,7 +55,8 @@ export function resetConfig() {
     gameConfig.policeSpawnInterval = 10;
     gameConfig.passiveIncomeInterval = 10;
     gameConfig.passiveIncomeBase = 100;
-    gameConfig.coinBaseValue = 50;
+    gameConfig.passiveIncomeExponent = 1.5;
+    gameConfig.coinBaseValue = 100;
     saveConfig();
 }
 

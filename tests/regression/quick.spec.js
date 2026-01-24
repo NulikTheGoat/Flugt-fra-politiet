@@ -42,11 +42,11 @@ test.describe('🎯 Core Systems', () => {
         
         console.log('Initial state:', state);
         expect(state.speed).toBe(0);
-        expect(state.health).toBe(100);
+        expect(state.health).toBe(20);  // On foot health
         expect(state.money).toBe(0);
         expect(state.heatLevel).toBe(1);
-        expect(state.maxSpeed).toBe(22);
-        expect(state.selectedCar).toBe('standard');
+        expect(state.maxSpeed).toBe(2.5);  // On foot maxSpeed (jogging)
+        expect(state.selectedCar).toBe('onfoot');
     });
 
     test('Movement and physics work', async ({ page }) => {
@@ -96,7 +96,7 @@ test.describe('🎯 Core Systems', () => {
         console.log('HUD values:', hudChecks);
         expect(hudChecks.speed).toBeDefined();
         expect(hudChecks.money).toBeDefined();
-        expect(hudChecks.healthValue).toBe('100');
+        expect(hudChecks.healthValue).toBe('20');  // On foot health
         expect(hudChecks.heatLevel).toBe('1');
     });
 

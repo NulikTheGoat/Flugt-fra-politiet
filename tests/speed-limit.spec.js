@@ -32,7 +32,7 @@ test.describe('Player Speed Limits', () => {
         await page.waitForTimeout(1000);
     });
     
-    test('Standard car should not exceed ~80 km/h (maxSpeed: 22)', async ({ page }) => {
+    test('On foot should not exceed ~9 km/h (maxSpeed: 2.5)', async ({ page }) => {
         // Get initial game state
         const initialState = await page.evaluate(() => {
             return {
@@ -44,14 +44,14 @@ test.describe('Player Speed Limits', () => {
         
         console.log('Initial state:', initialState);
         
-        const configuredMaxSpeed = initialState.maxSpeed || 22;
+        const configuredMaxSpeed = initialState.maxSpeed || 2.5;
         
         // Hold W key to accelerate
         await page.keyboard.down('w');
         
         // Wait for speed to start increasing
         await page.waitForFunction(
-            () => (window.gameState?.speed || 0) > 1,
+            () => (window.gameState?.speed || 0) > 0.2,
             { timeout: 5000 }
         );
         
@@ -82,11 +82,11 @@ test.describe('Player Speed Limits', () => {
         // The speed should never exceed maxSpeed (with small tolerance for floating point)
         expect(maxSpeedReached).toBeLessThanOrEqual(configuredMaxSpeed * 1.01);
         
-        // Also verify that maxSpeed was set correctly (22 for standard car)
-        expect(configuredMaxSpeed).toBe(22);
+        // Also verify that maxSpeed was set correctly (2.5 for on foot)
+        expect(configuredMaxSpeed).toBe(2.5);
     });
     
-    test('Check gameState.maxSpeed is correctly set from constants (should be 22)', async ({ page }) => {
+    test('Check gameState.maxSpeed is correctly set from constants (should be 2.5)', async ({ page }) => {
         const state = await page.evaluate(() => {
             return {
                 gameStateMaxSpeed: window.gameState?.maxSpeed,
@@ -97,11 +97,10 @@ test.describe('Player Speed Limits', () => {
         
         console.log('GameState values:', state);
         
-        // Standard car should have maxSpeed of 22 (from constants.js)
-        // After the fix, this should pass
-        expect(state.gameStateMaxSpeed).toBe(22);
-        expect(state.gameStateSelectedCar).toBe('standard');
-        expect(state.gameStateAcceleration).toBe(0.08);
+        // On foot should have maxSpeed of 2.5 (from constants.js)
+        expect(state.gameStateMaxSpeed).toBe(2.5);
+        expect(state.gameStateSelectedCar).toBe('onfoot');
+        expect(state.gameStateAcceleration).toBe(0.02);
     });
     
     test('Debug: Log all speed-related state during acceleration', async ({ page }) => {
@@ -211,9 +210,9 @@ test.describe('Speed System Investigation', () => {
         });
         console.log('After game start:', afterGame);
         
-        // The maxSpeed should have been updated to the car's value (22 for standard)
-        expect(afterGame.maxSpeed).toBe(22);
-        expect(afterGame.acceleration).toBe(0.08);
+        // The maxSpeed should match on-foot values (starts on foot)
+        expect(afterGame.maxSpeed).toBe(2.5);
+        expect(afterGame.acceleration).toBe(0.02);
     });
     
     test('Verify constants.js car values are accessible via window.cars', async ({ page }) => {

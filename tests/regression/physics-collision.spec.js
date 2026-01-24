@@ -188,7 +188,7 @@ test.describe('🎯 Car Stats Application', () => {
         }
     });
 
-    test('Standard car speed matches constants', async ({ page }) => {
+    test('Selected car speed matches constants', async ({ page }) => {
         await page.goto('http://localhost:3000');
         await page.waitForSelector('canvas', { timeout: 10000 });
         const soloBtn = page.locator('#soloModeBtn');
@@ -196,16 +196,18 @@ test.describe('🎯 Car Stats Application', () => {
         await page.waitForTimeout(500);
         
         const comparison = await page.evaluate(() => {
-            const constantsMaxSpeed = window.cars?.standard?.maxSpeed;
+            const selectedCar = window.gameState?.selectedCar || 'onfoot';
+            const constantsMaxSpeed = window.cars?.[selectedCar]?.maxSpeed;
             const gameStateMaxSpeed = window.gameState?.maxSpeed;
             return {
+                selectedCar: selectedCar,
                 constants: constantsMaxSpeed,
                 gameState: gameStateMaxSpeed,
                 match: constantsMaxSpeed === gameStateMaxSpeed
             };
         });
         
-        console.log('Standard car maxSpeed comparison:', comparison);
+        console.log('Selected car maxSpeed comparison:', comparison);
         expect(comparison.match).toBe(true);
     });
 });
