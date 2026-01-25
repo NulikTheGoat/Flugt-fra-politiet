@@ -1,12 +1,12 @@
 import { gameState } from './state.js';
 import { gameConfig } from './config.js';
-import { scene } from './core.js';
+import { scene, camera } from './core.js';
 import { sharedGeometries, sharedMaterials } from './assets.js';
 import { playerCar, takeDamage } from './player.js';
 import { createSmoke, createSpark } from './particles.js';
-import { addMoney } from './ui.js';
+import { addMoney, showFloatingMoney } from './ui.js';
 import { logEvent, EVENTS } from './commentary.js';
-import { BUILDING_TYPES } from './constants.js';
+import { BUILDING_TYPES, cars } from './constants.js';
 
 export function createSky() {
     // Gradient Sky
@@ -856,7 +856,16 @@ export function updateBuildingChunks(delta) {
                                  logEvent(EVENTS.BUILDING_DESTROYED, null, { speed: carSpeed });
                                  gameState.destructionCount = (gameState.destructionCount || 0) + 1;
                                  
-                                 gameState.speed *= 0.95; 
+                                 // Rigid Body Physics: Mass affects momentum conservation
+                                 const mass = cars[gameState.selectedCar]?.mass || 1.0;
+                                 
+                                 // Heavier cars lose less speed (Momentum = mv)
+                                 const speedRetention = Math.min(0.99, 0.9 + (mass * 0.02) - (0.05 / mass));
+                                 gameState.speed *= Math.max(0.5, speedRetention); 
+                                 
+                                 // Heavier cars impart more force to debris
+                                 chunk.userData.velocity.multiplyScalar(Math.sqrt(mass));
+
                                  takeDamage(Math.floor(carSpeed * 0.1) + 5);
                                  gameState.screenShake = 0.3;
                                  createSmoke(chunk.position);
@@ -1431,6 +1440,9 @@ export function updateCollectibles() {
         const dx = playerX - coin.position.x;
         const dz = playerZ - coin.position.z;
         if (dx*dx + dz*dz < pickupRadiusSq) {
+            // Save position for visual effect before removing
+            const coinPos = coin.position.clone();
+            
             scene.remove(coin);
             gameState.collectibles.splice(i, 1);
             
@@ -1438,7 +1450,10 @@ export function updateCollectibles() {
             const baseValue = gameConfig.coinBaseValue;
             const timeBonus = Math.floor(time / 10) * 10; 
             const rebirthMult = (gameState.rebirthPoints || 0) + 1;
-            addMoney((baseValue + timeBonus) * rebirthMult);
+            
+            const totalAmount = (baseValue + timeBonus) * rebirthMult;
+            addMoney(totalAmount);
+            showFloatingMoney(totalAmount, coinPos, camera);
         }
     }
 }

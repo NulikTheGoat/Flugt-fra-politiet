@@ -1,4 +1,4 @@
-import { gameState } from './state.js';
+import { gameState, saveProgress } from './state.js';
 import { generateVerdict, generateNewspaper } from './commentary.js';
 import { gameConfig } from './config.js';
 import { clamp, darkenColor } from './utils.js';
@@ -21,6 +21,7 @@ export const DOM = {
     policeCount: document.getElementById('policeCount'),
     deadPoliceCount: document.getElementById('deadPoliceCount'),
     money: document.getElementById('money'),
+    totalMoney: document.getElementById('totalMoney'),
     policeDistance: document.getElementById('policeDistance'),
     status: document.getElementById('status'),
     gameOver: document.getElementById('gameOver'),
@@ -96,8 +97,8 @@ function updateHighScoreDisplay() {
         container.id = 'highscoreContainer';
         container.style.cssText = `
             position: fixed;
-            top: 20px;
-            right: 20px;
+            bottom: 20px;
+            left: 20px;
             background: rgba(0, 0, 0, 0.7);
             color: #fff;
             padding: 10px 15px;
@@ -193,7 +194,9 @@ export function updateHUD(policeDistance) {
         gameState.lastMoneyCheckTime = Date.now();
     }
 
-    DOM.money.textContent = gameState.money;
+    // Display money
+    if (DOM.money) DOM.money.textContent = Math.floor(gameState.money).toLocaleString();
+    if (DOM.totalMoney) DOM.totalMoney.textContent = Math.floor((gameState.totalMoney || 0) + gameState.money).toLocaleString();
 
     if (policeDistance > 0) {
         DOM.policeDistance.textContent = Math.round(policeDistance);
@@ -321,9 +324,21 @@ export function addMoney(amount) {
     gameState.money += amount;
     
     // Animate HUD money
-    DOM.money.parentElement.classList.remove('hud-money-pop');
-    void DOM.money.parentElement.offsetWidth; // Trigger reflow to restart animation
-    DOM.money.parentElement.classList.add('hud-money-pop');
+    if (DOM.money && DOM.money.parentElement) {
+        // Find the wrapper we added in index.html for animation targeting
+        // The structure changed to .money-container > .money-row > .money-value > span#money
+        const container = DOM.money.closest('.money-container'); 
+        if(container) {
+             container.classList.remove('hud-money-pop');
+             void container.offsetWidth; 
+             container.classList.add('hud-money-pop');
+        } else {
+             // Fallback
+             DOM.money.parentElement.classList.remove('hud-money-pop');
+             void DOM.money.parentElement.offsetWidth;
+             DOM.money.parentElement.classList.add('hud-money-pop');
+        }
+    }
 }
 
 export function showGameOver(customMessage) {
@@ -399,6 +414,14 @@ export function showGameOver(customMessage) {
     // Animated counting for stats
     const finalTime = Math.round(gameState.elapsedTime);
     const finalMoney = gameState.money;
+    
+    // Bank the money immediately so it's available in Shop and persisted
+    if (finalMoney > 0) {
+        gameState.totalMoney = (gameState.totalMoney || 0) + finalMoney;
+        gameState.money = 0; // Reset run money so we don't double count
+        saveProgress();
+    }
+    
     const finalKilled = gameState.policeKilled || 0;
     const finalHeat = gameState.heatLevel;
     
@@ -450,7 +473,15 @@ export function setMultiplayerShopCallback(cb) {
 
 export function goToShop(isMultiplayerRespawn = false) {
     multiplayerShopMode = isMultiplayerRespawn;
-    gameState.totalMoney += gameState.money;
+    
+    // Safely transfer session money to total money
+    if (gameState.money > 0) {
+        gameState.totalMoney += gameState.money;
+        gameState.money = 0; // Prevent double counting
+        
+        saveProgress();
+    }
+    
     DOM.shop.style.display = 'flex';
     
     // Show/hide respawn notice
@@ -562,7 +593,7 @@ export function renderShop() {
         const carCategory = getCarCategory(key, car);
         if (currentShopCategory !== 'all' && carCategory !== currentShopCategory) return;
 
-        const owned = gameState.ownedCars && gameState.ownedCars[key] || key === 'standard';
+        const owned = gameState.ownedCars && gameState.ownedCars[key];
         const isSelected = gameState.selectedCar === key;
         const canAfford = gameState.totalMoney >= car.price;
         
@@ -596,6 +627,9 @@ export function renderShop() {
         else if (owned) { actionText = 'VÆLG'; actionIcon = '→'; }
         else if (canAfford) { actionText = 'KØB'; actionIcon = '🛒'; }
         else { actionText = 'LÅST'; actionIcon = '🔒'; }
+
+        // Price display logic
+        const priceDisplay = owned ? "EJET" : `${car.price.toLocaleString()} kr`;
         
         // Category badge
         let categoryBadge = '';
@@ -633,6 +667,26 @@ export function renderShop() {
                     </div>
                 `;
             }
+            if (vehicleType === 'scooter_electric') {
+                return `
+                    <div class="car-preview-box preview-scooter-electric">
+                        <div class="floor-grid"></div>
+                        <div class="vehicle-model vehicle-scooter-electric" style="--accent:${colorHex};">
+                            <div class="kick-wheel left"></div>
+                            <div class="kick-wheel right"></div>
+                            <div class="kick-deck"></div>
+                            <div class="kick-stem"></div>
+                            <div class="kick-handle"></div>
+                            <div class="kick-front"></div>
+                            <div class="kick-rider-head"></div>
+                            <div class="kick-rider-body"></div>
+                            <div class="kick-rider-leg front"></div>
+                            <div class="kick-rider-leg back"></div>
+                            <div class="kick-rider-arm"></div>
+                        </div>
+                    </div>
+                `;
+            }
             if (vehicleType === 'scooter') {
                 return `
                     <div class="car-preview-box preview-scooter">
@@ -640,9 +694,14 @@ export function renderShop() {
                         <div class="vehicle-model vehicle-scooter" style="--accent:${colorHex};">
                             <div class="scooter-wheel left"></div>
                             <div class="scooter-wheel right"></div>
-                            <div class="scooter-deck"></div>
+                            <div class="scooter-body"></div>
+                            <div class="scooter-front"></div>
+                            <div class="scooter-seat"></div>
+                            <div class="scooter-floor"></div>
                             <div class="scooter-stem"></div>
                             <div class="scooter-handle"></div>
+                            <div class="scooter-headlight"></div>
+                            <div class="scooter-taillight"></div>
                         </div>
                     </div>
                 `;
@@ -728,7 +787,7 @@ export function renderShop() {
             </div>
 
             <div class="card-footer">
-                <span class="price-tag">${car.price > 0 ? car.price.toLocaleString() + ' kr' : 'GRATIS'}</span>
+                <span class="price-tag" style="color: ${owned ? '#88ff88' : (canAfford ? '#fff' : '#ff5555')};">${priceDisplay}</span>
                 <span class="action-indicator">${actionIcon} ${actionText}</span>
             </div>
         `;
@@ -750,6 +809,8 @@ export function renderShop() {
                     if (!gameState.ownedCars) gameState.ownedCars = {};
                     gameState.ownedCars[key] = true;
                     gameState.selectedCar = key;
+                    
+                    saveProgress();
                     updateCarStats(key);
                     renderShop();
                     
@@ -767,11 +828,13 @@ export function renderShop() {
 
 function performRebirth() {
     gameState.rebirthPoints = (gameState.rebirthPoints || 0) + 1;
-    gameState.totalMoney = 0;
+    gameState.totalMoney = 150; // Startpenge til nyt køretøj
     gameState.money = 0;
-    gameState.ownedCars = { 'standard': true };
-    gameState.selectedCar = 'standard';
+    gameState.ownedCars = {};   // Ingen gratis biler
+    gameState.selectedCar = 'onfoot'; // Start på fods
     
+    saveProgress();
+
     // Reset Game State but keep Rebirth Points
     if (startGameCallback) startGameCallback();
     

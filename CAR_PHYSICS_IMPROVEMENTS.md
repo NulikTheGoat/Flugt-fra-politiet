@@ -130,21 +130,54 @@ The improvements focus on two main areas:
 ### 6. Enhanced Collision Physics
 **Feature**: Momentum-based collision response
 
+- **Status**: ✅ Completed
 - **Mass system**:
-  - Standard police: 1.0x mass
-  - SWAT: 1.5x mass (heavier)
-  - Military: 1.3x mass
+  - Standard car: 1.0x mass
+  - Tank: 5.0x mass (Heavier/Tougher)
+  - Bicycle: 0.2x mass (Light/Fragile)
+  - Police SWAT: 2.5x mass
   
 - **Physics**:
-  - Relative velocity calculation
-  - Momentum transfer using impulse
-  - Coefficient of restitution (0.3 for partial bounce)
-  - Mass-based damage scaling
+  - Mass-based momentum transfer (p = mv)
+  - Heavier vehicles push lighter ones
+  - Damage resistance based on density/mass
   
 - **Effect**: 
-  - Realistic collision outcomes
-  - Heavier vehicles push lighter ones
-  - Speed matters in collisions
+  - Tank smashes through blockades
+  - Bicycles get knocked around easily
+  - Realistic impact outcomes
+
+---
+
+## Phase 3: Upcoming Physics Enhancements
+
+### 1. Independent Chassis Simulation (Body Roll)
+**Goal**: Decouple car body from wheels for realistic suspension visualization.
+
+- **Current Issue**: The entire car (including wheels) tilts when turning.
+- **Improvement**: 
+  - Separate `chassis` mesh from `wheel` meshes.
+  - Body rolls (Z-axis) on turns while wheels stay flat.
+  - Body pitches (X-axis) on acceleration (squat) and braking (dive).
+  - **Status**: ⏳ Ready to implement
+
+### 2. Manual/Auto Transmission Logic
+**Goal**: Simulate gears and torque curves rather than linear electric-like acceleration.
+
+- **Features**:
+  - 4-6 Gear ratios vs Final Drive.
+  - RPM curve simulation.
+  - Shift delays (momentary loss of power).
+  - Automatic downshifting on hills/corners.
+
+### 3. Surface Friction System
+**Goal**: Different physics for different terrain.
+
+- **Features**:
+  - Detect "Off-road" vs "Road" (using coordinate bounds).
+  - Reduced grip (0.6x) and speed on grass.
+  - Particle effects (Dust vs Smoke).
+  - Vibration/Rumble differences.
 
 ---
 

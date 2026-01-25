@@ -34,14 +34,17 @@ Introduction of a "Wanted Level" or "Heat Level" that increases over time.
 - (Optional) Add "Upgrades" besides just new cars (e.g., Armor, Magnet for coins).
 
 ## Implementation Steps
-1.  **Refactor Game State:** Add `heatLevel`, `scoreMultiplier`.
-2.  **Money System:**
-    *   Create `createMoney()` function.
-    *   Add array `gameState.collectibles`.
-    *   Add collision check in game loop.
-3.  **Enemy Types:**
-    *   Create `createEnemy(type)` factory function.
-    *   Define properties for distinct enemies (mesh color/size, speed, mass).
-4.  **Progression Logic:**
-    *   Update `updateHUD` or game loop to check elapsed time and upgrade `heatLevel`.
-    *   Update `spawnPoliceCar` to pick enemy type based on `heatLevel`.
+- [x] **Refactor Game State:** Add `heatLevel`, `scoreMultiplier`.
+- [x] **Money System:**
+    - [x] Create `createMoney()` function (in `js/world.js`).
+    - [x] Add array `gameState.collectibles`.
+    - [x] Add collision check in game loop (`updateCollectibles`).
+    - [x] Add floating text visual effect.
+- [x] **Enemy Types:**
+    - [x] Create `createEnemy(type)` factory logic (in `js/police.js`).
+    - [x] Define properties for distinct enemies (mesh color/size, speed, mass).
+- [x] **Progression Logic:**
+    - [x] Update `updateHUD` or game loop to check elapsed time and upgrade `heatLevel`.
+    - [x] Update `spawnPoliceCar` to pick enemy type based on `heatLevel`.
+- [x] **Shop Enhancements:**
+    - [x] Fix money transfer interaction between Game Over and Shop.

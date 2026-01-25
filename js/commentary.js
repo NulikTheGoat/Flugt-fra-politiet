@@ -1044,11 +1044,10 @@ function showBossMessage(text, isSuccess = false) {
     container.style.cssText = `
         position: fixed;
         z-index: 9997;
-        pointer-events: none;
+        pointer-events: none; /* KEY: Cannot be clicked */
         width: 0; min-height: 0;
         display: flex;
-        justify-content: center; /* Helps align child */
-        /* Left/Top/Transform managed by loop */
+        justify-content: center;
     `;
 
     // Colors
@@ -1250,7 +1249,7 @@ function showPoliceScannerBubble(text) {
             font-family: 'Courier New', Courier, monospace;
             font-size: 14px;
             max-width: 300px;
-            z-index: 9999;
+            z-index: 1500; /* Lowered from 9999 to be below Overlay UIs if needed, but above world */
             text-transform: uppercase;
             box-shadow: 0 0 10px rgba(0, 255, 0, 0.2);
             pointer-events: none;

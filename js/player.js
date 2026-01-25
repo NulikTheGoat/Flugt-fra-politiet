@@ -189,9 +189,9 @@ function createBicycleModel(color, kind = 'bicycle') {
     return group;
 }
 
-function createScooterModel(color) {
+function createScooterModel(color, variant = 'scooter') {
     const group = new THREE.Group();
-    group.userData.visualType = 'scooter';
+    group.userData.visualType = variant;
     group.userData.allowTilt = false;
     group.userData.suspensionEnabled = false;
     group.userData.enableTireMarks = false;
@@ -199,6 +199,8 @@ function createScooterModel(color) {
     const deckMat = new THREE.MeshLambertMaterial({ color });
     const metalMat = new THREE.MeshLambertMaterial({ color: 0x7f8c8d });
     const rubberMat = new THREE.MeshLambertMaterial({ color: 0x111111 });
+    const trimMat = new THREE.MeshLambertMaterial({ color: 0xd9d9d9 });
+    const lightMat = new THREE.MeshBasicMaterial({ color: 0xfff3c4 });
 
     const wheelGeo = new THREE.CylinderGeometry(4.2, 4.2, 1.4, 16);
     const frontWheel = new THREE.Mesh(wheelGeo, rubberMat);
@@ -213,28 +215,119 @@ function createScooterModel(color) {
     backWheel.castShadow = true;
     group.add(backWheel);
 
-    const deck = new THREE.Mesh(new THREE.BoxGeometry(4.8, 1.2, 22), deckMat);
-    deck.position.set(0, 5.5, 0);
-    deck.castShadow = true;
-    deck.receiveShadow = true;
-    deck.name = 'carBody';
-    group.add(deck);
+    let handlebar = null;
 
-    const stem = new THREE.Mesh(new THREE.CylinderGeometry(0.6, 0.6, 16, 10), metalMat);
-    stem.position.set(0, 13, 9);
-    stem.castShadow = true;
-    group.add(stem);
+    if (variant === 'scooter_electric') {
+        // Kick-scooter style
+        const deck = new THREE.Mesh(new THREE.BoxGeometry(5.2, 1.0, 20), deckMat);
+        deck.position.set(0, 5.2, 0);
+        deck.castShadow = true;
+        deck.receiveShadow = true;
+        deck.name = 'carBody';
+        group.add(deck);
 
-    const handlebar = new THREE.Mesh(new THREE.BoxGeometry(10, 0.7, 1.2), metalMat);
-    handlebar.position.set(0, 21, 9);
-    handlebar.castShadow = true;
-    handlebar.name = 'handlebar';
-    group.add(handlebar);
+        const frontFork = new THREE.Mesh(new THREE.CylinderGeometry(0.6, 0.7, 10, 10), metalMat);
+        frontFork.position.set(0, 10, 10);
+        frontFork.castShadow = true;
+        group.add(frontFork);
 
-    const rider = createOnFootModel(0x1d3557);
-    rider.scale.set(0.72, 0.72, 0.72);
-    rider.position.set(0, 3, -1);
-    group.add(rider);
+        const stem = new THREE.Mesh(new THREE.CylinderGeometry(0.7, 0.8, 12, 10), metalMat);
+        stem.position.set(0, 16, 10);
+        stem.castShadow = true;
+        group.add(stem);
+
+        handlebar = new THREE.Mesh(new THREE.BoxGeometry(12, 0.7, 1.2), metalMat);
+        handlebar.position.set(0, 20.5, 10);
+        handlebar.castShadow = true;
+        handlebar.name = 'handlebar';
+        group.add(handlebar);
+
+        const frontCover = new THREE.Mesh(new THREE.BoxGeometry(4.5, 8, 2.2), deckMat);
+        frontCover.position.set(0, 10, 12);
+        frontCover.castShadow = true;
+        group.add(frontCover);
+
+        const headlight = new THREE.Mesh(new THREE.SphereGeometry(1.1, 10, 10), lightMat);
+        headlight.position.set(0, 13.5, 13.5);
+        group.add(headlight);
+
+        const rearFender = new THREE.Mesh(new THREE.BoxGeometry(6, 1.2, 6), deckMat);
+        rearFender.position.set(0, 7.8, -12);
+        rearFender.castShadow = true;
+        group.add(rearFender);
+
+        const rider = createOnFootModel(0x1d3557);
+        rider.scale.set(0.72, 0.72, 0.72);
+        rider.position.set(0, 4, -1);
+        rider.rotation.x = -0.12;
+        group.add(rider);
+
+        const walkParts = rider.userData.walkParts || {};
+        group.userData.rider = rider;
+        group.userData.kick = { active: false, startTime: 0, duration: 520 };
+        group.userData.kickParts = {
+            leg: walkParts.rightLeg,
+            foot: walkParts.rightShoe,
+            body: rider
+        };
+        group.userData.kickBase = {
+            legRotX: walkParts.rightLeg?.rotation.x || 0,
+            legRotZ: walkParts.rightLeg?.rotation.z || 0,
+            legPosZ: walkParts.rightLeg?.position.z || 0,
+            footRotX: walkParts.rightShoe?.rotation.x || 0,
+            footPosZ: walkParts.rightShoe?.position.z || 0,
+            bodyRotX: rider.rotation.x || 0,
+            bodyPosZ: rider.position.z || 0
+        };
+    } else {
+        // Vespa-style body shell
+        const body = new THREE.Mesh(new THREE.BoxGeometry(8.5, 7, 22), deckMat);
+        body.position.set(0, 8.5, -2);
+        body.castShadow = true;
+        body.receiveShadow = true;
+        body.name = 'carBody';
+        group.add(body);
+
+        const frontShield = new THREE.Mesh(new THREE.BoxGeometry(6.5, 10, 6), deckMat);
+        frontShield.position.set(0, 10.5, 8);
+        frontShield.castShadow = true;
+        group.add(frontShield);
+
+        const floorboard = new THREE.Mesh(new THREE.BoxGeometry(6.8, 1.2, 14), deckMat);
+        floorboard.position.set(0, 5.5, -1);
+        floorboard.castShadow = true;
+        floorboard.receiveShadow = true;
+        group.add(floorboard);
+
+        const seat = new THREE.Mesh(new THREE.BoxGeometry(6.5, 2.2, 8), trimMat);
+        seat.position.set(0, 13.5, -7);
+        seat.castShadow = true;
+        group.add(seat);
+
+        const stem = new THREE.Mesh(new THREE.CylinderGeometry(0.8, 0.9, 8, 10), metalMat);
+        stem.position.set(0, 14.5, 10);
+        stem.castShadow = true;
+        group.add(stem);
+
+        handlebar = new THREE.Mesh(new THREE.BoxGeometry(10, 0.8, 1.6), metalMat);
+        handlebar.position.set(0, 17.5, 10);
+        handlebar.castShadow = true;
+        handlebar.name = 'handlebar';
+        group.add(handlebar);
+
+        const headlight = new THREE.Mesh(new THREE.SphereGeometry(1.2, 10, 10), lightMat);
+        headlight.position.set(0, 16.5, 12.5);
+        group.add(headlight);
+
+        const tailLight = new THREE.Mesh(new THREE.BoxGeometry(1.6, 1, 0.6), new THREE.MeshBasicMaterial({ color: 0xff3333 }));
+        tailLight.position.set(0, 12, -13.5);
+        group.add(tailLight);
+
+        const rider = createOnFootModel(0x1d3557);
+        rider.scale.set(0.72, 0.72, 0.72);
+        rider.position.set(0, 3, -1);
+        group.add(rider);
+    }
 
     group.userData.rollingWheels = [frontWheel, backWheel];
     group.userData.steerWheels = [frontWheel];
@@ -260,8 +353,8 @@ export function createPlayerCar(color = 0xff0000, type = 'standard') {
         playerCar = bike;
         return bike;
     }
-    if (resolvedType === 'scooter') {
-        const scooter = createScooterModel(color);
+    if (resolvedType === 'scooter' || resolvedType === 'scooter_electric') {
+        const scooter = createScooterModel(color, resolvedType);
         scooter.position.set(0, 0, 0);
         scene.add(scooter);
         playerCar = scooter;
@@ -274,6 +367,12 @@ export function createPlayerCar(color = 0xff0000, type = 'standard') {
     carGroup.userData.allowTilt = true;
     carGroup.userData.suspensionEnabled = true;
     carGroup.userData.enableTireMarks = true;
+    
+    // Create CHASSIS group for independent body roll/pitch
+    const chassis = new THREE.Group();
+    chassis.name = 'chassis';
+    carGroup.add(chassis);
+    carGroup.userData.chassis = chassis;
 
     if (resolvedType === 'tank') {
         // Tank Body
@@ -284,7 +383,7 @@ export function createPlayerCar(color = 0xff0000, type = 'standard') {
         body.castShadow = true;
         body.receiveShadow = true;
         body.name = 'carBody';
-        carGroup.add(body);
+        chassis.add(body);
 
         // Turret
         const turretGeo = new THREE.BoxGeometry(16, 8, 20);
@@ -295,7 +394,7 @@ export function createPlayerCar(color = 0xff0000, type = 'standard') {
         turret.castShadow = true;
         turret.receiveShadow = true;
         turret.name = 'carRoof';
-        carGroup.add(turret);
+        chassis.add(turret);
 
         // Barrel
         const barrelGeo = new THREE.CylinderGeometry(2, 2, 30, 16);
@@ -304,9 +403,9 @@ export function createPlayerCar(color = 0xff0000, type = 'standard') {
         barrel.rotation.x = -Math.PI / 2;
         barrel.position.set(0, 18, 20); 
         barrel.castShadow = true;
-        carGroup.add(barrel);
+        chassis.add(barrel);
 
-        // Tracks
+        // Tracks (Keep on main group so they don't tilt with suspension)
         const trackGeo = new THREE.BoxGeometry(6, 12, 48);
         const trackMat = new THREE.MeshLambertMaterial({ color: 0x111111 });
         
@@ -366,7 +465,7 @@ export function createPlayerCar(color = 0xff0000, type = 'standard') {
         body.castShadow = true;
         body.receiveShadow = true;
         body.name = 'carBody';
-        carGroup.add(body);
+        chassis.add(body);
 
         // Car roof (slightly darker than body)
         const roofColor = new THREE.Color(color).multiplyScalar(0.8);
@@ -379,16 +478,16 @@ export function createPlayerCar(color = 0xff0000, type = 'standard') {
         roof.castShadow = true;
         roof.receiveShadow = true;
         roof.name = 'carRoof';
-        carGroup.add(roof);
+        chassis.add(roof);
 
         // Windows
         const frontWindow = new THREE.Mesh(sharedGeometries.window, sharedMaterials.window);
         frontWindow.position.set(0, 16, 5);
-        carGroup.add(frontWindow);
+        chassis.add(frontWindow);
 
         const backWindow = new THREE.Mesh(sharedGeometries.window, sharedMaterials.window);
         backWindow.position.set(0, 16, -12);
-        carGroup.add(backWindow);
+        chassis.add(backWindow);
 
         // Wheels
         const wheelPositions = [
@@ -415,36 +514,36 @@ export function createPlayerCar(color = 0xff0000, type = 'standard') {
         });
 
         // Lights (headlights + brake lights)
-        makeCarLights(carGroup);
+        makeCarLights(chassis);
 
         // Variant styling by vehicle tier
         if (resolvedType === 'sport' || resolvedType === 'super' || resolvedType === 'hyper') {
             const wing = new THREE.Mesh(new THREE.BoxGeometry(18, 1.2, 3.2), new THREE.MeshLambertMaterial({ color: 0x111111 }));
             wing.position.set(0, 18, -20);
             wing.castShadow = true;
-            carGroup.add(wing);
+            chassis.add(wing);
 
             const splitter = new THREE.Mesh(new THREE.BoxGeometry(20, 1.0, 4.0), new THREE.MeshLambertMaterial({ color: 0x111111 }));
             splitter.position.set(0, 5.5, 22);
             splitter.castShadow = true;
-            carGroup.add(splitter);
+            chassis.add(splitter);
         }
         if (resolvedType === 'muscle') {
             const scoop = new THREE.Mesh(new THREE.BoxGeometry(6, 2.2, 8), new THREE.MeshLambertMaterial({ color: 0x111111 }));
             scoop.position.set(0, 13, 4);
             scoop.castShadow = true;
-            carGroup.add(scoop);
+            chassis.add(scoop);
 
             const stripe = new THREE.Mesh(new THREE.BoxGeometry(3, 0.6, 44), new THREE.MeshLambertMaterial({ color: 0xffffff }));
             stripe.position.set(0, 12.3, 0);
             stripe.castShadow = false;
-            carGroup.add(stripe);
+            chassis.add(stripe);
         }
         if (resolvedType === 'hyper') {
             const neon = new THREE.Mesh(new THREE.BoxGeometry(16, 0.5, 44), new THREE.MeshBasicMaterial({ color: 0x00ffff }));
             neon.position.set(0, 4.2, 0);
             neon.name = 'underglow';
-            carGroup.add(neon);
+            chassis.add(neon);
         }
     }
 
@@ -484,9 +583,23 @@ export function updateCarStats(key) {
 export function takeDamage(amount) {
     if (gameState.arrested) return;
     
-    // Reduce damage for tank (rebalanced: was 0.2x, now 0.4x)
-    if (gameState.selectedCar === 'tank') amount *= 0.4;
-    // Reduce damage for UFO (kept at 0.5x)
+    // Mass-based damage reduction (Rigid Body/Density)
+    // Heavier vehicles have better armor/structure
+    const currentCar = cars[gameState.selectedCar] || cars.standard;
+    const mass = currentCar.mass || 1.0;
+    
+    // Standard car (mass 1.0) takes 100% damage
+    // Tank (mass 5.0) takes ~20% damage -> too strong, make it 50%
+    if (mass > 1.0) {
+        // Nerf tank durability: instead of 1/mass, use a softer curve
+        // mass 5.0 -> was 0.2x, now sqrt(5) = 2.23 -> 0.44x damage
+        amount /= Math.sqrt(mass); 
+    } else if (mass < 1.0) {
+        // Lighter vehicles are fragile, but don't make them glass
+        amount *= (1.0 + (1.0 - mass)); 
+    }
+
+    // Special reduction for UFO (technology shield)
     if (gameState.selectedCar === 'ufo') amount *= 0.5;
 
     gameState.health -= amount;
@@ -496,6 +609,53 @@ export function takeDamage(amount) {
 
     if (gameState.health <= 0) {
         gameState.health = 0;
+    }
+}
+
+function applyKickScooterAnimation(target, now, wantsForward) {
+    const kick = target.userData.kick;
+    const parts = target.userData.kickParts;
+    const base = target.userData.kickBase;
+    if (!kick || !parts || !base) return;
+
+    if (!kick.active && wantsForward && Math.abs(gameState.speed) < 0.05) {
+        kick.active = true;
+        kick.startTime = now;
+    }
+
+    if (!kick.active) return;
+
+    const t = (now - kick.startTime) / kick.duration;
+    if (t >= 1) {
+        kick.active = false;
+        if (parts.leg) {
+            parts.leg.rotation.x = base.legRotX;
+            parts.leg.rotation.z = base.legRotZ;
+            parts.leg.position.z = base.legPosZ;
+        }
+        if (parts.foot) {
+            parts.foot.rotation.x = base.footRotX;
+            parts.foot.position.z = base.footPosZ;
+        }
+        if (parts.body) {
+            parts.body.rotation.x = base.bodyRotX;
+            parts.body.position.z = base.bodyPosZ;
+        }
+        return;
+    }
+
+    const swing = Math.sin(t * Math.PI);
+    if (parts.leg) {
+        parts.leg.rotation.x = base.legRotX + swing * 0.9;
+        parts.leg.position.z = base.legPosZ - swing * 2.2;
+    }
+    if (parts.foot) {
+        parts.foot.rotation.x = base.footRotX - swing * 0.5;
+        parts.foot.position.z = base.footPosZ - swing * 3.0;
+    }
+    if (parts.body) {
+        parts.body.rotation.x = base.bodyRotX - swing * 0.08;
+        parts.body.position.z = base.bodyPosZ - swing * 1.2;
     }
 }
 
@@ -542,7 +702,8 @@ export function updatePlayer(delta, now) {
         forward.y = 0;
         if (forward.lengthSq() < 1e-6) forward.set(0, 0, 1);
         forward.normalize();
-        const right = new THREE.Vector3(forward.z, 0, -forward.x);
+        // Right vector: perpendicular to forward in XZ plane (correct: -z, 0, +x)
+        const right = new THREE.Vector3(-forward.z, 0, forward.x);
 
         let dirX = 0;
         let dirZ = 0;
@@ -598,6 +759,11 @@ export function updatePlayer(delta, now) {
         playerCar.position.x = Math.max(-boundary, Math.min(boundary, playerCar.position.x));
         playerCar.position.z = Math.max(-boundary, Math.min(boundary, playerCar.position.z));
         return;
+    }
+
+    if (visualType === 'scooter_electric') {
+        const wantsForward = keys['w'] || keys['arrowup'];
+        applyKickScooterAnimation(playerCar, now, wantsForward);
     }
 
     // Calculate max speed penalty based on health (softer curve)
@@ -764,13 +930,38 @@ export function updatePlayer(delta, now) {
     const isCar = isCarLikeType(visualType) || visualType === 'tank' || visualType === 'ufo';
 
     // Body tilt based on cornering forces (cars only)
-    if (playerCar.userData.allowTilt !== false && isCar) {
+    if (playerCar.userData.allowTilt !== false && isCar && playerCar.userData.chassis) {
+        const corneringForce = gameState.angularVelocity * speedRatio;
+        // Increased tilt effect for chassis independence
+        const targetTilt = -corneringForce * 0.55; 
+        gameState.carTilt += (targetTilt - gameState.carTilt) * 0.12 * delta;
+        
+        // ROLL (Cornering)
+        playerCar.userData.chassis.rotation.z = gameState.carTilt;
+        
+        // PITCH (Accel/Braking) - Inertia simulation
+        // Acceleration = Squat (negative pitch)
+        // Braking = Dive (positive pitch)
+        let targetPitch = 0;
+        if (keys['w'] || keys['arrowup']) targetPitch -= 0.04;
+        if (keys['s'] || keys['arrowdown']) targetPitch += 0.06; // Braking dives harder
+        
+        gameState.carPitch = (gameState.carPitch || 0);
+        gameState.carPitch += (targetPitch - gameState.carPitch) * 0.08 * delta;
+        playerCar.userData.chassis.rotation.x = gameState.carPitch;
+        
+    } else if (playerCar.userData.allowTilt !== false && isCar) {
+        // Legacy/Fallback for cars without chassis group
         const corneringForce = gameState.angularVelocity * speedRatio;
         const targetTilt = -corneringForce * 0.4;
         gameState.carTilt += (targetTilt - gameState.carTilt) * 0.12 * delta;
         playerCar.rotation.z = gameState.carTilt;
     } else {
         playerCar.rotation.z = 0;
+        if(playerCar.userData.chassis) {
+            playerCar.userData.chassis.rotation.z = 0;
+            playerCar.userData.chassis.rotation.x = 0;
+        }
         gameState.carTilt = 0;
     }
 

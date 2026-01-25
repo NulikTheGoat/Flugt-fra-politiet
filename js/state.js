@@ -47,8 +47,8 @@
  *
  * @property {number} health
  * @property {number} money
+ * @property {number} totalMoney - Total lifetime money earned (persistent, for shop purchases)
  * @property {number} rebirthPoints
- * @property {number} totalMoney
  * @property {string} selectedCar
  * @property {number} arrestDistance
  * @property {boolean} arrested
@@ -121,8 +121,9 @@ export const gameState = {
     health: 20,             // On foot health
     money: 0,
     rebirthPoints: 0,
-    totalMoney: 0,
+    totalMoney: 150,        // Startpenge til at købe første køretøj
     selectedCar: 'onfoot',  // Start on foot!
+    ownedCars: { onfoot: true }, // Initialize with starter 'vehicle'
     arrestDistance: 30,
     arrested: false,
     arrestCountdown: 0,
@@ -182,3 +183,54 @@ export const gameState = {
 
 // Input State - Keyboard keys currently pressed
 export const keys = {};
+
+// === Persistence ===
+export function saveProgress() {
+    const data = {
+        totalMoney: gameState.totalMoney,
+        money: gameState.money, 
+        rebirthPoints: gameState.rebirthPoints,
+        ownedCars: gameState.ownedCars,
+        selectedCar: gameState.selectedCar
+    };
+    try {
+        localStorage.setItem('flugt_progress', JSON.stringify(data));
+        // console.log('Progress saved');
+    } catch (e) {
+        console.warn('Failed to save progress', e);
+    }
+}
+
+export function loadProgress() {
+    try {
+        const saved = localStorage.getItem('flugt_progress');
+        if (saved) {
+            const data = JSON.parse(saved);
+            if (data.totalMoney !== undefined) gameState.totalMoney = data.totalMoney;
+            if (data.money !== undefined) gameState.money = data.money;
+            if (data.rebirthPoints !== undefined) gameState.rebirthPoints = data.rebirthPoints;
+            if (data.ownedCars) {
+                gameState.ownedCars = data.ownedCars;
+            } else {
+                // Ensure default exists even if loaded data is old/broken
+                if (!gameState.ownedCars) gameState.ownedCars = { onfoot: true };
+            }
+            if (data.selectedCar) {
+                // Validate car exists
+                gameState.selectedCar = data.selectedCar;
+            }
+            console.log('[STATE] Progress loaded from local storage');
+        }
+    } catch (e) {
+        console.warn('Failed to load progress', e);
+    }
+}
+
+// Automatically load progress when module is imported
+loadProgress();
+
+// Auto-save on window close/refresh
+window.addEventListener('beforeunload', () => {
+    saveProgress();
+});
+

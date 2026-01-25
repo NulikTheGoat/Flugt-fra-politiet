@@ -1,9 +1,9 @@
 export const enemies = {
-    standard: { color: 0x0000ff, speed: 250, scale: 1, name: 'Politibil', health: 50, killReward: 150, pickupReward: 300 },
-    interceptor: { color: 0x111111, speed: 300, scale: 1, name: 'Interceptor', health: 40, killReward: 200, pickupReward: 400 },
-    swat: { color: 0x333333, speed: 220, scale: 1.5, name: 'SWAT', health: 150, killReward: 350, pickupReward: 700 },
-    military: { color: 0x556b2f, speed: 350, scale: 1.2, name: 'Militær', health: 300, killReward: 500, pickupReward: 1000 },
-    sheriff: { color: 0x8b6914, speed: 180, scale: 1.3, name: 'Sheriff', health: 800, killReward: 1000, pickupReward: 2000 }
+    standard: { color: 0x0000ff, speed: 250, scale: 1, name: 'Politibil', health: 50, killReward: 150, pickupReward: 300, mass: 1.0 },
+    interceptor: { color: 0x111111, speed: 300, scale: 1, name: 'Interceptor', health: 40, killReward: 200, pickupReward: 400, mass: 1.1 },
+    swat: { color: 0x333333, speed: 220, scale: 1.5, name: 'SWAT', health: 150, killReward: 350, pickupReward: 700, mass: 2.5 },
+    military: { color: 0x556b2f, speed: 350, scale: 1.2, name: 'Militær', health: 180, killReward: 500, pickupReward: 1000, mass: 1.8 },
+    sheriff: { color: 0x8b6914, speed: 180, scale: 1.3, name: 'Sheriff', health: 800, killReward: 1000, pickupReward: 2000, mass: 3.0 }
 };
 
 /**
@@ -18,6 +18,7 @@ export const enemies = {
  * @property {string=} type
  * @property {number=} scale
  * @property {number=} reqRebirth
+ * @property {number=} mass
  */
 
 /** @type {Record<string, CarDefinition>} */
@@ -25,116 +26,128 @@ export const cars = {
     // === STARTER ===
     onfoot: {
         name: 'Til Fods',
-        price: 0,           // Gratis starter!
+        price: 100,         // Billig start, men ikke gratis!
         maxSpeed: 2.5,      // ~9 km/h display (jogging speed)
         acceleration: 0.02,
         handling: 0.15,     // Very agile on foot
         health: 20,
         color: 0xFFAA00,    // Orange (person)
         type: 'onfoot',
-        scale: 0.4
+        scale: 0.4,
+        mass: 0.1
     },
     bicycle: {
         name: 'Cykel',
-        price: 50,          // Very cheap first upgrade
+        price: 800,         // Første rigtige opgradering
         maxSpeed: 7,        // ~25 km/h display
         acceleration: 0.035,
         handling: 0.08,
         health: 30,
         color: 0x32CD32,    // Lime green
         type: 'bicycle',
-        scale: 0.6
+        scale: 0.6,
+        mass: 0.2
     },
     scooter_electric: {
         name: 'El-løbehjul',
-        price: 150,         // Affordable second upgrade
+        price: 1800,        // Mellemklasse opgradering
         maxSpeed: 10,       // ~36 km/h display
         acceleration: 0.05,
         handling: 0.10,
         health: 25,
         color: 0x00CED1,    // Dark turquoise
-        type: 'scooter',
-        scale: 0.5
+        type: 'scooter_electric',
+        scale: 0.5,
+        mass: 0.25
     },
     scooter: {
         name: 'Knallert',
-        price: 400,         // Mid-range upgrade
+        price: 5000,        // Solid mellemklasse
         maxSpeed: 13,       // ~47 km/h display
         acceleration: 0.065,
         handling: 0.06,
         health: 50,
         color: 0xFFD700,    // Gold
         type: 'scooter',
-        scale: 0.7
+        scale: 0.7,
+        mass: 0.4
     },
     
     // === BILER ===
     standard: {
         name: 'Standard Bil',
-        price: 1500,        // Nu koster den penge!
+        price: 9999,        // Første rigtige bil!
         maxSpeed: 22,       // ~80 km/h display
         acceleration: 0.08,
         handling: 0.05,
         health: 100,
-        color: 0xff0000
+        color: 0xff0000,
+        mass: 1.0
     },
     sport: {
         name: 'Sportsvogn',
-        price: 3500,
+        price: 35000,
         maxSpeed: 30,       // ~110 km/h display
         acceleration: 0.12,
         handling: 0.07,
         health: 90,
-        color: 0xffff00
+        color: 0xffff00,
+        mass: 1.1
     },
     muscle: {
         name: 'Muscle Car',
-        price: 7000,
+        price: 55000,
         maxSpeed: 28,       // ~100 km/h display
         acceleration: 0.14,
         handling: 0.04,
         health: 130,
-        color: 0x0000ff
+        color: 0x0000ff,
+        mass: 1.4
     },
     super: {
         name: 'Superbil',
-        price: 18000,
+        price: 95000,
         maxSpeed: 42,       // ~150 km/h display
         acceleration: 0.18,
         handling: 0.09,
         health: 100,        // Buffed from 70
-        color: 0xff00ff
+        color: 0xff00ff,
+        mass: 1.2
     },
     hyper: {
         name: 'Hyperbil',
-        price: 45000,
+        price: 400000,
         maxSpeed: 55,       // ~200 km/h display
         acceleration: 0.25,
         handling: 0.12,
         health: 120,        // Nerfed from 150
-        color: 0x00ffff
+        color: 0x00ffff,
+        mass: 1.3
     },
     tank: {
         name: 'Kampvogn',
-        price: 100000,
+        price: 700000,
         maxSpeed: 17,       // ~60 km/h display
         acceleration: 0.05,
         handling: 0.08,
         health: 300,        // Nerfed from 500 - stadig tanky!
         color: 0x2f4f4f,
         type: 'tank',
-        reqRebirth: 0
+        canRam: true,       // Can destroy police cars on impact
+        reqRebirth: 0,
+        mass: 5.0
     },
     ufo: {
         name: 'UFO Prototype',
-        price: 200000,
+        price: 1200000,
         maxSpeed: 83,       // ~300 km/h display
         acceleration: 0.5,
         handling: 0.2,
         health: 100,        // Nerfed from 150 - glass cannon
         color: 0x999999,
         type: 'ufo',
-        reqRebirth: 1
+        reqRebirth: 1,
+        mass: 0.8
     }
 };
 

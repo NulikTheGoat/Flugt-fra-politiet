@@ -107,9 +107,10 @@ export function createPoliceCar(type = 'standard') {
             new THREE.PlaneGeometry(13.6, 1.6),
             new THREE.MeshBasicMaterial({ color: 0x00ff00, side: THREE.DoubleSide })
         );
-        hpBar.position.set(0, 25, 0.1); 
+        // Position relative to BG (always in front because BG looks at camera)
+        hpBar.position.set(0, 0, 0.2); 
         hpBar.name = 'hpBar';
-        carGroup.add(hpBar);
+        hpBg.add(hpBar);
     }
 
     scene.add(carGroup);
@@ -151,13 +152,25 @@ export function spawnPoliceCar() {
     // Assign unique network ID for multiplayer sync
     policeCar.userData.networkId = nextPoliceNetworkId++;
     
-    // Spawn at random locations on the map
-    const mapSize = 3500;
-    let x, z;
-    do {
-        x = (Math.random() - 0.5) * mapSize * 2;
-        z = (Math.random() - 0.5) * mapSize * 2;
-    } while (Math.abs(x - playerCar.position.x) < 300 && Math.abs(z - playerCar.position.z) < 300);
+    // Spawn relative to player position (supports infinite world)
+    const minSpawnDist = 700; // Increased from 500 to give more reaction time
+    const maxSpawnDist = 1200; // Increased from 900
+    
+    // 70% chance to spawn in front of player (for roadblocks/intercept), 30% from behind/sides
+    const playerRotation = playerCar.rotation.y;
+    // Random angle: 70% chance within +/- 60 degrees of front, 30% anywhere
+    let spawnAngle;
+    if (Math.random() < 0.7) {
+        spawnAngle = playerRotation + (Math.random() - 0.5) * (Math.PI / 1.5); // +/- 60 deg cone
+    } else {
+        spawnAngle = Math.random() * Math.PI * 2;
+    }
+    
+    const dist = minSpawnDist + Math.random() * (maxSpawnDist - minSpawnDist);
+    
+    const x = playerCar.position.x + Math.sin(spawnAngle) * dist; // Math.sin/cos swapped because THREE.js rotation is Y-axis and 0 is typically -Z or +Z depending on model. 
+    // Player moves using: x += Math.sin(rotation) * speed, z += Math.cos(rotation) * speed
+    const z = playerCar.position.z + Math.cos(spawnAngle) * dist;
 
     policeCar.position.x = x;
     policeCar.position.z = z;
@@ -292,10 +305,22 @@ export function updatePoliceAI(delta) {
                     otherCar.position.x -= nx * overlap * 0.1;
                     otherCar.position.z -= nz * overlap * 0.1;
                 } else {
-                    policeCar.position.x += nx * overlap;
-                    policeCar.position.z += nz * overlap;
-                    otherCar.position.x -= nx * overlap;
-                    otherCar.position.z -= nz * overlap;
+                    // Mass-based collision response
+                    const myType = policeCar.userData.type || 'standard';
+                    const otherType = otherCar.userData.type || 'standard';
+                    
+                    const myMass = enemies[myType]?.mass || 1.0;
+                    const otherMass = enemies[otherType]?.mass || 1.0;
+                    const totalMass = myMass + otherMass;
+                    
+                    // Inverse mass ratio - lighter car moves more
+                    const myRatio = otherMass / totalMass;
+                    const otherRatio = myMass / totalMass;
+
+                    policeCar.position.x += nx * overlap * 2 * myRatio;
+                    policeCar.position.z += nz * overlap * 2 * myRatio;
+                    otherCar.position.x -= nx * overlap * 2 * otherRatio;
+                    otherCar.position.z -= nz * overlap * 2 * otherRatio;
                 }
                 
                 // Calculate relative speed for damage
@@ -357,9 +382,9 @@ export function updatePoliceAI(delta) {
         const dz = playerCar.position.z - policeCar.position.z;
         const distance = Math.sqrt(dx * dx + dz * dz);
 
-        // Tank Ramming Logic
+        // Vehicle Ramming Logic (e.g. Tank)
         const currentCar = cars[gameState.selectedCar];
-        if (currentCar && currentCar.type === 'tank' && distance < 50) {
+        if (currentCar && currentCar.canRam && distance < 50) {
              policeCar.userData.dead = true;
              policeCar.userData.deathTime = Date.now();
              const enemyType = policeCar.userData.type || 'standard';
@@ -430,37 +455,47 @@ export function updatePoliceAI(delta) {
         }
 
         // === LOOK-AHEAD OBSTACLE AVOIDANCE ===
-        const lookAheadDist = 80; // Distance to check for obstacles
-        const checkX = policeCar.position.x + Math.sin(policeCar.rotation.y) * lookAheadDist;
-        const checkZ = policeCar.position.z + Math.cos(policeCar.rotation.y) * lookAheadDist;
-        
-        let hasObstacle = false;
-        const checkGridX = Math.floor(checkX / gridSize);
-        const checkGridZ = Math.floor(checkZ / gridSize);
-        
-        for(let gx = checkGridX-1; gx <= checkGridX+1; gx++) {
-            for(let gz = checkGridZ-1; gz <= checkGridZ+1; gz++) {
-                const key = `${gx},${gz}`;
-                const chunks = gameState.chunkGrid[key];
-                if(!chunks) continue;
-                
-                for(let c=0; c < chunks.length; c++) {
-                    const chunk = chunks[c];
-                    if(chunk.userData.isHit) continue;
+        // Optimized: Throttle checks to reduce CPU usage. 
+        // Only check every 150-250ms instead of every frame.
+        if (!policeCar.userData.nextObstacleCheck || Date.now() > policeCar.userData.nextObstacleCheck) {
+            const lookAheadDist = 80; // Distance to check for obstacles
+            const checkX = policeCar.position.x + Math.sin(policeCar.rotation.y) * lookAheadDist;
+            const checkZ = policeCar.position.z + Math.cos(policeCar.rotation.y) * lookAheadDist;
+            
+            let detectedObstacle = false;
+            const checkGridX = Math.floor(checkX / gridSize);
+            const checkGridZ = Math.floor(checkZ / gridSize);
+            
+            for(let gx = checkGridX-1; gx <= checkGridX+1; gx++) {
+                for(let gz = checkGridZ-1; gz <= checkGridZ+1; gz++) {
+                    const key = `${gx},${gz}`;
+                    const chunks = gameState.chunkGrid[key];
+                    if(!chunks) continue;
                     
-                    const cdx = chunk.position.x - checkX;
-                    const cdz = chunk.position.z - checkZ;
-                    const chunkDist = Math.sqrt(cdx*cdx + cdz*cdz);
-                    
-                    if (chunkDist < 40) {
-                        hasObstacle = true;
-                        break;
+                    for(let c=0; c < chunks.length; c++) {
+                        const chunk = chunks[c];
+                        if(chunk.userData.isHit) continue;
+                        
+                        const cdx = chunk.position.x - checkX;
+                        const cdz = chunk.position.z - checkZ;
+                        const chunkDist = Math.sqrt(cdx*cdx + cdz*cdz);
+                        
+                        if (chunkDist < 40) {
+                            detectedObstacle = true;
+                            break;
+                        }
                     }
+                    if (detectedObstacle) break;
                 }
-                if (hasObstacle) break;
+                if (detectedObstacle) break;
             }
-            if (hasObstacle) break;
+            
+            policeCar.userData.hasObstacle = detectedObstacle;
+            // Random interval 150-250ms to prevent synchronized lag spikes
+            policeCar.userData.nextObstacleCheck = Date.now() + 150 + Math.random() * 100;
         }
+
+        const hasObstacle = policeCar.userData.hasObstacle;
         
         // If obstacle detected, turn to avoid it
         // Only avoid if NOT under strict directional command (like U-Turn)
@@ -585,7 +620,7 @@ export function updatePoliceAI(delta) {
         const hpBar = policeCar.getObjectByName('hpBar');
         const hpBg = policeCar.getObjectByName('hpBg');
         if (hpBar && hpBg) {
-             hpBar.lookAt(camera.position);
+             // hpBar is child of hpBg, only need to rotate parent
              hpBg.lookAt(camera.position);
              
              const healthPct = Math.max(0, policeCar.userData.health / policeCar.userData.maxHealth);
@@ -626,9 +661,10 @@ export function updatePoliceAI(delta) {
             const relVelNormal = relVelX * nx + relVelZ * nz;
             
             // Mass ratio (police cars are heavier for SWAT/Military)
-            const playerMass = 1.0;
-            const policeMass = policeCar.userData.type === 'swat' ? 1.5 : 
-                              policeCar.userData.type === 'military' ? 1.3 : 1.0;
+            const playerMass = cars[gameState.selectedCar]?.mass || 1.0;
+            const enemyType = policeCar.userData.type || 'standard';
+            const enemyConfig = enemies[enemyType] || enemies.standard;
+            const policeMass = enemyConfig.mass || 1.0;
             const totalMass = playerMass + policeMass;
             
             // Only process collision if objects are moving toward each other
