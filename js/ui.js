@@ -465,7 +465,15 @@ export function setMultiplayerShopCallback(cb) {
 
 export function goToShop(isMultiplayerRespawn = false) {
     multiplayerShopMode = isMultiplayerRespawn;
-    gameState.totalMoney += gameState.money;
+    
+    // Safely transfer session money to total money
+    if (gameState.money > 0) {
+        gameState.totalMoney += gameState.money;
+        gameState.money = 0; // Prevent double counting
+        
+        // Save logic should ideally happen here or periodically, but we'll rely on existing save flows
+    }
+    
     DOM.shop.style.display = 'flex';
     
     // Show/hide respawn notice

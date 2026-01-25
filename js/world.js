@@ -1,10 +1,10 @@
 import { gameState } from './state.js';
 import { gameConfig } from './config.js';
-import { scene } from './core.js';
+import { scene, camera } from './core.js';
 import { sharedGeometries, sharedMaterials } from './assets.js';
 import { playerCar, takeDamage } from './player.js';
 import { createSmoke, createSpark } from './particles.js';
-import { addMoney } from './ui.js';
+import { addMoney, showFloatingMoney } from './ui.js';
 import { logEvent, EVENTS } from './commentary.js';
 import { BUILDING_TYPES, cars } from './constants.js';
 
@@ -1440,6 +1440,9 @@ export function updateCollectibles() {
         const dx = playerX - coin.position.x;
         const dz = playerZ - coin.position.z;
         if (dx*dx + dz*dz < pickupRadiusSq) {
+            // Save position for visual effect before removing
+            const coinPos = coin.position.clone();
+            
             scene.remove(coin);
             gameState.collectibles.splice(i, 1);
             
@@ -1447,7 +1450,10 @@ export function updateCollectibles() {
             const baseValue = gameConfig.coinBaseValue;
             const timeBonus = Math.floor(time / 10) * 10; 
             const rebirthMult = (gameState.rebirthPoints || 0) + 1;
-            addMoney((baseValue + timeBonus) * rebirthMult);
+            
+            const totalAmount = (baseValue + timeBonus) * rebirthMult;
+            addMoney(totalAmount);
+            showFloatingMoney(totalAmount, coinPos, camera);
         }
     }
 }
