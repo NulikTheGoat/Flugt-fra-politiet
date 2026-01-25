@@ -14,9 +14,13 @@ renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap; // Softer shadows
 renderer.toneMapping = THREE.ACESFilmicToneMapping; // Better tone mapping for realistic lighting
 renderer.toneMappingExposure = 1.0;
-// r128 uses outputEncoding
-if (renderer.outputEncoding !== undefined) {
-    renderer.outputEncoding = THREE.sRGBEncoding; // Correct color space
+
+// Handle color space for different Three.js versions
+// r152+ uses outputColorSpace, older versions use outputEncoding
+if (renderer.outputColorSpace !== undefined) {
+    renderer.outputColorSpace = THREE.SRGBColorSpace; // Three.js r152+
+} else if (renderer.outputEncoding !== undefined) {
+    renderer.outputEncoding = THREE.sRGBEncoding; // Three.js r128-r151
 }
 
 // Lighting setup - Enhanced for PBR materials

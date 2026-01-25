@@ -289,7 +289,7 @@ See [DEVELOPER_GUIDE.md](DEVELOPER_GUIDE.md) for detailed contributing guideline
 - **Issues**: https://github.com/NulikTheGoat/Flugt-fra-politiet/issues
 
 ### Technologies Used
-- **Frontend**: Three.js r128 (bundled locally), JavaScript ES6 Modules, HTML5, CSS3
+- **Frontend**: Three.js r160 (bundled locally, XSS vulnerability patched), JavaScript ES6 Modules, HTML5, CSS3
 - **Rendering**: PBR materials (MeshStandardMaterial), enhanced lighting, antialiasing
 - **Backend**: Node.js, WebSocket (ws library)
 - **No Build Step**: Runs directly in browser!

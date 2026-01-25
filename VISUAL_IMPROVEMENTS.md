@@ -9,7 +9,7 @@ The game's visual rendering has been upgraded from basic Lambert/Phong materials
 ## Technology Stack
 
 ### Rendering Engine
-- **Three.js r128**: Maintained for compatibility, now bundled locally
+- **Three.js r160**: Upgraded for security (XSS vulnerability patched), bundled locally
 - **Material System**: Upgraded to MeshStandardMaterial (PBR)
 - **Lighting**: Enhanced with hemisphere light and improved shadows
 - **Tone Mapping**: ACES Filmic for cinematic look
@@ -20,7 +20,7 @@ The game's visual rendering has been upgraded from basic Lambert/Phong materials
 - Industry-standard physically-based rendering
 - More realistic light interaction
 - Better material definition with roughness and metalness
-- Compatible with Three.js r128
+- Compatible with modern Three.js versions
 
 **Improved Lighting System**
 - PCFSoft shadow mapping for softer, more realistic shadows
@@ -199,7 +199,8 @@ This ensures colors appear correctly across different displays.
 
 ## Changelog
 
-### 2026-01-25 - Initial Visual Upgrade
+### 2026-01-25 - Security Update & Visual Upgrade
+- ✅ **Security**: Upgraded Three.js from r128 to r160 (XSS vulnerability patched)
 - ✅ Upgraded materials to MeshStandardMaterial
 - ✅ Enhanced building window textures
 - ✅ Improved lighting system
@@ -207,6 +208,16 @@ This ensures colors appear correctly across different displays.
 - ✅ Bundled Three.js locally
 - ✅ Enhanced character and vehicle materials
 - ✅ Improved shadow quality
+- ✅ Updated color space handling for Three.js r152+ compatibility
+
+## Security
+
+### XSS Vulnerability Fix
+**Issue**: Three.js versions < 0.137.0 contained a cross-site scripting (XSS) vulnerability.
+
+**Resolution**: Upgraded to Three.js r160 (v0.160.0), which includes the security patch. All npm audit checks pass with 0 vulnerabilities.
+
+**Compatibility**: Code updated to handle both legacy (`outputEncoding`) and modern (`outputColorSpace`) Three.js APIs for forward compatibility.
 
 ## Credits
 
