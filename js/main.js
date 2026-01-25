@@ -610,7 +610,9 @@ function animate() {
     }
 
     if (gameState.is2DMode) {
-        camera.up.set(0, 0, -1);
+        // Rotated UP vector (0, 0, 1) aligns screen UP with World +Z (Forward)
+        // This ensures Arrow Keys match visual direction (Up arrow = Up on screen)
+        camera.up.set(0, 0, 1);
         camera.position.x = playerCar.position.x;
         camera.position.z = playerCar.position.z;
         camera.position.y = 800;
