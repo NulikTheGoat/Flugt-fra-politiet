@@ -562,7 +562,7 @@ export function renderShop() {
         const carCategory = getCarCategory(key, car);
         if (currentShopCategory !== 'all' && carCategory !== currentShopCategory) return;
 
-        const owned = gameState.ownedCars && gameState.ownedCars[key] || key === 'standard';
+        const owned = gameState.ownedCars && gameState.ownedCars[key];
         const isSelected = gameState.selectedCar === key;
         const canAfford = gameState.totalMoney >= car.price;
         
@@ -767,10 +767,10 @@ export function renderShop() {
 
 function performRebirth() {
     gameState.rebirthPoints = (gameState.rebirthPoints || 0) + 1;
-    gameState.totalMoney = 0;
+    gameState.totalMoney = 150; // Startpenge til nyt køretøj
     gameState.money = 0;
-    gameState.ownedCars = { 'standard': true };
-    gameState.selectedCar = 'standard';
+    gameState.ownedCars = {};   // Ingen gratis biler
+    gameState.selectedCar = 'onfoot'; // Start på fods
     
     // Reset Game State but keep Rebirth Points
     if (startGameCallback) startGameCallback();
