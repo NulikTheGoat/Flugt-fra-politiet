@@ -542,7 +542,8 @@ export function updatePlayer(delta, now) {
         forward.y = 0;
         if (forward.lengthSq() < 1e-6) forward.set(0, 0, 1);
         forward.normalize();
-        const right = new THREE.Vector3(forward.z, 0, -forward.x);
+        // Right vector: perpendicular to forward in XZ plane (correct: -z, 0, +x)
+        const right = new THREE.Vector3(-forward.z, 0, forward.x);
 
         let dirX = 0;
         let dirZ = 0;
