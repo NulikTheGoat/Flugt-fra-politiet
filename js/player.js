@@ -274,6 +274,12 @@ export function createPlayerCar(color = 0xff0000, type = 'standard') {
     carGroup.userData.allowTilt = true;
     carGroup.userData.suspensionEnabled = true;
     carGroup.userData.enableTireMarks = true;
+    
+    // Create CHASSIS group for independent body roll/pitch
+    const chassis = new THREE.Group();
+    chassis.name = 'chassis';
+    carGroup.add(chassis);
+    carGroup.userData.chassis = chassis;
 
     if (resolvedType === 'tank') {
         // Tank Body
@@ -284,7 +290,7 @@ export function createPlayerCar(color = 0xff0000, type = 'standard') {
         body.castShadow = true;
         body.receiveShadow = true;
         body.name = 'carBody';
-        carGroup.add(body);
+        chassis.add(body);
 
         // Turret
         const turretGeo = new THREE.BoxGeometry(16, 8, 20);
@@ -295,7 +301,7 @@ export function createPlayerCar(color = 0xff0000, type = 'standard') {
         turret.castShadow = true;
         turret.receiveShadow = true;
         turret.name = 'carRoof';
-        carGroup.add(turret);
+        chassis.add(turret);
 
         // Barrel
         const barrelGeo = new THREE.CylinderGeometry(2, 2, 30, 16);
@@ -304,9 +310,9 @@ export function createPlayerCar(color = 0xff0000, type = 'standard') {
         barrel.rotation.x = -Math.PI / 2;
         barrel.position.set(0, 18, 20); 
         barrel.castShadow = true;
-        carGroup.add(barrel);
+        chassis.add(barrel);
 
-        // Tracks
+        // Tracks (Keep on main group so they don't tilt with suspension)
         const trackGeo = new THREE.BoxGeometry(6, 12, 48);
         const trackMat = new THREE.MeshLambertMaterial({ color: 0x111111 });
         
@@ -366,7 +372,7 @@ export function createPlayerCar(color = 0xff0000, type = 'standard') {
         body.castShadow = true;
         body.receiveShadow = true;
         body.name = 'carBody';
-        carGroup.add(body);
+        chassis.add(body);
 
         // Car roof (slightly darker than body)
         const roofColor = new THREE.Color(color).multiplyScalar(0.8);
@@ -379,16 +385,16 @@ export function createPlayerCar(color = 0xff0000, type = 'standard') {
         roof.castShadow = true;
         roof.receiveShadow = true;
         roof.name = 'carRoof';
-        carGroup.add(roof);
+        chassis.add(roof);
 
         // Windows
         const frontWindow = new THREE.Mesh(sharedGeometries.window, sharedMaterials.window);
         frontWindow.position.set(0, 16, 5);
-        carGroup.add(frontWindow);
+        chassis.add(frontWindow);
 
         const backWindow = new THREE.Mesh(sharedGeometries.window, sharedMaterials.window);
         backWindow.position.set(0, 16, -12);
-        carGroup.add(backWindow);
+        chassis.add(backWindow);
 
         // Wheels
         const wheelPositions = [
@@ -415,36 +421,36 @@ export function createPlayerCar(color = 0xff0000, type = 'standard') {
         });
 
         // Lights (headlights + brake lights)
-        makeCarLights(carGroup);
+        makeCarLights(chassis);
 
         // Variant styling by vehicle tier
         if (resolvedType === 'sport' || resolvedType === 'super' || resolvedType === 'hyper') {
             const wing = new THREE.Mesh(new THREE.BoxGeometry(18, 1.2, 3.2), new THREE.MeshLambertMaterial({ color: 0x111111 }));
             wing.position.set(0, 18, -20);
             wing.castShadow = true;
-            carGroup.add(wing);
+            chassis.add(wing);
 
             const splitter = new THREE.Mesh(new THREE.BoxGeometry(20, 1.0, 4.0), new THREE.MeshLambertMaterial({ color: 0x111111 }));
             splitter.position.set(0, 5.5, 22);
             splitter.castShadow = true;
-            carGroup.add(splitter);
+            chassis.add(splitter);
         }
         if (resolvedType === 'muscle') {
             const scoop = new THREE.Mesh(new THREE.BoxGeometry(6, 2.2, 8), new THREE.MeshLambertMaterial({ color: 0x111111 }));
             scoop.position.set(0, 13, 4);
             scoop.castShadow = true;
-            carGroup.add(scoop);
+            chassis.add(scoop);
 
             const stripe = new THREE.Mesh(new THREE.BoxGeometry(3, 0.6, 44), new THREE.MeshLambertMaterial({ color: 0xffffff }));
             stripe.position.set(0, 12.3, 0);
             stripe.castShadow = false;
-            carGroup.add(stripe);
+            chassis.add(stripe);
         }
         if (resolvedType === 'hyper') {
             const neon = new THREE.Mesh(new THREE.BoxGeometry(16, 0.5, 44), new THREE.MeshBasicMaterial({ color: 0x00ffff }));
             neon.position.set(0, 4.2, 0);
             neon.name = 'underglow';
-            carGroup.add(neon);
+            chassis.add(neon);
         }
     }
 
@@ -484,9 +490,22 @@ export function updateCarStats(key) {
 export function takeDamage(amount) {
     if (gameState.arrested) return;
     
-    // Reduce damage for tank (rebalanced: was 0.2x, now 0.4x)
-    if (gameState.selectedCar === 'tank') amount *= 0.4;
-    // Reduce damage for UFO (kept at 0.5x)
+    // Mass-based damage reduction (Rigid Body/Density)
+    // Heavier vehicles have better armor/structure
+    const currentCar = cars[gameState.selectedCar] || cars.standard;
+    const mass = currentCar.mass || 1.0;
+    
+    // Standard car (mass 1.0) takes 100% damage
+    // Tank (mass 5.0) takes ~20% damage
+    // Bike (mass 0.2) takes ~500% damage (if hit by tank/bullet), but we cap it
+    if (mass > 1.0) {
+        amount /= mass; // Tougher
+    } else if (mass < 1.0) {
+        // Lighter vehicles are fragile, but don't make them glass
+        amount *= (1.0 + (1.0 - mass)); 
+    }
+
+    // Special reduction for UFO (technology shield)
     if (gameState.selectedCar === 'ufo') amount *= 0.5;
 
     gameState.health -= amount;
@@ -765,13 +784,38 @@ export function updatePlayer(delta, now) {
     const isCar = isCarLikeType(visualType) || visualType === 'tank' || visualType === 'ufo';
 
     // Body tilt based on cornering forces (cars only)
-    if (playerCar.userData.allowTilt !== false && isCar) {
+    if (playerCar.userData.allowTilt !== false && isCar && playerCar.userData.chassis) {
+        const corneringForce = gameState.angularVelocity * speedRatio;
+        // Increased tilt effect for chassis independence
+        const targetTilt = -corneringForce * 0.55; 
+        gameState.carTilt += (targetTilt - gameState.carTilt) * 0.12 * delta;
+        
+        // ROLL (Cornering)
+        playerCar.userData.chassis.rotation.z = gameState.carTilt;
+        
+        // PITCH (Accel/Braking) - Inertia simulation
+        // Acceleration = Squat (negative pitch)
+        // Braking = Dive (positive pitch)
+        let targetPitch = 0;
+        if (keys['w'] || keys['arrowup']) targetPitch -= 0.04;
+        if (keys['s'] || keys['arrowdown']) targetPitch += 0.06; // Braking dives harder
+        
+        gameState.carPitch = (gameState.carPitch || 0);
+        gameState.carPitch += (targetPitch - gameState.carPitch) * 0.08 * delta;
+        playerCar.userData.chassis.rotation.x = gameState.carPitch;
+        
+    } else if (playerCar.userData.allowTilt !== false && isCar) {
+        // Legacy/Fallback for cars without chassis group
         const corneringForce = gameState.angularVelocity * speedRatio;
         const targetTilt = -corneringForce * 0.4;
         gameState.carTilt += (targetTilt - gameState.carTilt) * 0.12 * delta;
         playerCar.rotation.z = gameState.carTilt;
     } else {
         playerCar.rotation.z = 0;
+        if(playerCar.userData.chassis) {
+            playerCar.userData.chassis.rotation.z = 0;
+            playerCar.userData.chassis.rotation.x = 0;
+        }
         gameState.carTilt = 0;
     }
 

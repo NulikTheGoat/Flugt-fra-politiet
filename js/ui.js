@@ -21,6 +21,7 @@ export const DOM = {
     policeCount: document.getElementById('policeCount'),
     deadPoliceCount: document.getElementById('deadPoliceCount'),
     money: document.getElementById('money'),
+    totalMoney: document.getElementById('totalMoney'),
     policeDistance: document.getElementById('policeDistance'),
     status: document.getElementById('status'),
     gameOver: document.getElementById('gameOver'),
@@ -193,7 +194,9 @@ export function updateHUD(policeDistance) {
         gameState.lastMoneyCheckTime = Date.now();
     }
 
-    DOM.money.textContent = gameState.money;
+    // Display money
+    if (DOM.money) DOM.money.textContent = Math.floor(gameState.money).toLocaleString();
+    if (DOM.totalMoney) DOM.totalMoney.textContent = Math.floor((gameState.totalMoney || 0) + gameState.money).toLocaleString();
 
     if (policeDistance > 0) {
         DOM.policeDistance.textContent = Math.round(policeDistance);
@@ -321,9 +324,21 @@ export function addMoney(amount) {
     gameState.money += amount;
     
     // Animate HUD money
-    DOM.money.parentElement.classList.remove('hud-money-pop');
-    void DOM.money.parentElement.offsetWidth; // Trigger reflow to restart animation
-    DOM.money.parentElement.classList.add('hud-money-pop');
+    if (DOM.money && DOM.money.parentElement) {
+        // Find the wrapper we added in index.html for animation targeting
+        // The structure changed to .money-container > .money-row > .money-value > span#money
+        const container = DOM.money.closest('.money-container'); 
+        if(container) {
+             container.classList.remove('hud-money-pop');
+             void container.offsetWidth; 
+             container.classList.add('hud-money-pop');
+        } else {
+             // Fallback
+             DOM.money.parentElement.classList.remove('hud-money-pop');
+             void DOM.money.parentElement.offsetWidth;
+             DOM.money.parentElement.classList.add('hud-money-pop');
+        }
+    }
 }
 
 export function showGameOver(customMessage) {

@@ -1590,8 +1590,30 @@
                 display: inline-block;
                 animation: hudMoneyPop 0.3s ease-out;
             }
+            .money-container {
+                display: flex;
+                flex-direction: column;
+                gap: 2px;
+            }
+            .money-row {
+                display: flex;
+                justify-content: space-between;
+                width: 200px; /* Align widths */
+            }
+            .money-label { color: #aaa; font-size: 14px; }
+            .money-value { font-weight: bold; }
+            .total-money { color: #ffd700; } /* Gold for total */
         </style>
-        <div data-testid="money-display">Penge: <span id="money" data-testid="money">0</span>kr</div>
+        <div data-testid="money-display" class="money-container">
+            <div class="money-row">
+                <span class="money-label">Denne runde:</span>
+                <span class="money-value"><span id="money" data-testid="money">0</span> kr</span>
+            </div>
+            <div class="money-row total-money">
+                <span class="money-label">Total tjent:</span>
+                <span class="money-value"><span id="totalMoney" data-testid="totalMoney">0</span> kr</span>
+            </div>
+        </div>
         <div data-testid="time-display">Tid: <span id="time" data-testid="time">0</span>s</div>
         <div data-testid="heat-display">Heat Level: <span id="heatLevel" data-testid="heatLevel">1</span></div>
         <div data-testid="police-display">Politibiler: <span id="policeCount" data-testid="policeCount">0</span> <span style="color: #ff4444;">💀</span><span id="deadPoliceCount" data-testid="deadPoliceCount" style="color: #ff4444;">0</span></div>

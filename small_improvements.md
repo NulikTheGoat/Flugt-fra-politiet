@@ -48,6 +48,18 @@
 - [x] Player car should be slower and slower according to health
 - [x] When police crashes into the player, and if player have slow speed eg under 10% there should start a countdown of the arrest "3 seconds"
 - [x] Police should also crash into buildings
-- [ ] Enhace the physics and elements to have a rigid body and density
+
+## Upcoming Improvements (Architecture & Gameplay)
+- [x] **Refactor**: Move UI logic out of `main.js` to `ui.js` or `menu.js`
+- [x] **Optimize**: Throttle AI obstacle avoidance checks (currently every frame per car)
+- [x] **Enhance**: Spawn police relative to player position instead of absolute map range
+- [x] **Refactor**: Replace hardcoded `type === 'tank'` checks with data-driven properties (e.g., `canRam`)
+
+- [x] Enhace the physics and elements to have a rigid body and density
 - [x] Car should no be able to drive when HP is below 1
 - [x] Car randomly drives left/right when HP is below 30
+
+## New Requests
+- [ ] **Menu Navigation**: Full keyboard support (Arrows/Enter/Esc) for Shop and Main Menu
+- [ ] **Balance**: Player Tank needs to be killable/destructible (currently invincible)
+- [ ] **Bug Fix**: Police health bar flickers black at certain angles (Visual/Z-fighting)

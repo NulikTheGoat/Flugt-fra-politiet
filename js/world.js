@@ -6,7 +6,7 @@ import { playerCar, takeDamage } from './player.js';
 import { createSmoke, createSpark } from './particles.js';
 import { addMoney } from './ui.js';
 import { logEvent, EVENTS } from './commentary.js';
-import { BUILDING_TYPES } from './constants.js';
+import { BUILDING_TYPES, cars } from './constants.js';
 
 export function createSky() {
     // Gradient Sky
@@ -856,7 +856,16 @@ export function updateBuildingChunks(delta) {
                                  logEvent(EVENTS.BUILDING_DESTROYED, null, { speed: carSpeed });
                                  gameState.destructionCount = (gameState.destructionCount || 0) + 1;
                                  
-                                 gameState.speed *= 0.95; 
+                                 // Rigid Body Physics: Mass affects momentum conservation
+                                 const mass = cars[gameState.selectedCar]?.mass || 1.0;
+                                 
+                                 // Heavier cars lose less speed (Momentum = mv)
+                                 const speedRetention = Math.min(0.99, 0.9 + (mass * 0.02) - (0.05 / mass));
+                                 gameState.speed *= Math.max(0.5, speedRetention); 
+                                 
+                                 // Heavier cars impart more force to debris
+                                 chunk.userData.velocity.multiplyScalar(Math.sqrt(mass));
+
                                  takeDamage(Math.floor(carSpeed * 0.1) + 5);
                                  gameState.screenShake = 0.3;
                                  createSmoke(chunk.position);
