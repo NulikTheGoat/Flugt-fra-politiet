@@ -96,7 +96,7 @@ function updateHighScoreDisplay() {
         container.id = 'highscoreContainer';
         container.style.cssText = `
             position: fixed;
-            top: 20px;
+            bottom: 20px;
             right: 20px;
             background: rgba(0, 0, 0, 0.7);
             color: #fff;
