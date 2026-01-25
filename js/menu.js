@@ -316,9 +316,9 @@ export function initMenu({ startGame, cleanupGame }) {
 
     // === Keyboard Navigation ===
     document.addEventListener('keydown', (e) => {
-        // Only handle if menus are visible (using offsetParent as lightweight visibility check)
-        const isGameModeVisible = gameModeModal && gameModeModal.offsetParent !== null;
-        const isGameOverVisible = DOM.gameOver && DOM.gameOver.offsetParent !== null;
+        // Toggle checks - checking style.display is safer than offsetParent for fixed position elements
+        const isGameModeVisible = gameModeModal && gameModeModal.style.display === 'flex';
+        const isGameOverVisible = DOM.gameOver && DOM.gameOver.style.display === 'block';
         
         if (!isGameModeVisible && !isGameOverVisible) return;
         
@@ -329,13 +329,13 @@ export function initMenu({ startGame, cleanupGame }) {
         let contextButtons = [];
         
         if (isGameModeVisible) {
-            // Select visible buttons in modal
+            // Select visible buttons in modal - check inline style as offsetParent can be tricky in fixed containers
             contextButtons = Array.from(gameModeModal.querySelectorAll('button:not([disabled])'))
-                .filter(b => b.offsetParent !== null);
+                .filter(b => b.style.display !== 'none');
         } else if (isGameOverVisible) {
             // Select visible buttons in game over screen
             contextButtons = Array.from(DOM.gameOver.querySelectorAll('button:not([disabled])'))
-                .filter(b => b.offsetParent !== null);
+                .filter(b => b.style.display !== 'none');
         }
         
         if (contextButtons.length === 0) return;
