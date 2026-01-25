@@ -317,14 +317,21 @@ export function initMenu({ startGame, cleanupGame }) {
     // === Keyboard Navigation ===
     document.addEventListener('keydown', (e) => {
         // Toggle checks - checking style.display is safer than offsetParent for fixed position elements
-        const isGameModeVisible = gameModeModal && gameModeModal.style.display === 'flex';
-        const isGameOverVisible = DOM.gameOver && DOM.gameOver.style.display === 'block';
-        const isShopVisible = DOM.shop && DOM.shop.style.display === 'flex';
+        // Re-query elements to ensure freshness
+        const gameOverEl = document.getElementById('gameOver');
+        const shopEl = document.getElementById('shop');
+        const modeModalEl = document.getElementById('gameModeModal');
+        const lobbyEl = document.getElementById('multiplayerLobby');
+
+        const isGameModeVisible = modeModalEl && modeModalEl.style.display === 'flex';
+        const isGameOverVisible = gameOverEl && gameOverEl.style.display === 'block';
+        const isShopVisible = shopEl && shopEl.style.display === 'flex';
+        const isLobbyVisible = lobbyEl && lobbyEl.style.display === 'flex';
         
-        if (!isGameModeVisible && !isGameOverVisible && !isShopVisible) return;
+        if (!isGameModeVisible && !isGameOverVisible && !isShopVisible && !isLobbyVisible) return;
         
         // Allowed keys
-        const keys = ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'w', 'a', 's', 'd', 'W', 'A', 'S', 'D'];
+        const keys = ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'w', 'a', 's', 'd', 'W', 'A', 'S', 'D', 'Tab', ' '];
         if (!keys.includes(e.key) && e.key !== 'Enter') return;
 
         // --- SHOP NAVIGATION LOGIC ---
@@ -337,13 +344,14 @@ export function initMenu({ startGame, cleanupGame }) {
         let contextButtons = [];
         
         if (isGameModeVisible) {
-            // Select visible buttons in modal - check inline style as offsetParent can be tricky in fixed containers
-            contextButtons = Array.from(gameModeModal.querySelectorAll('button:not([disabled])'))
-                .filter(b => b.style.display !== 'none');
+            contextButtons = Array.from(modeModalEl.querySelectorAll('button:not([disabled])'))
+                .filter(b => b.offsetParent !== null); // Check visibility robustly
         } else if (isGameOverVisible) {
-            // Select visible buttons in game over screen
-            contextButtons = Array.from(DOM.gameOver.querySelectorAll('button:not([disabled])'))
-                .filter(b => b.style.display !== 'none');
+            contextButtons = Array.from(gameOverEl.querySelectorAll('button:not([disabled])'))
+                .filter(b => b.offsetParent !== null);
+        } else if (isLobbyVisible) {
+            contextButtons = Array.from(lobbyEl.querySelectorAll('button:not([disabled]), input:not([disabled])'))
+                .filter(b => b.offsetParent !== null);
         }
         
         if (contextButtons.length === 0) return;
@@ -351,15 +359,20 @@ export function initMenu({ startGame, cleanupGame }) {
         // Find currently focused or selected button
         let currentIndex = contextButtons.findIndex(b => b === document.activeElement || b.classList.contains('keyboard-selected'));
         
-        if (e.key === 'Enter') {
+        if (e.key === 'Enter' || e.key === ' ') {
             if (currentIndex >= 0 && currentIndex < contextButtons.length) {
                 // Simulate click
                 contextButtons[currentIndex].click(); 
-                // Don't remove class immediately as visual feedback might be needed, 
-                // but usually the menu closes or changes, so it's fine.
                 e.preventDefault();
             }
             return;
+        }
+        
+        if (e.key === 'Tab') {
+            // Allow default tab behavior but update our tracking
+            // We just let it handle itself, but maybe we want to wrap around?
+            // For now let browser handle Tab order
+            return; 
         }
         
         // Navigation (Directional keys)
