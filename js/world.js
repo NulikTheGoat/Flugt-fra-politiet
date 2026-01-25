@@ -153,11 +153,6 @@ export function createDistantCityscape() {
             metalness: 0.1,
             color: 0xcccccc // Slight tint
         });
-            emissiveMap: windowTexture,
-            emissive: 0x555555,
-            emissiveIntensity: 0.8,
-            color: 0xffffff // White base allows instance colors to show through
-        });
         
         // Instanced mesh for performance
         const instancedMesh = new THREE.InstancedMesh(buildingGeo, buildingMat, buildingCount);

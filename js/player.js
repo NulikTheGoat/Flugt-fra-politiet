@@ -472,8 +472,7 @@ export function createPlayerCar(color = 0xff0000, type = 'standard') {
              roughness: 0.2,
              metalness: 0.9,
              emissive: color,
-             emissiveIntensity: 0.1,
-             envMapIntensity: 1.5
+             emissiveIntensity: 0.1
         });
         const saucer = new THREE.Mesh(saucerGeo, saucerMat);
         saucer.position.y = 10;
@@ -488,8 +487,7 @@ export function createPlayerCar(color = 0xff0000, type = 'standard') {
              transparent: true, 
              opacity: 0.6,
              roughness: 0.1,
-             metalness: 0.1,
-             envMapIntensity: 2.0
+             metalness: 0.1
         });
         const dome = new THREE.Mesh(domeGeo, domeMat);
         dome.position.y = 12;
@@ -510,8 +508,7 @@ export function createPlayerCar(color = 0xff0000, type = 'standard') {
         const bodyMat = new THREE.MeshStandardMaterial({
             color: color,
             roughness: 0.4,
-            metalness: 0.6,
-            envMapIntensity: 1.0
+            metalness: 0.6
         });
         const body = new THREE.Mesh(sharedGeometries.carBody, bodyMat);
         body.position.y = 6;
@@ -525,8 +522,7 @@ export function createPlayerCar(color = 0xff0000, type = 'standard') {
         const roof = new THREE.Mesh(sharedGeometries.carRoof, new THREE.MeshStandardMaterial({
             color: roofColor,
             roughness: 0.5,
-            metalness: 0.4,
-            envMapIntensity: 0.8
+            metalness: 0.4
         }));
         roof.position.set(0, 16, -5);
         roof.castShadow = true;

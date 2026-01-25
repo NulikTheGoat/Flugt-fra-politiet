@@ -62,8 +62,7 @@ export const sharedMaterials = {
         transparent: true,
         opacity: 0.3,
         roughness: 0.1,
-        metalness: 0.9,
-        envMapIntensity: 1.5
+        metalness: 0.9
     })
 };
 

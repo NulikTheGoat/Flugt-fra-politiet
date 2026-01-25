@@ -14,7 +14,10 @@ renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap; // Softer shadows
 renderer.toneMapping = THREE.ACESFilmicToneMapping; // Better tone mapping for realistic lighting
 renderer.toneMappingExposure = 1.0;
-renderer.outputEncoding = THREE.sRGBEncoding; // Correct color space
+// r128 uses outputEncoding
+if (renderer.outputEncoding !== undefined) {
+    renderer.outputEncoding = THREE.sRGBEncoding; // Correct color space
+}
 
 // Lighting setup - Enhanced for PBR materials
 const ambientLight = new THREE.AmbientLight(0xffffff, 0.4); // Reduced ambient for better contrast
