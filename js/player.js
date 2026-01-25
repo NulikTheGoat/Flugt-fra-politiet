@@ -391,6 +391,7 @@ export function createPlayerCar(color = 0xff0000, type = 'standard') {
         onFoot.position.set(0, 0, 0);
         scene.add(onFoot);
         playerCar = onFoot;
+        window.playerCar = playerCar; // Expose
         return onFoot;
     }
     if (resolvedType === 'bicycle') {
@@ -398,6 +399,7 @@ export function createPlayerCar(color = 0xff0000, type = 'standard') {
         bike.position.set(0, 0, 0);
         scene.add(bike);
         playerCar = bike;
+        window.playerCar = playerCar; // Expose
         return bike;
     }
     if (resolvedType === 'scooter' || resolvedType === 'scooter_electric') {
@@ -405,6 +407,7 @@ export function createPlayerCar(color = 0xff0000, type = 'standard') {
         scooter.position.set(0, 0, 0);
         scene.add(scooter);
         playerCar = scooter;
+        window.playerCar = playerCar; // Expose
         return scooter;
     }
 
@@ -600,6 +603,10 @@ export function createPlayerCar(color = 0xff0000, type = 'standard') {
     scene.add(carGroup);
     // Assign to exported variable
     playerCar = carGroup;
+    
+    // Expose for debugging/testing
+    window.playerCar = playerCar;
+    
     return carGroup;
 }
 
@@ -627,6 +634,7 @@ export function updateCarStats(key) {
     gameState.maxSpeed = car.maxSpeed;
     gameState.acceleration = car.acceleration;
     gameState.handling = car.handling;
+    gameState.grip = car.grip || 0.7; // Set grip from car stats
     updatePlayerCarColor(car.color);
 }
 
@@ -856,6 +864,32 @@ export function updatePlayer(delta, now) {
     // Keep wheel visuals based on raw steering input; only invert the effect on rotation.
     const steerInputForYaw = (gameState.speed < -0.5) ? -steerInput : steerInput;
     
+    // === TURNING SPEED PENALTY (CORNERING DRAG) ===
+    // Physics: Tires scrubbing against the road during a turn creates friction/drag.
+    // Spec factor: Higher handling = less speed loss, Higher grip = better traction in turns
+    const isHandbraking = keys[' '];
+    const carGrip = gameState.grip || 0.7; // Default grip if not set
+    
+    if (Math.abs(steerInput) > 0.05 && Math.abs(gameState.speed) > 2 && !isHandbraking) {
+        const turnIntensity = Math.abs(steerInput);
+        
+        // Handling efficiency: better handling = less drag
+        const handlingEfficiency = Math.max(0.01, handling) * 20; // 0.05->1, 0.1->2
+        
+        // Grip efficiency: better grip = less drag (0.5 grip -> 2x drag, 1.0 grip -> 1x drag)
+        const gripEfficiency = Math.max(0.3, carGrip);
+        
+        // Cornering drag - REDUCED for smoother turning feel
+        // Lower coefficient = less speed loss when turning
+        const rawDrag = (0.08 * turnIntensity * speedRatio) / (Math.sqrt(handlingEfficiency) * gripEfficiency);
+        const corneringDrag = Math.min(0.04, rawDrag); // Lower cap for gentler slowdown
+        
+        const dragFactor = Math.pow(1.0 - corneringDrag, delta);
+        gameState.speed *= dragFactor;
+        gameState.velocityX *= dragFactor;
+        gameState.velocityZ *= dragFactor;
+    }
+    
     // Acceleration with improved traction model
     if (keys['w'] || keys['arrowup']) {
         // Better traction at lower speeds due to weight transfer
@@ -878,7 +912,6 @@ export function updatePlayer(delta, now) {
     }
     
     // === IMPROVED DRIFT PHYSICS WITH SLIP ANGLE ===
-    const isHandbraking = keys[' '];
     if (isHandbraking) {
         gameState.speed *= Math.pow(gameState.brakePower, delta);
         // Drift factor increases faster when turning during handbrake
@@ -909,7 +942,13 @@ export function updatePlayer(delta, now) {
     const downforce = speedRatio > 0.5 ? (speedRatio - 0.5) * 0.3 : 0;
     const stabilityBonus = 1 + downforce;
     
-    const targetAngularVelocity = steerInputForYaw * steerStrength * (absSpeed / 20);
+    // === SPEED-BASED TURN RATE (Percentage of Max Speed) ===
+    // Turn rate varies smoothly based on what % of max speed you're at
+    // 0% speed = 80% turn rate, 100% speed = 10% turn rate
+    const speedPercent = Math.min(1.0, absSpeed / gameState.maxSpeed); // 0.0 to 1.0
+    const turnRateMultiplier = 0.8 - (speedPercent * 0.7); // Range: 0.8 down to 0.1
+    
+    const targetAngularVelocity = steerInputForYaw * steerStrength * turnRateMultiplier * 1.5;
     
     // Smoother steering response with stability
     const steerResponsiveness = 0.15 * stabilityBonus;
@@ -926,8 +965,15 @@ export function updatePlayer(delta, now) {
     const targetVelX = forwardX * gameState.speed;
     const targetVelZ = forwardZ * gameState.speed;
     
+    // === HIGH-SPEED GLIDE MECHANIC ===
+    // Lower grip cars slide/glide more at high speeds (arcade feel)
+    // carGrip: 0.5 (slippery) to 1.0 (sticky)
+    const glideIntensity = (1 - carGrip) * speedRatio * 0.3; // Max 15% glide at low grip, high speed
+    const effectiveGrip = grip * (1 - glideIntensity);
+    
     // Grip transition for drift feel with tire grip consideration
-    const velocityBlend = (0.15 + grip * 0.25) * stabilityBonus;
+    // Lower grip = slower velocity alignment = more glide/slide
+    const velocityBlend = (0.15 + effectiveGrip * 0.25) * stabilityBonus;
     gameState.velocityX += (targetVelX - gameState.velocityX) * velocityBlend * delta;
     gameState.velocityZ += (targetVelZ - gameState.velocityZ) * velocityBlend * delta;
     
@@ -936,7 +982,11 @@ export function updatePlayer(delta, now) {
     // This allows the car to reach max speed while accelerating, but slow down when coasting
     const isInputActive = (keys['w'] || keys['arrowup'] || keys['s'] || keys['arrowdown']);
     if (!isInputActive) {
-        gameState.speed *= Math.pow(gameState.friction, delta);
+        const frictionFactor = Math.pow(gameState.friction, delta);
+        gameState.speed *= frictionFactor;
+        // Fix: Apply friction to velocity vectors to prevent drifting maintaining speed indefinitely
+        gameState.velocityX *= frictionFactor;
+        gameState.velocityZ *= frictionFactor;
     } else {
         // High Speed Drag (Air Resistance)
         // Applies a gentle friction during acceleration to naturally cap speed
