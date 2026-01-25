@@ -34,7 +34,8 @@ export const cars = {
         color: 0xFFAA00,    // Orange (person)
         type: 'onfoot',
         scale: 0.4,
-        mass: 0.1
+        mass: 0.1,
+        grip: 1.0           // Perfect grip on foot
     },
     bicycle: {
         name: 'Cykel',
@@ -46,7 +47,8 @@ export const cars = {
         color: 0x32CD32,    // Lime green
         type: 'bicycle',
         scale: 0.6,
-        mass: 0.2
+        mass: 0.2,
+        grip: 0.9           // Good grip on bicycle
     },
     scooter_electric: {
         name: 'El-løbehjul',
@@ -58,7 +60,8 @@ export const cars = {
         color: 0x00CED1,    // Dark turquoise
         type: 'scooter_electric',
         scale: 0.5,
-        mass: 0.25
+        mass: 0.25,
+        grip: 0.75          // Small whe
     },
     scooter: {
         name: 'Knallert',
@@ -70,7 +73,8 @@ export const cars = {
         color: 0xFFD700,    // Gold
         type: 'scooter',
         scale: 0.7,
-        mass: 0.4
+        mass: 0.4,
+        grip: 0.7           // Moderate grip
     },
     
     // === BILER ===
@@ -82,7 +86,8 @@ export const cars = {
         handling: 0.05,
         health: 100,
         color: 0xff0000,
-        mass: 1.0
+        mass: 1.0,
+        grip: 0.7           // Basic tire grip
     },
     sport: {
         name: 'Sportsvogn',
@@ -92,7 +97,8 @@ export const cars = {
         handling: 0.07,
         health: 90,
         color: 0xffff00,
-        mass: 1.1
+        mass: 1.1,
+        grip: 0.85          // Sport tires = better grip
     },
     muscle: {
         name: 'Muscle Car',
@@ -102,7 +108,8 @@ export const cars = {
         handling: 0.04,
         health: 130,
         color: 0x0000ff,
-        mass: 1.4
+        mass: 1.4,
+        grip: 0.55          // Muscle cars slide more (classic feel)
     },
     super: {
         name: 'Superbil',
@@ -112,7 +119,8 @@ export const cars = {
         handling: 0.09,
         health: 100,        // Buffed from 70
         color: 0xff00ff,
-        mass: 1.2
+        mass: 1.2,
+        grip: 0.9           // Performance tires
     },
     hyper: {
         name: 'Hyperbil',
@@ -122,7 +130,8 @@ export const cars = {
         handling: 0.12,
         health: 120,        // Nerfed from 150
         color: 0x00ffff,
-        mass: 1.3
+        mass: 1.3,
+        grip: 0.95          // Racing slicks
     },
     tank: {
         name: 'Kampvogn',
@@ -135,7 +144,8 @@ export const cars = {
         type: 'tank',
         canRam: true,       // Can destroy police cars on impact
         reqRebirth: 0,
-        mass: 5.0
+        mass: 5.0,
+        grip: 0.6           // Tank treads = moderate grip
     },
     ufo: {
         name: 'UFO Prototype',
@@ -147,7 +157,8 @@ export const cars = {
         color: 0x999999,
         type: 'ufo',
         reqRebirth: 1,
-        mass: 0.8
+        mass: 0.8,
+        grip: 1.0           // Anti-gravity = perfect grip
     }
 };
 

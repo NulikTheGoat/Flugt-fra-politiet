@@ -519,9 +519,14 @@ export function updatePoliceAI(delta) {
         // Slow down before sharp turns (racing game technique)
         const corneringSpeedFactor = sharpTurn ? (0.6 - Math.abs(angleDiff) * 0.2) : 1.0;
         
-        // Faster turning at higher heat levels
-        const baseTurnSpeed = 0.06;
-        const turnSpeed = baseTurnSpeed * aggressionMultiplier * (sharpTurn ? 1.3 : 1.0);
+        // Slower turning - police are less agile than player
+        const baseTurnSpeed = 0.035; // Reduced from 0.06
+        
+        // Low speed turning boost - below 20 km/h police can turn much better
+        const policeDisplaySpeed = (policeCar.userData.currentSpeed || 0) * 0.016 * 3.6; // Rough km/h
+        const policeLowSpeedBoost = policeDisplaySpeed < 20 ? (1 + (20 - policeDisplaySpeed) / 15) : 1.0; // Up to 2.3x boost
+        
+        const turnSpeed = baseTurnSpeed * aggressionMultiplier * (sharpTurn ? 1.2 : 1.0) * policeLowSpeedBoost;
         policeCar.rotation.y += clamp(angleDiff, -turnSpeed, turnSpeed) * (delta || 1);
 
         // === DYNAMIC SPEED ADJUSTMENT ===
@@ -559,8 +564,44 @@ export function updatePoliceAI(delta) {
         
         const policeSpeed = policeCar.userData.currentSpeed;
         const policeMove = policeSpeed * 0.016 * (delta || 1);
-        policeCar.position.z += Math.cos(policeCar.rotation.y) * policeMove;
-        policeCar.position.x += Math.sin(policeCar.rotation.y) * policeMove;
+        
+        // === CORNERING PHYSICS FOR NPC ===
+        // Initialize velocity tracking for glide physics
+        if (policeCar.userData.velocityX === undefined) {
+            policeCar.userData.velocityX = 0;
+            policeCar.userData.velocityZ = 0;
+        }
+        
+        // Intended direction based on rotation
+        const intendedVX = Math.sin(policeCar.rotation.y) * policeMove;
+        const intendedVZ = Math.cos(policeCar.rotation.y) * policeMove;
+        
+        // Police car grip - lower than player cars so they slide more
+        const policeGrip = policeCar.userData.grip || 0.5; // Reduced from 0.75
+        const policeSpeedRatio = policeSpeed / 300; // Normalize to typical max speed
+        
+        // Cornering drag - turning at speed reduces velocity
+        const policeTurnIntensity = Math.abs(angleDiff);
+        if (policeTurnIntensity > 0.05 && policeSpeed > 50) {
+            const dragCoefficient = 0.18; // Increased from 0.12 - police brake harder in turns
+            const speedFactor = Math.min(policeSpeedRatio, 1.0);
+            const gripEfficiency = policeGrip * 0.8 + 0.2; // Grip reduces drag
+            const corneringDrag = dragCoefficient * speedFactor * policeTurnIntensity * (1.0 - gripEfficiency);
+            const dragAmount = Math.min(corneringDrag, 0.1); // Increased cap from 0.06
+            policeCar.userData.currentSpeed *= (1 - dragAmount);
+        }
+        
+        // Glide physics - police slide more at high speed
+        const glideIntensity = (1 - policeGrip) * policeSpeedRatio * 0.4; // Increased from 0.25
+        const effectiveGrip = policeGrip * (1 - glideIntensity);
+        
+        // Blend old velocity with new direction based on grip
+        policeCar.userData.velocityX = policeCar.userData.velocityX * (1 - effectiveGrip) + intendedVX * effectiveGrip;
+        policeCar.userData.velocityZ = policeCar.userData.velocityZ * (1 - effectiveGrip) + intendedVZ * effectiveGrip;
+        
+        // Apply movement with glide
+        policeCar.position.x += policeCar.userData.velocityX;
+        policeCar.position.z += policeCar.userData.velocityZ;
 
         // Police vs Building Collision
         const px = Math.floor(policeCar.position.x / gridSize);
