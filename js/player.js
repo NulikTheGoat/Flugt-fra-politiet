@@ -496,10 +496,11 @@ export function takeDamage(amount) {
     const mass = currentCar.mass || 1.0;
     
     // Standard car (mass 1.0) takes 100% damage
-    // Tank (mass 5.0) takes ~20% damage
-    // Bike (mass 0.2) takes ~500% damage (if hit by tank/bullet), but we cap it
+    // Tank (mass 5.0) takes ~20% damage -> too strong, make it 50%
     if (mass > 1.0) {
-        amount /= mass; // Tougher
+        // Nerf tank durability: instead of 1/mass, use a softer curve
+        // mass 5.0 -> was 0.2x, now sqrt(5) = 2.23 -> 0.44x damage
+        amount /= Math.sqrt(mass); 
     } else if (mass < 1.0) {
         // Lighter vehicles are fragile, but don't make them glass
         amount *= (1.0 + (1.0 - mass)); 

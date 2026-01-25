@@ -611,6 +611,9 @@ export function renderShop() {
         else if (owned) { actionText = 'VÆLG'; actionIcon = '→'; }
         else if (canAfford) { actionText = 'KØB'; actionIcon = '🛒'; }
         else { actionText = 'LÅST'; actionIcon = '🔒'; }
+
+        // Price display logic
+        const priceDisplay = owned ? "EJET" : `${car.price.toLocaleString()} kr`;
         
         // Category badge
         let categoryBadge = '';
@@ -743,7 +746,7 @@ export function renderShop() {
             </div>
 
             <div class="card-footer">
-                <span class="price-tag">${car.price > 0 ? car.price.toLocaleString() + ' kr' : 'GRATIS'}</span>
+                <span class="price-tag" style="color: ${owned ? '#88ff88' : (canAfford ? '#fff' : '#ff5555')};">${priceDisplay}</span>
                 <span class="action-indicator">${actionIcon} ${actionText}</span>
             </div>
         `;
