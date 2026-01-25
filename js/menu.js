@@ -313,4 +313,66 @@ export function initMenu({ startGame, cleanupGame }) {
             Network.startGame(hostConfig);
         });
     }
+
+    // === Keyboard Navigation ===
+    document.addEventListener('keydown', (e) => {
+        // Only handle if menus are visible (using offsetParent as lightweight visibility check)
+        const isGameModeVisible = gameModeModal && gameModeModal.offsetParent !== null;
+        const isGameOverVisible = DOM.gameOver && DOM.gameOver.offsetParent !== null;
+        
+        if (!isGameModeVisible && !isGameOverVisible) return;
+        
+        // Allowed keys
+        const keys = ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'w', 'a', 's', 'd', 'W', 'A', 'S', 'D'];
+        if (!keys.includes(e.key) && e.key !== 'Enter') return;
+        
+        let contextButtons = [];
+        
+        if (isGameModeVisible) {
+            // Select visible buttons in modal
+            contextButtons = Array.from(gameModeModal.querySelectorAll('button:not([disabled])'))
+                .filter(b => b.offsetParent !== null);
+        } else if (isGameOverVisible) {
+            // Select visible buttons in game over screen
+            contextButtons = Array.from(DOM.gameOver.querySelectorAll('button:not([disabled])'))
+                .filter(b => b.offsetParent !== null);
+        }
+        
+        if (contextButtons.length === 0) return;
+        
+        // Find currently focused or selected button
+        let currentIndex = contextButtons.findIndex(b => b === document.activeElement || b.classList.contains('keyboard-selected'));
+        
+        if (e.key === 'Enter') {
+            if (currentIndex >= 0 && currentIndex < contextButtons.length) {
+                // Simulate click
+                contextButtons[currentIndex].click(); 
+                // Don't remove class immediately as visual feedback might be needed, 
+                // but usually the menu closes or changes, so it's fine.
+                e.preventDefault();
+            }
+            return;
+        }
+        
+        // Navigation (Directional keys)
+        e.preventDefault(); // Prevent page scrolling
+        
+        // Clear previous visual selection
+        contextButtons.forEach(b => b.classList.remove('keyboard-selected'));
+        
+        if (currentIndex === -1) {
+            currentIndex = 0;
+        } else {
+            // Treat as a list (Up/Left = prev, Down/Right = next)
+            if (['ArrowDown', 'ArrowRight', 's', 'd', 'S', 'D'].includes(e.key)) {
+                currentIndex = (currentIndex + 1) % contextButtons.length;
+            } else {
+                currentIndex = (currentIndex - 1 + contextButtons.length) % contextButtons.length;
+            }
+        }
+        
+        const btn = contextButtons[currentIndex];
+        btn.focus(); // Set native focus
+        btn.classList.add('keyboard-selected'); // Add custom visual focus
+    });
 }

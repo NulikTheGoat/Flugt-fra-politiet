@@ -107,9 +107,10 @@ export function createPoliceCar(type = 'standard') {
             new THREE.PlaneGeometry(13.6, 1.6),
             new THREE.MeshBasicMaterial({ color: 0x00ff00, side: THREE.DoubleSide })
         );
-        hpBar.position.set(0, 25, 0.1); 
+        // Position relative to BG (always in front because BG looks at camera)
+        hpBar.position.set(0, 0, 0.2); 
         hpBar.name = 'hpBar';
-        carGroup.add(hpBar);
+        hpBg.add(hpBar);
     }
 
     scene.add(carGroup);
@@ -619,7 +620,7 @@ export function updatePoliceAI(delta) {
         const hpBar = policeCar.getObjectByName('hpBar');
         const hpBg = policeCar.getObjectByName('hpBg');
         if (hpBar && hpBg) {
-             hpBar.lookAt(camera.position);
+             // hpBar is child of hpBg, only need to rotate parent
              hpBg.lookAt(camera.position);
              
              const healthPct = Math.max(0, policeCar.userData.health / policeCar.userData.maxHealth);
