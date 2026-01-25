@@ -61,7 +61,7 @@ export const cars = {
         type: 'scooter_electric',
         scale: 0.5,
         mass: 0.25,
-        grip: 0.75          // Small wheels = less grip
+        grip: 0.75          // Small whe
     },
     scooter: {
         name: 'Knallert',
