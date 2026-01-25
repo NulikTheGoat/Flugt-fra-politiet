@@ -319,13 +319,21 @@ export function initMenu({ startGame, cleanupGame }) {
         // Toggle checks - checking style.display is safer than offsetParent for fixed position elements
         const isGameModeVisible = gameModeModal && gameModeModal.style.display === 'flex';
         const isGameOverVisible = DOM.gameOver && DOM.gameOver.style.display === 'block';
+        const isShopVisible = DOM.shop && DOM.shop.style.display === 'flex';
         
-        if (!isGameModeVisible && !isGameOverVisible) return;
+        if (!isGameModeVisible && !isGameOverVisible && !isShopVisible) return;
         
         // Allowed keys
         const keys = ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'w', 'a', 's', 'd', 'W', 'A', 'S', 'D'];
         if (!keys.includes(e.key) && e.key !== 'Enter') return;
+
+        // --- SHOP NAVIGATION LOGIC ---
+        if (isShopVisible) {
+            handleShopNavigation(e);
+            return;
+        }
         
+        // --- SIMPLE MENU NAVIGATION LOGIC (Game Mode & Game Over) ---
         let contextButtons = [];
         
         if (isGameModeVisible) {
@@ -375,4 +383,107 @@ export function initMenu({ startGame, cleanupGame }) {
         btn.focus(); // Set native focus
         btn.classList.add('keyboard-selected'); // Add custom visual focus
     });
+}
+
+function handleShopNavigation(e) {
+    const activeEl = document.activeElement;
+    
+    // Define sections
+    const tabs = Array.from(document.querySelectorAll('.shop-tab'));
+    const cards = Array.from(document.querySelectorAll('.carCard'));
+    const playBtn = document.getElementById('playBtn');
+    
+    // Determine current section
+    let currentSection = 'none';
+    let index = -1;
+    
+    if (tabs.includes(activeEl)) {
+        currentSection = 'tabs';
+        index = tabs.indexOf(activeEl);
+    } else if (cards.includes(activeEl) || cards.some(c => c.contains(activeEl))) {
+        currentSection = 'cards';
+        // Find which card is active or contains the active element
+        index = cards.findIndex(c => c === activeEl || c.contains(activeEl));
+    } else if (activeEl === playBtn) {
+        currentSection = 'play';
+    } else {
+        // Default start: Select first available card or first tab
+        if (cards.length > 0) {
+            cards[0].focus(); cards[0].classList.add('keyboard-selected');
+        } else {
+            tabs[0].focus(); tabs[0].classList.add('keyboard-selected');
+        }
+        return;
+    }
+    
+    // Handle Enter
+    if (e.key === 'Enter') {
+        if (currentSection === 'tabs') {
+            tabs[index].click();
+        } else if (currentSection === 'cards') {
+            cards[index].click();
+        } else if (currentSection === 'play') {
+            playBtn.click();
+        }
+        return;
+    }
+    
+    e.preventDefault();
+    
+    // Helper to focus
+    const focus = (el) => {
+        // Remove old highlights
+        document.querySelectorAll('.keyboard-selected').forEach(el => el.classList.remove('keyboard-selected'));
+        el.focus();
+        el.classList.add('keyboard-selected');
+        // Scroll into view if needed
+        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    };
+
+    const isRight = ['ArrowRight', 'd', 'D'].includes(e.key);
+    const isLeft = ['ArrowLeft', 'a', 'A'].includes(e.key);
+    const isDown = ['ArrowDown', 's', 'S'].includes(e.key);
+    const isUp = ['ArrowUp', 'w', 'W'].includes(e.key);
+
+    if (currentSection === 'tabs') {
+        if (isRight) focus(tabs[(index + 1) % tabs.length]);
+        if (isLeft) focus(tabs[(index - 1 + tabs.length) % tabs.length]);
+        if (isDown) {
+            // Move to first card if exists, else play button
+            if (cards.length > 0) focus(cards[0]);
+            else if (playBtn) focus(playBtn);
+        }
+    } else if (currentSection === 'cards') {
+        // Grid navigation logic (assuming ~3 cards per row)
+        const cardsPerRow = window.innerWidth > 1200 ? 4 : (window.innerWidth > 900 ? 3 : (window.innerWidth > 600 ? 2 : 1));
+        
+        if (isRight) {
+            if (index < cards.length - 1) focus(cards[index + 1]);
+        }
+        if (isLeft) {
+            if (index > 0) focus(cards[index - 1]);
+        }
+        if (isDown) {
+             if (index + cardsPerRow < cards.length) {
+                 focus(cards[index + cardsPerRow]);
+             } else {
+                 // Bottom of grid -> Play Button
+                 focus(playBtn);
+             }
+        }
+        if (isUp) {
+            if (index - cardsPerRow >= 0) {
+                 focus(cards[index - cardsPerRow]);
+            } else {
+                // Top of grid -> Tabs (closest one)
+                const tabIndex = Math.min(Math.floor((index / cardsPerRow) * tabs.length), tabs.length - 1);
+                focus(tabs[0]); // Just go to first tab for simplicity
+            }
+        }
+    } else if (currentSection === 'play') {
+        if (isUp) {
+            if (cards.length > 0) focus(cards[cards.length - 1]);
+            else focus(tabs[0]);
+        }
+    }
 }
