@@ -1,4 +1,4 @@
-import { gameState } from './state.js';
+import { gameState, saveProgress } from './state.js';
 import { generateVerdict, generateNewspaper } from './commentary.js';
 import { gameConfig } from './config.js';
 import { clamp, darkenColor } from './utils.js';
@@ -471,7 +471,7 @@ export function goToShop(isMultiplayerRespawn = false) {
         gameState.totalMoney += gameState.money;
         gameState.money = 0; // Prevent double counting
         
-        // Save logic should ideally happen here or periodically, but we'll rely on existing save flows
+        saveProgress();
     }
     
     DOM.shop.style.display = 'flex';
@@ -776,6 +776,8 @@ export function renderShop() {
                     if (!gameState.ownedCars) gameState.ownedCars = {};
                     gameState.ownedCars[key] = true;
                     gameState.selectedCar = key;
+                    
+                    saveProgress();
                     updateCarStats(key);
                     renderShop();
                     
@@ -798,6 +800,8 @@ function performRebirth() {
     gameState.ownedCars = {};   // Ingen gratis biler
     gameState.selectedCar = 'onfoot'; // Start på fods
     
+    saveProgress();
+
     // Reset Game State but keep Rebirth Points
     if (startGameCallback) startGameCallback();
     
