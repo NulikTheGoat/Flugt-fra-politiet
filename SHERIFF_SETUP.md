@@ -43,6 +43,7 @@ Every 8-10 seconds, the Sheriff will:
 2. Generate a tactical command using AI
 3. Display it in the police scanner (gold text)
 4. All police cars adjust their behavior accordingly
+5. [x] ~~If it takes time to arrest the player, AI Sheriff can spawn reinforcements~~ **IMPLEMENTED**: Sheriff can issue `REINFORCE` command via `/api/spawn-reinforcements` endpoint. Player is notified via police scanner message "FORSTÆRKNING: X enheder på vej!" 
 
 Example commands:
 - "CHASE: Alle enheder, maksimal hastighed - grib mistænkten!"

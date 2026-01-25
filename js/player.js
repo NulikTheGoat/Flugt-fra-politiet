@@ -189,9 +189,9 @@ function createBicycleModel(color, kind = 'bicycle') {
     return group;
 }
 
-function createScooterModel(color) {
+function createScooterModel(color, variant = 'scooter') {
     const group = new THREE.Group();
-    group.userData.visualType = 'scooter';
+    group.userData.visualType = variant;
     group.userData.allowTilt = false;
     group.userData.suspensionEnabled = false;
     group.userData.enableTireMarks = false;
@@ -199,6 +199,8 @@ function createScooterModel(color) {
     const deckMat = new THREE.MeshLambertMaterial({ color });
     const metalMat = new THREE.MeshLambertMaterial({ color: 0x7f8c8d });
     const rubberMat = new THREE.MeshLambertMaterial({ color: 0x111111 });
+    const trimMat = new THREE.MeshLambertMaterial({ color: 0xd9d9d9 });
+    const lightMat = new THREE.MeshBasicMaterial({ color: 0xfff3c4 });
 
     const wheelGeo = new THREE.CylinderGeometry(4.2, 4.2, 1.4, 16);
     const frontWheel = new THREE.Mesh(wheelGeo, rubberMat);
@@ -213,28 +215,119 @@ function createScooterModel(color) {
     backWheel.castShadow = true;
     group.add(backWheel);
 
-    const deck = new THREE.Mesh(new THREE.BoxGeometry(4.8, 1.2, 22), deckMat);
-    deck.position.set(0, 5.5, 0);
-    deck.castShadow = true;
-    deck.receiveShadow = true;
-    deck.name = 'carBody';
-    group.add(deck);
+    let handlebar = null;
 
-    const stem = new THREE.Mesh(new THREE.CylinderGeometry(0.6, 0.6, 16, 10), metalMat);
-    stem.position.set(0, 13, 9);
-    stem.castShadow = true;
-    group.add(stem);
+    if (variant === 'scooter_electric') {
+        // Kick-scooter style
+        const deck = new THREE.Mesh(new THREE.BoxGeometry(5.2, 1.0, 20), deckMat);
+        deck.position.set(0, 5.2, 0);
+        deck.castShadow = true;
+        deck.receiveShadow = true;
+        deck.name = 'carBody';
+        group.add(deck);
 
-    const handlebar = new THREE.Mesh(new THREE.BoxGeometry(10, 0.7, 1.2), metalMat);
-    handlebar.position.set(0, 21, 9);
-    handlebar.castShadow = true;
-    handlebar.name = 'handlebar';
-    group.add(handlebar);
+        const frontFork = new THREE.Mesh(new THREE.CylinderGeometry(0.6, 0.7, 10, 10), metalMat);
+        frontFork.position.set(0, 10, 10);
+        frontFork.castShadow = true;
+        group.add(frontFork);
 
-    const rider = createOnFootModel(0x1d3557);
-    rider.scale.set(0.72, 0.72, 0.72);
-    rider.position.set(0, 3, -1);
-    group.add(rider);
+        const stem = new THREE.Mesh(new THREE.CylinderGeometry(0.7, 0.8, 12, 10), metalMat);
+        stem.position.set(0, 16, 10);
+        stem.castShadow = true;
+        group.add(stem);
+
+        handlebar = new THREE.Mesh(new THREE.BoxGeometry(12, 0.7, 1.2), metalMat);
+        handlebar.position.set(0, 20.5, 10);
+        handlebar.castShadow = true;
+        handlebar.name = 'handlebar';
+        group.add(handlebar);
+
+        const frontCover = new THREE.Mesh(new THREE.BoxGeometry(4.5, 8, 2.2), deckMat);
+        frontCover.position.set(0, 10, 12);
+        frontCover.castShadow = true;
+        group.add(frontCover);
+
+        const headlight = new THREE.Mesh(new THREE.SphereGeometry(1.1, 10, 10), lightMat);
+        headlight.position.set(0, 13.5, 13.5);
+        group.add(headlight);
+
+        const rearFender = new THREE.Mesh(new THREE.BoxGeometry(6, 1.2, 6), deckMat);
+        rearFender.position.set(0, 7.8, -12);
+        rearFender.castShadow = true;
+        group.add(rearFender);
+
+        const rider = createOnFootModel(0x1d3557);
+        rider.scale.set(0.72, 0.72, 0.72);
+        rider.position.set(0, 4, -1);
+        rider.rotation.x = -0.12;
+        group.add(rider);
+
+        const walkParts = rider.userData.walkParts || {};
+        group.userData.rider = rider;
+        group.userData.kick = { active: false, startTime: 0, duration: 520 };
+        group.userData.kickParts = {
+            leg: walkParts.rightLeg,
+            foot: walkParts.rightShoe,
+            body: rider
+        };
+        group.userData.kickBase = {
+            legRotX: walkParts.rightLeg?.rotation.x || 0,
+            legRotZ: walkParts.rightLeg?.rotation.z || 0,
+            legPosZ: walkParts.rightLeg?.position.z || 0,
+            footRotX: walkParts.rightShoe?.rotation.x || 0,
+            footPosZ: walkParts.rightShoe?.position.z || 0,
+            bodyRotX: rider.rotation.x || 0,
+            bodyPosZ: rider.position.z || 0
+        };
+    } else {
+        // Vespa-style body shell
+        const body = new THREE.Mesh(new THREE.BoxGeometry(8.5, 7, 22), deckMat);
+        body.position.set(0, 8.5, -2);
+        body.castShadow = true;
+        body.receiveShadow = true;
+        body.name = 'carBody';
+        group.add(body);
+
+        const frontShield = new THREE.Mesh(new THREE.BoxGeometry(6.5, 10, 6), deckMat);
+        frontShield.position.set(0, 10.5, 8);
+        frontShield.castShadow = true;
+        group.add(frontShield);
+
+        const floorboard = new THREE.Mesh(new THREE.BoxGeometry(6.8, 1.2, 14), deckMat);
+        floorboard.position.set(0, 5.5, -1);
+        floorboard.castShadow = true;
+        floorboard.receiveShadow = true;
+        group.add(floorboard);
+
+        const seat = new THREE.Mesh(new THREE.BoxGeometry(6.5, 2.2, 8), trimMat);
+        seat.position.set(0, 13.5, -7);
+        seat.castShadow = true;
+        group.add(seat);
+
+        const stem = new THREE.Mesh(new THREE.CylinderGeometry(0.8, 0.9, 8, 10), metalMat);
+        stem.position.set(0, 14.5, 10);
+        stem.castShadow = true;
+        group.add(stem);
+
+        handlebar = new THREE.Mesh(new THREE.BoxGeometry(10, 0.8, 1.6), metalMat);
+        handlebar.position.set(0, 17.5, 10);
+        handlebar.castShadow = true;
+        handlebar.name = 'handlebar';
+        group.add(handlebar);
+
+        const headlight = new THREE.Mesh(new THREE.SphereGeometry(1.2, 10, 10), lightMat);
+        headlight.position.set(0, 16.5, 12.5);
+        group.add(headlight);
+
+        const tailLight = new THREE.Mesh(new THREE.BoxGeometry(1.6, 1, 0.6), new THREE.MeshBasicMaterial({ color: 0xff3333 }));
+        tailLight.position.set(0, 12, -13.5);
+        group.add(tailLight);
+
+        const rider = createOnFootModel(0x1d3557);
+        rider.scale.set(0.72, 0.72, 0.72);
+        rider.position.set(0, 3, -1);
+        group.add(rider);
+    }
 
     group.userData.rollingWheels = [frontWheel, backWheel];
     group.userData.steerWheels = [frontWheel];
@@ -260,8 +353,8 @@ export function createPlayerCar(color = 0xff0000, type = 'standard') {
         playerCar = bike;
         return bike;
     }
-    if (resolvedType === 'scooter') {
-        const scooter = createScooterModel(color);
+    if (resolvedType === 'scooter' || resolvedType === 'scooter_electric') {
+        const scooter = createScooterModel(color, resolvedType);
         scooter.position.set(0, 0, 0);
         scene.add(scooter);
         playerCar = scooter;
@@ -519,6 +612,53 @@ export function takeDamage(amount) {
     }
 }
 
+function applyKickScooterAnimation(target, now, wantsForward) {
+    const kick = target.userData.kick;
+    const parts = target.userData.kickParts;
+    const base = target.userData.kickBase;
+    if (!kick || !parts || !base) return;
+
+    if (!kick.active && wantsForward && Math.abs(gameState.speed) < 0.05) {
+        kick.active = true;
+        kick.startTime = now;
+    }
+
+    if (!kick.active) return;
+
+    const t = (now - kick.startTime) / kick.duration;
+    if (t >= 1) {
+        kick.active = false;
+        if (parts.leg) {
+            parts.leg.rotation.x = base.legRotX;
+            parts.leg.rotation.z = base.legRotZ;
+            parts.leg.position.z = base.legPosZ;
+        }
+        if (parts.foot) {
+            parts.foot.rotation.x = base.footRotX;
+            parts.foot.position.z = base.footPosZ;
+        }
+        if (parts.body) {
+            parts.body.rotation.x = base.bodyRotX;
+            parts.body.position.z = base.bodyPosZ;
+        }
+        return;
+    }
+
+    const swing = Math.sin(t * Math.PI);
+    if (parts.leg) {
+        parts.leg.rotation.x = base.legRotX + swing * 0.9;
+        parts.leg.position.z = base.legPosZ - swing * 2.2;
+    }
+    if (parts.foot) {
+        parts.foot.rotation.x = base.footRotX - swing * 0.5;
+        parts.foot.position.z = base.footPosZ - swing * 3.0;
+    }
+    if (parts.body) {
+        parts.body.rotation.x = base.bodyRotX - swing * 0.08;
+        parts.body.position.z = base.bodyPosZ - swing * 1.2;
+    }
+}
+
 // Main update loop for player logic (Physics, controls)
 // Enhanced with industry-standard car physics simulation
 export function updatePlayer(delta, now) {
@@ -619,6 +759,11 @@ export function updatePlayer(delta, now) {
         playerCar.position.x = Math.max(-boundary, Math.min(boundary, playerCar.position.x));
         playerCar.position.z = Math.max(-boundary, Math.min(boundary, playerCar.position.z));
         return;
+    }
+
+    if (visualType === 'scooter_electric') {
+        const wantsForward = keys['w'] || keys['arrowup'];
+        applyKickScooterAnimation(playerCar, now, wantsForward);
     }
 
     // Calculate max speed penalty based on health (softer curve)

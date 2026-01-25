@@ -9,7 +9,8 @@ export const SHERIFF_COMMANDS = {
     SURROUND: 'SURROUND',   // Encircle target
     SPREAD: 'SPREAD',       // Spread out formation
     RETREAT: 'RETREAT',     // Fall back and regroup
-    INTERCEPT: 'INTERCEPT'  // Cut off target's path
+    INTERCEPT: 'INTERCEPT', // Cut off target's path
+    REINFORCE: 'REINFORCE'  // Call for backup units
 };
 
 // Configuration constants
@@ -25,7 +26,11 @@ export const sheriffState = {
     llmRequestCooldown: 8000, // 8 seconds between LLM requests
     awaitingLLMResponse: false,
     commandHistory: [],
-    maxHistorySize: 5
+    maxHistorySize: 5,
+    lastReinforcementTime: 0,
+    reinforcementCooldown: 30000, // 30 seconds between reinforcement calls
+    totalReinforcementsCalled: 0,
+    maxReinforcementsPerChase: 3 // Limit reinforcements to prevent spam
 };
 
 export const SheriffAI = {
@@ -175,6 +180,13 @@ export async function requestSheriffCommand(playerCar, policeCount) {
             else if (commandText.includes('SPREAD')) commandType = SHERIFF_COMMANDS.SPREAD;
             else if (commandText.includes('RETREAT')) commandType = SHERIFF_COMMANDS.RETREAT;
             else if (commandText.includes('INTERCEPT')) commandType = SHERIFF_COMMANDS.INTERCEPT;
+            else if (commandText.includes('REINFORCE') || commandText.includes('BACKUP') || commandText.includes('FORSTÆRKNING')) {
+                commandType = SHERIFF_COMMANDS.REINFORCE;
+                // Automatically request reinforcements when this command is issued
+                requestReinforcements(4, 'mixed').catch(err => {
+                    console.warn('[Sheriff] Failed to spawn reinforcements:', err);
+                });
+            }
             
             const command = {
                 type: commandType,
@@ -205,6 +217,91 @@ export async function requestSheriffCommand(playerCar, policeCount) {
     }
     
     return null;
+}
+
+/**
+ * Request reinforcements from the server - spawns additional police units
+ * @param {number} count - Number of units to spawn (1-6)
+ * @param {string} type - Type of units: 'standard', 'interceptor', 'swat', 'military', or 'mixed'
+ * @returns {Promise<Object|null>} Result object or null if unavailable
+ */
+export async function requestReinforcements(count = 4, type = 'mixed') {
+    const now = Date.now();
+    
+    // Check cooldown
+    if (now - sheriffState.lastReinforcementTime < sheriffState.reinforcementCooldown) {
+        const remaining = Math.ceil((sheriffState.reinforcementCooldown - (now - sheriffState.lastReinforcementTime)) / 1000);
+        console.log(`[Sheriff] Reinforcement cooldown active. ${remaining}s remaining.`);
+        return null;
+    }
+    
+    // Check max reinforcements per chase
+    if (sheriffState.totalReinforcementsCalled >= sheriffState.maxReinforcementsPerChase) {
+        console.log('[Sheriff] Maximum reinforcements already called this chase.');
+        return null;
+    }
+    
+    try {
+        const response = await fetch('/api/spawn-reinforcements', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                count: Math.min(Math.max(1, count), 6), // Clamp between 1-6
+                type: type,
+                heatLevel: gameState.heatLevel || 1
+            })
+        });
+        
+        if (!response.ok) {
+            console.warn('[Sheriff] Reinforcement request failed:', response.status);
+            return null;
+        }
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            sheriffState.lastReinforcementTime = now;
+            sheriffState.totalReinforcementsCalled++;
+            
+            console.log(`[Sheriff] Reinforcements inbound: ${data.spawned} units of type "${data.types.join(', ')}"`);
+            
+            // Display reinforcement message in UI
+            displaySheriffCommand(`FORSTÆRKNING: ${data.spawned} enheder på vej!`);
+            
+            // Trigger the actual spawning client-side
+            if (window.spawnReinforcementUnits) {
+                window.spawnReinforcementUnits(data.spawned, data.types);
+            }
+            
+            return data;
+        }
+        
+    } catch (error) {
+        console.error('[Sheriff] Error requesting reinforcements:', error);
+    }
+    
+    return null;
+}
+
+/**
+ * Reset Sheriff state (call when game restarts)
+ */
+export function resetSheriffState() {
+    sheriffState.currentCommand = null;
+    sheriffState.lastCommandTime = 0;
+    sheriffState.lastLLMRequestTime = 0;
+    sheriffState.awaitingLLMResponse = false;
+    sheriffState.commandHistory = [];
+    sheriffState.lastReinforcementTime = 0;
+    sheriffState.totalReinforcementsCalled = 0;
+}
+
+// Expose for testing
+if (typeof window !== 'undefined') {
+    window.sheriffState = sheriffState;
+    window.requestReinforcements = requestReinforcements;
+    window.resetSheriffState = resetSheriffState;
+    window.SHERIFF_COMMANDS = SHERIFF_COMMANDS;
 }
 
 /**
@@ -279,6 +376,11 @@ export function applySheriffCommand(commandType, policeCar, playerCar) {
                 overrideDirection: toPredicted,
                 behavior: 'intercepting' 
             };
+            
+        case SHERIFF_COMMANDS.REINFORCE:
+            // Reinforcements called - existing units hold position and wait for backup
+            // More aggressive once reinforcements arrive
+            return { speedMultiplier: 1.1, behavior: 'reinforcing' };
             
         default:
             return {};

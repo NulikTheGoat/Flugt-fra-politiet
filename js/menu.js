@@ -28,6 +28,7 @@ const gameModeModal = document.getElementById('gameModeModal');
 const soloModeBtn = document.getElementById('soloModeBtn');
 const multiplayerModeBtn = document.getElementById('multiplayerModeBtn');
 const menuShopBtn = document.getElementById('menuShopBtn');
+const resetProgressBtn = document.getElementById('resetProgressBtn');
 
 // Server Discovery Elements
 const serverDiscovery = document.getElementById('serverDiscovery');
@@ -135,6 +136,19 @@ export function initMenu({ startGame, cleanupGame }) {
         menuShopBtn.addEventListener('click', () => {
             if(gameModeModal) gameModeModal.style.display = 'none';
             goToShop(false); // Not multiplayer respawn mode
+        });
+    }
+
+    // Reset Progress Button
+    if (resetProgressBtn) {
+        resetProgressBtn.addEventListener('click', () => {
+            if (confirm("⚠️ ER DU SIKKER?\n\nDette vil SLETTE al din fremgang:\n- Alle tjente penge\n- Alle købte biler\n- Alle highscores\n\nDu kan ikke fortryde dette!")) {
+                localStorage.removeItem('flugt_progress');
+                localStorage.removeItem('flugt_highscores');
+                // Also clear sessionStorage just in case
+                sessionStorage.clear();
+                location.reload();
+            }
         });
     }
 

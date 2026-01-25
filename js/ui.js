@@ -98,7 +98,7 @@ function updateHighScoreDisplay() {
         container.style.cssText = `
             position: fixed;
             bottom: 20px;
-            right: 20px;
+            left: 20px;
             background: rgba(0, 0, 0, 0.7);
             color: #fff;
             padding: 10px 15px;
@@ -414,6 +414,14 @@ export function showGameOver(customMessage) {
     // Animated counting for stats
     const finalTime = Math.round(gameState.elapsedTime);
     const finalMoney = gameState.money;
+    
+    // Bank the money immediately so it's available in Shop and persisted
+    if (finalMoney > 0) {
+        gameState.totalMoney = (gameState.totalMoney || 0) + finalMoney;
+        gameState.money = 0; // Reset run money so we don't double count
+        saveProgress();
+    }
+    
     const finalKilled = gameState.policeKilled || 0;
     const finalHeat = gameState.heatLevel;
     
@@ -659,6 +667,26 @@ export function renderShop() {
                     </div>
                 `;
             }
+            if (vehicleType === 'scooter_electric') {
+                return `
+                    <div class="car-preview-box preview-scooter-electric">
+                        <div class="floor-grid"></div>
+                        <div class="vehicle-model vehicle-scooter-electric" style="--accent:${colorHex};">
+                            <div class="kick-wheel left"></div>
+                            <div class="kick-wheel right"></div>
+                            <div class="kick-deck"></div>
+                            <div class="kick-stem"></div>
+                            <div class="kick-handle"></div>
+                            <div class="kick-front"></div>
+                            <div class="kick-rider-head"></div>
+                            <div class="kick-rider-body"></div>
+                            <div class="kick-rider-leg front"></div>
+                            <div class="kick-rider-leg back"></div>
+                            <div class="kick-rider-arm"></div>
+                        </div>
+                    </div>
+                `;
+            }
             if (vehicleType === 'scooter') {
                 return `
                     <div class="car-preview-box preview-scooter">
@@ -666,9 +694,14 @@ export function renderShop() {
                         <div class="vehicle-model vehicle-scooter" style="--accent:${colorHex};">
                             <div class="scooter-wheel left"></div>
                             <div class="scooter-wheel right"></div>
-                            <div class="scooter-deck"></div>
+                            <div class="scooter-body"></div>
+                            <div class="scooter-front"></div>
+                            <div class="scooter-seat"></div>
+                            <div class="scooter-floor"></div>
                             <div class="scooter-stem"></div>
                             <div class="scooter-handle"></div>
+                            <div class="scooter-headlight"></div>
+                            <div class="scooter-taillight"></div>
                         </div>
                     </div>
                 `;

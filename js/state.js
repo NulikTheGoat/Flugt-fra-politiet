@@ -47,8 +47,8 @@
  *
  * @property {number} health
  * @property {number} money
+ * @property {number} totalMoney - Total lifetime money earned (persistent, for shop purchases)
  * @property {number} rebirthPoints
- * @property {number} totalMoney
  * @property {string} selectedCar
  * @property {number} arrestDistance
  * @property {boolean} arrested

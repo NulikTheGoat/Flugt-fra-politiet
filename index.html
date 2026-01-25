@@ -1153,34 +1153,166 @@
             background: #a0a0a0;
         }
 
-        .vehicle-scooter .scooter-wheel.left { left: 14px; }
-        .vehicle-scooter .scooter-wheel.right { right: 14px; }
-        .vehicle-scooter .scooter-deck {
+        .vehicle-scooter-electric .kick-wheel {
+            position: absolute;
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            background: radial-gradient(circle at 30% 30%, #444, #111);
+            border: 2px solid #222;
+            top: 34px;
+        }
+        .vehicle-scooter-electric .kick-wheel.left { left: 12px; }
+        .vehicle-scooter-electric .kick-wheel.right { right: 12px; }
+        .vehicle-scooter-electric .kick-deck {
             position: absolute;
             left: 18px;
-            top: 30px;
+            top: 36px;
             width: 54px;
-            height: 7px;
+            height: 5px;
             border-radius: 6px;
             background: linear-gradient(135deg, var(--accent), #1a1a22);
         }
-        .vehicle-scooter .scooter-stem {
+        .vehicle-scooter-electric .kick-stem {
             position: absolute;
-            right: 26px;
-            top: 8px;
+            right: 22px;
+            top: 10px;
             width: 5px;
             height: 26px;
             border-radius: 4px;
             background: #8a8a8a;
         }
-        .vehicle-scooter .scooter-handle {
+        .vehicle-scooter-electric .kick-handle {
+            position: absolute;
+            right: 16px;
+            top: 8px;
+            width: 18px;
+            height: 4px;
+            border-radius: 4px;
+            background: #8a8a8a;
+        }
+        .vehicle-scooter-electric .kick-front {
             position: absolute;
             right: 18px;
+            top: 18px;
+            width: 12px;
+            height: 18px;
+            border-radius: 8px;
+            background: linear-gradient(135deg, var(--accent), #0f151b);
+        }
+        .vehicle-scooter-electric .kick-rider-head {
+            position: absolute;
+            left: 30px;
             top: 6px;
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: #f2f2f2;
+        }
+        .vehicle-scooter-electric .kick-rider-body {
+            position: absolute;
+            left: 28px;
+            top: 16px;
+            width: 14px;
+            height: 16px;
+            border-radius: 6px;
+            background: var(--accent);
+        }
+        .vehicle-scooter-electric .kick-rider-leg {
+            position: absolute;
+            width: 6px;
+            height: 14px;
+            border-radius: 4px;
+            background: var(--accent);
+            top: 30px;
+        }
+        .vehicle-scooter-electric .kick-rider-leg.front { left: 30px; transform: rotate(10deg); }
+        .vehicle-scooter-electric .kick-rider-leg.back { left: 38px; transform: rotate(-18deg); }
+        .vehicle-scooter-electric .kick-rider-arm {
+            position: absolute;
+            left: 34px;
+            top: 18px;
+            width: 16px;
+            height: 4px;
+            border-radius: 4px;
+            background: #8a8a8a;
+            transform: rotate(-12deg);
+        }
+
+        .vehicle-scooter .scooter-wheel.left { left: 14px; }
+        .vehicle-scooter .scooter-wheel.right { right: 14px; }
+        .vehicle-scooter .scooter-body {
+            position: absolute;
+            left: 18px;
+            top: 20px;
+            width: 54px;
+            height: 24px;
+            border-radius: 12px 14px 12px 10px;
+            background: linear-gradient(135deg, var(--accent), #1a1a22);
+        }
+        .vehicle-scooter .scooter-front {
+            position: absolute;
+            right: 20px;
+            top: 12px;
+            width: 26px;
+            height: 32px;
+            border-radius: 12px 12px 10px 10px;
+            background: linear-gradient(135deg, var(--accent), #0f151b);
+        }
+        .vehicle-scooter .scooter-seat {
+            position: absolute;
+            left: 22px;
+            top: 14px;
+            width: 34px;
+            height: 10px;
+            border-radius: 6px 10px 4px 4px;
+            background: #d9d9d9;
+        }
+        .vehicle-scooter .scooter-floor {
+            position: absolute;
+            left: 22px;
+            top: 34px;
+            width: 44px;
+            height: 6px;
+            border-radius: 6px;
+            background: linear-gradient(135deg, var(--accent), #1a1a22);
+        }
+        .vehicle-scooter .scooter-stem {
+            position: absolute;
+            right: 30px;
+            top: 12px;
+            width: 6px;
+            height: 14px;
+            border-radius: 4px;
+            background: #8a8a8a;
+        }
+        .vehicle-scooter .scooter-handle {
+            position: absolute;
+            right: 22px;
+            top: 14px;
             width: 22px;
             height: 4px;
             border-radius: 4px;
             background: #8a8a8a;
+        }
+        .vehicle-scooter .scooter-headlight {
+            position: absolute;
+            right: 16px;
+            top: 16px;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #fff3c4;
+            box-shadow: 0 0 6px rgba(255, 243, 196, 0.8);
+        }
+        .vehicle-scooter .scooter-taillight {
+            position: absolute;
+            left: 12px;
+            top: 26px;
+            width: 6px;
+            height: 4px;
+            border-radius: 2px;
+            background: #ff3333;
         }
 
         .vehicle-tank .tank-body {
@@ -1756,6 +1888,10 @@
                 <button id="menuShopBtn" class="gamemode-btn" style="background: linear-gradient(135deg, #ff9900, #ff6600);">
                     <span class="icon">🛒</span> SHOP
                     <span style="font-size: 11px; display: block; opacity: 0.8; margin-top: 3px;">Køb og vælg biler</span>
+                </button>
+                <button id="resetProgressBtn" class="gamemode-btn" style="background: linear-gradient(135deg, #cc0000, #990000); margin-top: 15px;">
+                    <span class="icon">⚠️</span> NULSTIL PROGRES
+                    <span style="font-size: 11px; display: block; opacity: 0.8; margin-top: 3px;">Starter forfra (penge og biler)</span>
                 </button>
             </div>
         </div>

@@ -33,12 +33,12 @@
  * - commentary.js: AI commentary
  */
 
-import { gameState, keys } from './state.js';
+import { gameState, keys, saveProgress } from './state.js';
 import { gameConfig } from './config.js';
 import { scene, camera, renderer } from './core.js';
 import { cars } from './constants.js';
 import { createPlayerCar, rebuildPlayerCar, updatePlayer, playerCar, setUICallbacks, createOtherPlayerCar, updateOtherPlayerCar, removeOtherPlayerCar } from './player.js';
-import { spawnPoliceCar, updatePoliceAI, updateProjectiles, firePlayerProjectile, syncPoliceFromNetwork, getPoliceStateForNetwork, resetPoliceNetworkIds } from './police.js';
+import { spawnPoliceCar, updatePoliceAI, updateProjectiles, firePlayerProjectile, syncPoliceFromNetwork, getPoliceStateForNetwork, resetPoliceNetworkIds, createPoliceCar } from './police.js';
 import { createGround, createTrees, createBuildings, updateBuildingChunks, updateCollectibles, cleanupSmallDebris, createSky, createDistantCityscape, createHotdogStands } from './world.js';
 import { updateHUD, updateHealthUI, DOM, goToShop, showGameOver, setStartGameCallback, triggerDamageEffect, setMultiplayerShopCallback } from './ui.js';
 import { updateSpeedEffects, updateSparks, updateTireMarks } from './particles.js';
@@ -47,10 +47,35 @@ import { updateCommentary, resetCommentary, logEvent, EVENTS } from './commentar
 import { initLevelEditor, openLevelEditor } from './levelEditor.js';
 import { exposeDevtools } from './devtools.js';
 import { initMenu } from './menu.js';
+import { resetSheriffState } from './sheriff.js';
 
 // Expose gameState globally for debugging and testing
 window.gameState = gameState;
 window.cars = cars;
+
+// Expose reinforcement spawning function for Sheriff AI
+window.spawnReinforcementUnits = function(count, types) {
+    if (!playerCar) return;
+    
+    console.log(`[Reinforcements] Spawning ${count} units: ${types.join(', ')}`);
+    
+    types.forEach((type, index) => {
+        // Stagger spawns slightly to avoid overlap
+        setTimeout(() => {
+            const policeCar = createPoliceCar(type);
+            
+            // Spawn from edges/behind player for dramatic effect
+            const angle = (Math.PI * 2 / count) * index + Math.random() * 0.5;
+            const distance = 800 + Math.random() * 400; // Spawn further away
+            
+            policeCar.position.x = playerCar.position.x + Math.sin(angle) * distance;
+            policeCar.position.z = playerCar.position.z + Math.cos(angle) * distance;
+            
+            gameState.policeCars.push(policeCar);
+            console.log(`[Reinforcements] Unit ${index + 1}/${count} (${type}) spawned at distance ${Math.round(distance)}`);
+        }, index * 200); // 200ms delay between spawns
+    });
+};
 
 
 // === Initialization ===
@@ -430,6 +455,13 @@ function clearSceneList(list) {
  * Keep this small and deterministic because tests depend on it.
  */
 function resetRunState(opts = {}) {
+    // Bank accumulated money to totalMoney before resetting run
+    if (gameState.money > 0) {
+        gameState.totalMoney = (gameState.totalMoney || 0) + gameState.money;
+        // Save the updated total immediately
+        saveProgress();
+    }
+
     gameState.speed = 0;
     gameState.money = 0;
     gameState.heatLevel = 1;
@@ -458,6 +490,9 @@ function resetRunState(opts = {}) {
     gameState.arrestCountdown = 0;
     gameState.arrestStartTime = 0;
     gameState.policeKilled = 0;
+
+    // Reset Sheriff state for new chase
+    resetSheriffState();
 
     clearSceneList(gameState.sparks);
     gameState.currentFOV = gameState.baseFOV;

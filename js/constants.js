@@ -56,7 +56,7 @@ export const cars = {
         handling: 0.10,
         health: 25,
         color: 0x00CED1,    // Dark turquoise
-        type: 'scooter',
+        type: 'scooter_electric',
         scale: 0.5,
         mass: 0.25
     },

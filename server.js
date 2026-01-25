@@ -91,12 +91,33 @@ Kommando-typer du kan give:
 - SPREAD: Spred jer ud (brug når mistænkt er hurtig og unpredictable)
 - RETREAT: Træk tilbage (brug når for mange enheder er ødelagt)
 - INTERCEPT: Skær vejen af (brug når du kan forudse mistænkts rute)
+- REINFORCE: Tilkald forstærkning (brug når jagten tager for lang tid eller du mangler enheder)
+
+VIGTIGT: Brug REINFORCE kommandoen hvis:
+- Jagten har varet over 60 sekunder uden anholdelse
+- Flere end halvdelen af dine enheder er ødelagt
+- Mistænkts sundhed stadig er høj efter lang tid
 
 Vær kortfattet og autoritær. Brug politijargon.
 Format: "[KOMMANDO]: [Kort beskrivelse]"
-Eksempel: "SURROUND: Alle enheder, omring mistænkt fra nord og syd!"`;
+Eksempel: "REINFORCE: Alle ledige enheder til sektor 7 - NU!"`;
 
-// Helper function to send JSON error responses
+// Helper function to determine reinforcement types based on heat level
+function getReinforcementTypes(count, requestedType, heatLevel) {
+    const types = [];
+    for (let i = 0; i < count; i++) {
+        if (requestedType === 'mixed') {
+            const rand = Math.random();
+            if (heatLevel >= 4 && rand > 0.7) types.push('military');
+            else if (heatLevel >= 3 && rand > 0.6) types.push('swat');
+            else if (heatLevel >= 2 && rand > 0.5) types.push('interceptor');
+            else types.push('standard');
+        } else {
+            types.push(requestedType);
+        }
+    }
+    return types;
+}
 function sendErrorResponse(res, statusCode, errorMessage, extraData = {}) {
     res.writeHead(statusCode, { 
         'Content-Type': 'application/json', 
@@ -325,6 +346,45 @@ ${gameState.recentEvents ? `- Seneste events: ${gameState.recentEvents}` : ''}`;
                 
             } catch (err) {
                 console.error('[Sheriff] Error:', err);
+                sendErrorResponse(res, 500, 'Internal server error');
+            }
+        });
+        return;
+    }
+    
+    // Spawn Reinforcements API endpoint - Sheriff can call for backup
+    if (req.url === '/api/spawn-reinforcements' && req.method === 'POST') {
+        let body = '';
+        req.on('data', chunk => body += chunk);
+        req.on('end', async () => {
+            try {
+                const { count, type, heatLevel } = JSON.parse(body);
+                
+                // Validate input
+                const spawnCount = Math.min(Math.max(1, count || 4), 6); // Clamp 1-6
+                const validTypes = ['standard', 'interceptor', 'swat', 'military', 'mixed'];
+                const spawnType = validTypes.includes(type) ? type : 'mixed';
+                const currentHeatLevel = Math.min(Math.max(1, heatLevel || 1), 6);
+                
+                // Determine unit types to spawn
+                const unitTypes = getReinforcementTypes(spawnCount, spawnType, currentHeatLevel);
+                
+                console.log(`[Sheriff] Reinforcements requested: ${spawnCount} units of type "${spawnType}" at heat level ${currentHeatLevel}`);
+                console.log(`[Sheriff] Spawning: ${unitTypes.join(', ')}`);
+                
+                res.writeHead(200, { 
+                    'Content-Type': 'application/json', 
+                    'Access-Control-Allow-Origin': '*' 
+                });
+                res.end(JSON.stringify({ 
+                    success: true, 
+                    spawned: spawnCount,
+                    types: unitTypes,
+                    message: `${spawnCount} reinforcement units dispatched`
+                }));
+                
+            } catch (err) {
+                console.error('[Sheriff] Reinforcement error:', err);
                 sendErrorResponse(res, 500, 'Internal server error');
             }
         });
