@@ -58,6 +58,7 @@
  *
  * @property {number} startTime
  * @property {number} elapsedTime
+ * @property {number} timerStartTime
  * @property {number} lastMoneyCheckTime
  *
  * @property {number} heatLevel
@@ -133,6 +134,7 @@ export const gameState = {
     // === Game Flow ===
     startTime: 0, // Game hasn't started yet (set when solo/multiplayer selected)
     elapsedTime: 0,
+    timerStartTime: 0, // HUD timer starts after engagement/collection
     lastMoneyCheckTime: 0,
     
     // === Police & Difficulty ===

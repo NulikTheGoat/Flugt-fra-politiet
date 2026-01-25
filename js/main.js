@@ -472,6 +472,7 @@ function resetRunState(opts = {}) {
     gameState.arrested = false;
     gameState.hasStartedMoving = false;
     gameState.startTime = Date.now();
+    gameState.timerStartTime = 0;
     gameState.lastMoneyCheckTime = Date.now();
     gameState.lastPoliceSpawnTime = Date.now();
 
@@ -555,6 +556,9 @@ function animate() {
         // Engage police once player has earned money OR hit something non-ground OR destroyed something
         if (!gameState.policeEngaged && ((gameState.money || 0) > 0 || (gameState.hasHitObject === true) || (gameState.destructionCount || 0) > 0)) {
             gameState.policeEngaged = true;
+            if (!gameState.timerStartTime) {
+                gameState.timerStartTime = Date.now();
+            }
 
             // Spawn first police immediately on engagement (host only in multiplayer)
             if (!gameState.isMultiplayer || gameState.isHost) {

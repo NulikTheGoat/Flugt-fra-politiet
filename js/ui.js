@@ -157,12 +157,14 @@ export function updateHUD(policeDistance) {
     }
 
     // Update time and money
-    let elapsedSeconds;
-    if (gameState.arrested && gameState.elapsedTime) {
-         elapsedSeconds = Math.floor(gameState.elapsedTime);
-    } else {
-         elapsedSeconds = Math.floor((Date.now() - gameState.startTime) / 1000);
-    }
+        let elapsedSeconds;
+        if (gameState.arrested && gameState.elapsedTime) {
+            elapsedSeconds = Math.floor(gameState.elapsedTime);
+        } else if (gameState.timerStartTime) {
+            elapsedSeconds = Math.floor((Date.now() - gameState.timerStartTime) / 1000);
+        } else {
+            elapsedSeconds = 0;
+        }
     DOM.time.textContent = elapsedSeconds;
     DOM.heatLevel.textContent = gameState.heatLevel;
     

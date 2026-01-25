@@ -129,7 +129,8 @@ export async function requestSheriffCommand(playerCar, policeCount) {
         // Build game state for LLM
         const playerSpeed = Math.abs(gameState.speed || 0) * 3.6;
         const playerHealth = gameState.health || 100;
-        const survivalTime = Math.floor((now - (gameState.startTime || now)) / 1000);
+        const chaseStart = gameState.timerStartTime || gameState.startTime || now;
+        const survivalTime = Math.floor((now - chaseStart) / 1000);
         
         // Find closest police distance
         let closestDistance = 10000;
