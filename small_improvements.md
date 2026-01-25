@@ -60,6 +60,7 @@
 - [x] Car randomly drives left/right when HP is below 30
 
 ## New Requests
-- [ ] **Menu Navigation**: Full keyboard support (Arrows/Enter/Esc) for Shop and Main Menu
-- [ ] **Balance**: Player Tank needs to be killable/destructible (currently invincible)
-- [ ] **Bug Fix**: Police health bar flickers black at certain angles (Visual/Z-fighting)
+- [x] **Menu Navigation**: Full keyboard support (Arrows/Enter/Esc) for Shop and Main Menu (Partially done: Main Menu & Game Over)
+- [x] **Balance**: Player Tank needs to be killable/destructible (currently invincible)
+- [x] **Bug Fix**: Police health bar flickers black at certain angles (Visual/Z-fighting)
+- [x] **UI**: Shop cars now display "EJET" (Owned) instead of price when purchased
