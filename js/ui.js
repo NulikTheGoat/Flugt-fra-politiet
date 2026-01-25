@@ -562,7 +562,7 @@ export function renderShop() {
         const carCategory = getCarCategory(key, car);
         if (currentShopCategory !== 'all' && carCategory !== currentShopCategory) return;
 
-        const owned = gameState.ownedCars && gameState.ownedCars[key] || key === 'standard' || key === 'onfoot';
+        const owned = gameState.ownedCars && gameState.ownedCars[key] || key === 'standard';
         const isSelected = gameState.selectedCar === key;
         const canAfford = gameState.totalMoney >= car.price;
         

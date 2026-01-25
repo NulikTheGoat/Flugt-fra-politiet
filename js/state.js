@@ -121,7 +121,7 @@ export const gameState = {
     health: 20,             // On foot health
     money: 0,
     rebirthPoints: 0,
-    totalMoney: 0,
+    totalMoney: 150,        // Startpenge til at købe første køretøj
     selectedCar: 'onfoot',  // Start on foot!
     arrestDistance: 30,
     arrested: false,

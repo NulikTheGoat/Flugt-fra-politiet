@@ -25,7 +25,7 @@ export const cars = {
     // === STARTER ===
     onfoot: {
         name: 'Til Fods',
-        price: 0,           // Gratis starter!
+        price: 100,         // Billig start, men ikke gratis!
         maxSpeed: 2.5,      // ~9 km/h display (jogging speed)
         acceleration: 0.02,
         handling: 0.15,     // Very agile on foot
@@ -36,7 +36,7 @@ export const cars = {
     },
     bicycle: {
         name: 'Cykel',
-        price: 50,          // Very cheap first upgrade
+        price: 500,         // Første rigtige opgradering
         maxSpeed: 7,        // ~25 km/h display
         acceleration: 0.035,
         handling: 0.08,
@@ -47,7 +47,7 @@ export const cars = {
     },
     scooter_electric: {
         name: 'El-løbehjul',
-        price: 150,         // Affordable second upgrade
+        price: 1500,        // Mellemklasse opgradering
         maxSpeed: 10,       // ~36 km/h display
         acceleration: 0.05,
         handling: 0.10,
@@ -58,7 +58,7 @@ export const cars = {
     },
     scooter: {
         name: 'Knallert',
-        price: 400,         // Mid-range upgrade
+        price: 3000,        // Solid mellemklasse
         maxSpeed: 13,       // ~47 km/h display
         acceleration: 0.065,
         handling: 0.06,
@@ -71,7 +71,7 @@ export const cars = {
     // === BILER ===
     standard: {
         name: 'Standard Bil',
-        price: 1500,        // Nu koster den penge!
+        price: 8000,        // Første rigtige bil!
         maxSpeed: 22,       // ~80 km/h display
         acceleration: 0.08,
         handling: 0.05,
@@ -80,7 +80,7 @@ export const cars = {
     },
     sport: {
         name: 'Sportsvogn',
-        price: 3500,
+        price: 20000,
         maxSpeed: 30,       // ~110 km/h display
         acceleration: 0.12,
         handling: 0.07,
@@ -89,7 +89,7 @@ export const cars = {
     },
     muscle: {
         name: 'Muscle Car',
-        price: 7000,
+        price: 35000,
         maxSpeed: 28,       // ~100 km/h display
         acceleration: 0.14,
         handling: 0.04,
@@ -98,7 +98,7 @@ export const cars = {
     },
     super: {
         name: 'Superbil',
-        price: 18000,
+        price: 75000,
         maxSpeed: 42,       // ~150 km/h display
         acceleration: 0.18,
         handling: 0.09,
@@ -107,7 +107,7 @@ export const cars = {
     },
     hyper: {
         name: 'Hyperbil',
-        price: 45000,
+        price: 200000,
         maxSpeed: 55,       // ~200 km/h display
         acceleration: 0.25,
         handling: 0.12,
@@ -116,7 +116,7 @@ export const cars = {
     },
     tank: {
         name: 'Kampvogn',
-        price: 100000,
+        price: 500000,
         maxSpeed: 17,       // ~60 km/h display
         acceleration: 0.05,
         handling: 0.08,
@@ -127,7 +127,7 @@ export const cars = {
     },
     ufo: {
         name: 'UFO Prototype',
-        price: 200000,
+        price: 1000000,
         maxSpeed: 83,       // ~300 km/h display
         acceleration: 0.5,
         handling: 0.2,
