@@ -8,23 +8,31 @@ export const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window
 export const listener = new THREE.AudioListener();
 camera.add(listener);
 
-export const renderer = new THREE.WebGLRenderer({ antialias: false, powerPreference: 'high-performance' });
+export const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
 renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.shadowMap.enabled = true;
-renderer.shadowMap.type = THREE.BasicShadowMap;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap; // Softer shadows
+renderer.toneMapping = THREE.ACESFilmicToneMapping; // Better tone mapping for realistic lighting
+renderer.toneMappingExposure = 1.0;
+renderer.outputEncoding = THREE.sRGBEncoding; // Correct color space
 
-// Lighting setup
-const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+// Lighting setup - Enhanced for PBR materials
+const ambientLight = new THREE.AmbientLight(0xffffff, 0.4); // Reduced ambient for better contrast
 scene.add(ambientLight);
 
-const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+const directionalLight = new THREE.DirectionalLight(0xffffff, 1.0); // Increased intensity
 directionalLight.position.set(500, 1000, 500);
 directionalLight.castShadow = true;
-directionalLight.shadow.mapSize.width = 1024;
-directionalLight.shadow.mapSize.height = 1024;
+directionalLight.shadow.mapSize.width = 2048; // Higher quality shadows
+directionalLight.shadow.mapSize.height = 2048;
 directionalLight.shadow.camera.far = 2000;
 directionalLight.shadow.camera.left = -1000;
 directionalLight.shadow.camera.right = 1000;
 directionalLight.shadow.camera.top = 1000;
 directionalLight.shadow.camera.bottom = -1000;
+directionalLight.shadow.bias = -0.0001; // Reduce shadow acne
 scene.add(directionalLight);
+
+// Add hemisphere light for more natural outdoor lighting
+const hemiLight = new THREE.HemisphereLight(0x87ceeb, 0x8b7355, 0.3);
+scene.add(hemiLight);

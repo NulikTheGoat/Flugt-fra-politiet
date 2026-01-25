@@ -21,25 +21,64 @@ export const sharedGeometries = {
 };
 
 export const sharedMaterials = {
-    wheel: new THREE.MeshLambertMaterial({ color: 0x000000 }),
-    coin: new THREE.MeshLambertMaterial({ color: 0xffd700 }),
+    // Enhanced materials using MeshStandardMaterial for better lighting
+    wheel: new THREE.MeshStandardMaterial({ 
+        color: 0x000000,
+        roughness: 0.9,
+        metalness: 0.1
+    }),
+    coin: new THREE.MeshStandardMaterial({ 
+        color: 0xffd700,
+        roughness: 0.3,
+        metalness: 0.8,
+        emissive: 0xffd700,
+        emissiveIntensity: 0.2
+    }),
     redLight: new THREE.MeshBasicMaterial({ color: 0xff0000 }),
     blueLight: new THREE.MeshBasicMaterial({ color: 0x0000ff }),
     projectile: new THREE.MeshBasicMaterial({ color: 0xff4400 }),
     spark: new THREE.MeshBasicMaterial({ color: 0xffaa00 }),
-    white: new THREE.MeshLambertMaterial({ color: 0xffffff }),
-    camo: new THREE.MeshLambertMaterial({ color: 0x3b4a25 }),
-    darkGrey: new THREE.MeshLambertMaterial({ color: 0x2a2a2a }),
+    white: new THREE.MeshStandardMaterial({ 
+        color: 0xffffff,
+        roughness: 0.7,
+        metalness: 0.0
+    }),
+    camo: new THREE.MeshStandardMaterial({ 
+        color: 0x3b4a25,
+        roughness: 0.8,
+        metalness: 0.0
+    }),
+    darkGrey: new THREE.MeshStandardMaterial({ 
+        color: 0x2a2a2a,
+        roughness: 0.6,
+        metalness: 0.3
+    }),
     smoke: new THREE.MeshBasicMaterial({ color: 0x333333, transparent: true, opacity: 0.6 }),
     fire: new THREE.MeshBasicMaterial({ color: 0xff4400, transparent: true, opacity: 0.8 }),
     speedParticle: new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.6 }),
-    tireMark: new THREE.MeshBasicMaterial({ color: 0x111111, transparent: true, opacity: 0.7, side: THREE.DoubleSide })
+    tireMark: new THREE.MeshBasicMaterial({ color: 0x111111, transparent: true, opacity: 0.7, side: THREE.DoubleSide }),
+    window: new THREE.MeshStandardMaterial({ 
+        color: 0x88ccff,
+        transparent: true,
+        opacity: 0.3,
+        roughness: 0.1,
+        metalness: 0.9,
+        envMapIntensity: 1.5
+    })
 };
 
-// Initialize enemy materials
+// Initialize enemy materials with better MeshStandardMaterial
 Object.values(enemies).forEach(enemy => {
-    enemy.bodyMaterial = new THREE.MeshLambertMaterial({ color: enemy.color });
-    enemy.roofMaterial = new THREE.MeshLambertMaterial({ color: enemy.color });
+    enemy.bodyMaterial = new THREE.MeshStandardMaterial({ 
+        color: enemy.color,
+        roughness: 0.6,
+        metalness: 0.3
+    });
+    enemy.roofMaterial = new THREE.MeshStandardMaterial({ 
+        color: enemy.color,
+        roughness: 0.5,
+        metalness: 0.2
+    });
     enemy.roofMaterial.color.multiplyScalar(0.8);
 });
 
