@@ -289,7 +289,8 @@ See [DEVELOPER_GUIDE.md](DEVELOPER_GUIDE.md) for detailed contributing guideline
 - **Issues**: https://github.com/NulikTheGoat/Flugt-fra-politiet/issues
 
 ### Technologies Used
-- **Frontend**: Three.js r128, JavaScript ES6 Modules, HTML5, CSS3
+- **Frontend**: Three.js r160 (bundled locally, XSS vulnerability patched), JavaScript ES6 Modules, HTML5, CSS3
+- **Rendering**: PBR materials (MeshStandardMaterial), enhanced lighting, antialiasing
 - **Backend**: Node.js, WebSocket (ws library)
 - **No Build Step**: Runs directly in browser!
 
@@ -301,8 +302,12 @@ See [DEVELOPER_GUIDE.md](DEVELOPER_GUIDE.md) for detailed contributing guideline
 - ✅ Economy and shop system
 - ✅ Procedurally generated city
 - ✅ Real-time physics and AI
+- ✅ **Enhanced graphics with PBR materials and improved lighting** 🆕
 - ✅ Visual effects (tire marks, sparks, explosions)
 - ✅ Optional LLM-powered commentary
+
+### Documentation
+- [VISUAL_IMPROVEMENTS.md](VISUAL_IMPROVEMENTS.md) - Visual rendering enhancements 🆕
 
 ### Roadmap
 See our planning documents:

@@ -3,7 +3,7 @@ import { gameConfig } from './config.js';
 import { scene, camera } from './core.js';
 import { enemies, cars } from './constants.js';
 import { sharedGeometries, sharedMaterials } from './assets.js';
-import { createSmoke, createSpeedParticle, createFire, createMoneyExplosion } from './particles.js';
+import { createSmoke, createSpeedParticle, createFire, createMoneyExplosion, createWheelDust } from './particles.js';
 import { playerCar, takeDamage } from './player.js';
 import { normalizeAngleRadians, clamp } from './utils.js';
 import { createBuildingDebris } from './world.js';
@@ -602,6 +602,11 @@ export function updatePoliceAI(delta) {
         // Apply movement with glide
         policeCar.position.x += policeCar.userData.velocityX;
         policeCar.position.z += policeCar.userData.velocityZ;
+        
+        // Create dust when police cars turn sharply at speed
+        if (glideIntensity > 0.1 && policeSpeed > 100 && Math.random() < 0.2) {
+            createWheelDust(policeCar.position, policeCar.rotation.y, policeSpeed * 0.01, glideIntensity);
+        }
 
         // Police vs Building Collision
         const px = Math.floor(policeCar.position.x / gridSize);

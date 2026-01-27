@@ -2,7 +2,7 @@ import { gameState, keys } from './state.js';
 import { scene, camera } from './core.js';
 import { cars } from './constants.js';
 import { sharedGeometries, sharedMaterials } from './assets.js';
-import { createSmoke, createSpark, createTireMark, updateTireMarks } from './particles.js';
+import { createSmoke, createSpark, createTireMark, updateTireMarks, createWheelDust, updateDustParticles } from './particles.js';
 
 let uiCallbacks = {
     triggerDamageEffect: () => {},
@@ -66,10 +66,27 @@ function createOnFootModel(color) {
     group.userData.suspensionEnabled = false;
     group.userData.enableTireMarks = false;
 
-    const shirtMat = new THREE.MeshLambertMaterial({ color });
-    const pantsMat = new THREE.MeshLambertMaterial({ color: 0x1c1f2a });
-    const skinMat = new THREE.MeshLambertMaterial({ color: 0xffd0b0 });
-    const shoeMat = new THREE.MeshLambertMaterial({ color: 0x111111 });
+    // Enhanced materials
+    const shirtMat = new THREE.MeshStandardMaterial({ 
+        color,
+        roughness: 0.8,
+        metalness: 0.0
+    });
+    const pantsMat = new THREE.MeshStandardMaterial({ 
+        color: 0x1c1f2a,
+        roughness: 0.85,
+        metalness: 0.0
+    });
+    const skinMat = new THREE.MeshStandardMaterial({ 
+        color: 0xffd0b0,
+        roughness: 0.7,
+        metalness: 0.0
+    });
+    const shoeMat = new THREE.MeshStandardMaterial({ 
+        color: 0x111111,
+        roughness: 0.6,
+        metalness: 0.1
+    });
 
     const head = new THREE.Mesh(new THREE.SphereGeometry(3.2, 16, 12), skinMat);
     head.position.set(0, 18, 0);
@@ -134,9 +151,22 @@ function createBicycleModel(color, kind = 'bicycle') {
     group.userData.suspensionEnabled = false;
     group.userData.enableTireMarks = false;
 
-    const frameMat = new THREE.MeshLambertMaterial({ color });
-    const metalMat = new THREE.MeshLambertMaterial({ color: 0x999999 });
-    const rubberMat = new THREE.MeshLambertMaterial({ color: 0x111111 });
+    // Enhanced materials
+    const frameMat = new THREE.MeshStandardMaterial({ 
+        color,
+        roughness: 0.5,
+        metalness: 0.6
+    });
+    const metalMat = new THREE.MeshStandardMaterial({ 
+        color: 0x999999,
+        roughness: 0.4,
+        metalness: 0.8
+    });
+    const rubberMat = new THREE.MeshStandardMaterial({ 
+        color: 0x111111,
+        roughness: 0.9,
+        metalness: 0.0
+    });
 
     const wheelGeo = new THREE.CylinderGeometry(6, 6, 1.6, 16);
     const frontWheel = new THREE.Mesh(wheelGeo, rubberMat);
@@ -196,10 +226,27 @@ function createScooterModel(color, variant = 'scooter') {
     group.userData.suspensionEnabled = false;
     group.userData.enableTireMarks = false;
 
-    const deckMat = new THREE.MeshLambertMaterial({ color });
-    const metalMat = new THREE.MeshLambertMaterial({ color: 0x7f8c8d });
-    const rubberMat = new THREE.MeshLambertMaterial({ color: 0x111111 });
-    const trimMat = new THREE.MeshLambertMaterial({ color: 0xd9d9d9 });
+    // Enhanced materials
+    const deckMat = new THREE.MeshStandardMaterial({ 
+        color,
+        roughness: 0.6,
+        metalness: 0.5
+    });
+    const metalMat = new THREE.MeshStandardMaterial({ 
+        color: 0x7f8c8d,
+        roughness: 0.4,
+        metalness: 0.8
+    });
+    const rubberMat = new THREE.MeshStandardMaterial({ 
+        color: 0x111111,
+        roughness: 0.9,
+        metalness: 0.0
+    });
+    const trimMat = new THREE.MeshStandardMaterial({ 
+        color: 0xd9d9d9,
+        roughness: 0.7,
+        metalness: 0.2
+    });
     const lightMat = new THREE.MeshBasicMaterial({ color: 0xfff3c4 });
 
     const wheelGeo = new THREE.CylinderGeometry(4.2, 4.2, 1.4, 16);
@@ -421,12 +468,14 @@ export function createPlayerCar(color = 0xff0000, type = 'standard') {
         carGroup.add(rightTrack);
 
     } else if (resolvedType === 'ufo') {
-        // UFO Saucer
+        // UFO Saucer with enhanced materials
         const saucerGeo = new THREE.CylinderGeometry(15, 25, 8, 32);
-        const saucerMat = new THREE.MeshPhongMaterial({ 
+        const saucerMat = new THREE.MeshStandardMaterial({ 
              color: color, 
-             shininess: 100,
-             emissive: 0x222222
+             roughness: 0.2,
+             metalness: 0.9,
+             emissive: color,
+             emissiveIntensity: 0.1
         });
         const saucer = new THREE.Mesh(saucerGeo, saucerMat);
         saucer.position.y = 10;
@@ -434,13 +483,14 @@ export function createPlayerCar(color = 0xff0000, type = 'standard') {
         saucer.name = 'carBody';
         carGroup.add(saucer);
         
-        // Cockpit dome
+        // Cockpit dome with improved transparency
         const domeGeo = new THREE.SphereGeometry(8, 32, 16, 0, Math.PI * 2, 0, Math.PI/2);
-        const domeMat = new THREE.MeshPhongMaterial({ 
+        const domeMat = new THREE.MeshStandardMaterial({ 
              color: 0x88ccff, 
              transparent: true, 
-             opacity: 0.8,
-             shininess: 150
+             opacity: 0.6,
+             roughness: 0.1,
+             metalness: 0.1
         });
         const dome = new THREE.Mesh(domeGeo, domeMat);
         dome.position.y = 12;
@@ -457,11 +507,11 @@ export function createPlayerCar(color = 0xff0000, type = 'standard') {
         }
 
     } else {
-        // Standard Car body (with better specular highlights)
-        const bodyMat = new THREE.MeshPhongMaterial({
+        // Standard Car body (with enhanced PBR materials)
+        const bodyMat = new THREE.MeshStandardMaterial({
             color: color,
-            shininess: 70,
-            specular: 0x333333
+            roughness: 0.4,
+            metalness: 0.6
         });
         const body = new THREE.Mesh(sharedGeometries.carBody, bodyMat);
         body.position.y = 6;
@@ -470,12 +520,12 @@ export function createPlayerCar(color = 0xff0000, type = 'standard') {
         body.name = 'carBody';
         chassis.add(body);
 
-        // Car roof (slightly darker than body)
+        // Car roof (slightly darker and less metallic than body)
         const roofColor = new THREE.Color(color).multiplyScalar(0.8);
-        const roof = new THREE.Mesh(sharedGeometries.carRoof, new THREE.MeshPhongMaterial({
+        const roof = new THREE.Mesh(sharedGeometries.carRoof, new THREE.MeshStandardMaterial({
             color: roofColor,
-            shininess: 60,
-            specular: 0x222222
+            roughness: 0.5,
+            metalness: 0.4
         }));
         roof.position.set(0, 16, -5);
         roof.castShadow = true;
@@ -989,6 +1039,19 @@ export function updatePlayer(delta, now) {
         // ROLL (Cornering)
         playerCar.userData.chassis.rotation.z = gameState.carTilt;
         
+        // DRIFT SLIDE VISUAL - counter-steer body rotation when drifting
+        // The car body rotates slightly opposite to travel direction during drift
+        const driftSlideAngle = gameState.driftFactor * steerInput * 0.15 * speedRatio;
+        gameState.driftVisualAngle = gameState.driftVisualAngle || 0;
+        gameState.driftVisualAngle += (driftSlideAngle - gameState.driftVisualAngle) * 0.1 * delta;
+        
+        // Apply subtle yaw offset to chassis for that "tail out" look
+        if (Math.abs(gameState.driftFactor) > 0.1) {
+            playerCar.userData.chassis.rotation.y = gameState.driftVisualAngle;
+        } else {
+            playerCar.userData.chassis.rotation.y *= 0.9; // Smooth return
+        }
+        
         // PITCH (Accel/Braking) - Inertia simulation
         // Acceleration = Squat (negative pitch)
         // Braking = Dive (positive pitch)
@@ -1021,6 +1084,14 @@ export function updatePlayer(delta, now) {
             createTireMark(playerCar.position.x, playerCar.position.z, playerCar.rotation.y);
         }
         updateTireMarks(delta);
+        
+        // Dust clouds from wheels at high speed or when drifting
+        const speedRatio = absSpeed / gameState.maxSpeed;
+        const shouldCreateDust = (speedRatio > 0.5 && Math.abs(steerInput) > 0.3) || gameState.driftFactor > 0.2;
+        if (shouldCreateDust && Math.random() < 0.4) {
+            createWheelDust(playerCar.position, playerCar.rotation.y, gameState.speed, gameState.driftFactor);
+        }
+        updateDustParticles(delta);
     }
 
     // Wheel spin + steering visuals

@@ -50,35 +50,86 @@ export function createSky() {
     scene.add(sky);
 }
 
-// Helper to create a procedural window texture for background buildings
+// Helper to create a procedural window texture for background buildings - Enhanced version
 function createWindowTexture() {
     try {
         const canvas = document.createElement('canvas');
-        canvas.width = 64;
-        canvas.height = 64;
+        canvas.width = 128; // Increased resolution
+        canvas.height = 128;
         const ctx = canvas.getContext('2d');
         
-        // Background (Dark)
-        ctx.fillStyle = '#111';
-        ctx.fillRect(0, 0, 64, 64);
+        // Background (Dark building facade with subtle texture)
+        const gradient = ctx.createLinearGradient(0, 0, 128, 128);
+        gradient.addColorStop(0, '#1a1a1a');
+        gradient.addColorStop(1, '#0d0d0d');
+        ctx.fillStyle = gradient;
+        ctx.fillRect(0, 0, 128, 128);
         
-        // Windows
+        // Add subtle concrete texture
+        for (let i = 0; i < 200; i++) {
+            ctx.fillStyle = `rgba(${Math.random() * 40 + 10}, ${Math.random() * 40 + 10}, ${Math.random() * 40 + 10}, 0.3)`;
+            ctx.fillRect(Math.random() * 128, Math.random() * 128, 1, 1);
+        }
+        
+        // Windows with more variety and detail
         for (let y = 0; y < 8; y++) {
             for (let x = 0; x < 4; x++) {
-                if (Math.random() > 0.4) {
-                     ctx.fillStyle = Math.random() > 0.5 ? '#FEF9E7' : '#F4D03F'; // Warm lights
-                     // Draw pairs of windows
-                     ctx.fillRect(4 + x * 16, 4 + y * 8, 4, 4);
-                     ctx.fillRect(10 + x * 16, 4 + y * 8, 4, 4);
+                const isLit = Math.random() > 0.35;
+                const hasBlind = Math.random() > 0.7;
+                
+                if (Math.random() > 0.3) { // Some windows missing for variety
+                    const wx = 8 + x * 32;
+                    const wy = 8 + y * 16;
+                    
+                    // Window frame
+                    ctx.fillStyle = '#2a2a2a';
+                    ctx.fillRect(wx, wy, 20, 10);
+                    
+                    // Window glass
+                    if (isLit) {
+                        const lightVariation = Math.random();
+                        if (lightVariation > 0.7) {
+                            ctx.fillStyle = '#FEF9E7'; // Warm white
+                        } else if (lightVariation > 0.4) {
+                            ctx.fillStyle = '#F4D03F'; // Yellow
+                        } else {
+                            ctx.fillStyle = '#F39C12'; // Orange
+                        }
+                    } else {
+                        ctx.fillStyle = '#1c2833'; // Dark/off
+                    }
+                    
+                    // Draw twin windows
+                    ctx.fillRect(wx + 2, wy + 2, 7, 6);
+                    ctx.fillRect(wx + 11, wy + 2, 7, 6);
+                    
+                    // Window divider
+                    ctx.fillStyle = '#1a1a1a';
+                    ctx.fillRect(wx + 9, wy + 2, 2, 6);
+                    
+                    // Blinds/curtains
+                    if (hasBlind && isLit) {
+                        ctx.fillStyle = 'rgba(200, 200, 180, 0.3)';
+                        ctx.fillRect(wx + 2, wy + 2, 16, 6);
+                    }
+                    
+                    // Window reflection (subtle)
+                    if (isLit) {
+                        ctx.fillStyle = 'rgba(255, 255, 255, 0.2)';
+                        ctx.fillRect(wx + 2, wy + 2, 7, 2);
+                        ctx.fillRect(wx + 11, wy + 2, 7, 2);
+                    }
+                }
             }
         }
-    }
-    
-    const texture = new THREE.CanvasTexture(canvas);
-    texture.wrapS = THREE.RepeatWrapping;
-    texture.wrapT = THREE.RepeatWrapping;
-    texture.magFilter = THREE.NearestFilter; // Pixelated look
-    return texture;
+        
+        const texture = new THREE.CanvasTexture(canvas);
+        texture.wrapS = THREE.RepeatWrapping;
+        texture.wrapT = THREE.RepeatWrapping;
+        texture.magFilter = THREE.LinearFilter; // Smoother look
+        texture.minFilter = THREE.LinearMipMapLinearFilter;
+        texture.anisotropy = 4; // Better quality at angles
+        return texture;
     } catch (e) {
         console.error("Window texture creation failed", e);
         return null;
@@ -95,13 +146,12 @@ export function createDistantCityscape() {
         const windowTexture = createWindowTexture();
         
         const buildingGeo = new THREE.BoxGeometry(100, 300, 100);
-        // Fallback to basic color if texture fails
-        const buildingMat = new THREE.MeshLambertMaterial({ 
+        // Enhanced material with better lighting and texture
+        const buildingMat = new THREE.MeshStandardMaterial({ 
             map: windowTexture,
-            emissiveMap: windowTexture,
-            emissive: 0x555555,
-            emissiveIntensity: 0.8,
-            color: 0xffffff // White base allows instance colors to show through
+            roughness: 0.8,
+            metalness: 0.1,
+            color: 0xcccccc // Slight tint
         });
         
         // Instanced mesh for performance
@@ -1552,7 +1602,12 @@ export function createSingleBuilding(x, z, width, depth, height, type) {
     const dz = depth / nz;
 
     const chunkGeometry = new THREE.BoxGeometry(dx, dy, dz);
-    const buildingMaterial = new THREE.MeshLambertMaterial({ color: buildingColor });
+    // Enhanced material with better lighting properties
+    const buildingMaterial = new THREE.MeshStandardMaterial({ 
+        color: buildingColor,
+        roughness: 0.7,
+        metalness: 0.1
+    });
     
     const startX = x - width / 2 + dx / 2;
     const startY = dy / 2;
