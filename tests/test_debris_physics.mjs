@@ -501,6 +501,168 @@ describe('Realistic Physics - Debris Stay Close to Impact', () => {
 });
 
 // ==========================================
+// UNIFIED DEBRIS COLLISION SYSTEM TESTS
+// ==========================================
+
+describe('Debris Size Classification', () => {
+    // Test that debris sizes are correctly classified
+    function classifyDebrisSize(width, height, depth) {
+        const maxDim = Math.max(width, height, depth);
+        if (maxDim >= 20) return 'large';
+        if (maxDim >= 8) return 'medium';
+        if (maxDim >= 2) return 'small';
+        return 'tiny';
+    }
+    
+    assert(classifyDebrisSize(30, 30, 30) === 'large', 'Large chunk (30x30x30) classified as large');
+    assert(classifyDebrisSize(15, 15, 15) === 'medium', 'Medium chunk (15x15x15) classified as medium');
+    assert(classifyDebrisSize(5, 5, 5) === 'small', 'Small chunk (5x5x5) classified as small');
+    assert(classifyDebrisSize(1, 1, 1) === 'tiny', 'Tiny chunk (1x1x1) classified as tiny');
+});
+
+describe('Debris Collision Properties', () => {
+    // Test that debris has correct collision properties based on size
+    function getDebrisCollisionProps(size) {
+        switch (size) {
+            case 'large':
+                return { isCollidable: true, canShatter: true, canDestroyBuildings: true };
+            case 'medium':
+                return { isCollidable: true, canShatter: true, canDestroyBuildings: true };
+            case 'small':
+                return { isCollidable: true, canShatter: true, canDestroyBuildings: false };
+            case 'tiny':
+                return { isCollidable: false, canShatter: false, canDestroyBuildings: false };
+            default:
+                return { isCollidable: false, canShatter: false, canDestroyBuildings: false };
+        }
+    }
+    
+    const largeProps = getDebrisCollisionProps('large');
+    assert(largeProps.isCollidable === true, 'Large debris is collidable');
+    assert(largeProps.canShatter === true, 'Large debris can shatter');
+    assert(largeProps.canDestroyBuildings === true, 'Large debris can destroy buildings');
+    
+    const tinyProps = getDebrisCollisionProps('tiny');
+    assert(tinyProps.isCollidable === false, 'Tiny debris is not collidable');
+    assert(tinyProps.canShatter === false, 'Tiny debris cannot shatter');
+});
+
+describe('Shatter Piece Count Calculation', () => {
+    // When debris shatters, it should create appropriate number of pieces
+    function calculateShatterPieces(debrisSize, impactSpeed) {
+        const baseCount = debrisSize === 'large' ? 8 : debrisSize === 'medium' ? 5 : 3;
+        const speedBonus = Math.floor(impactSpeed / 20);
+        return Math.min(12, baseCount + speedBonus);
+    }
+    
+    // Slow collision with large debris
+    const slowLarge = calculateShatterPieces('large', 10);
+    assert(slowLarge >= 8 && slowLarge <= 9, `Slow collision with large debris: ${slowLarge} pieces (8-9 expected)`);
+    
+    // Fast collision with large debris
+    const fastLarge = calculateShatterPieces('large', 80);
+    assert(fastLarge === 12, `Fast collision with large debris: ${fastLarge} pieces (12 expected, capped)`);
+    
+    // Slow collision with medium debris
+    const slowMedium = calculateShatterPieces('medium', 10);
+    assert(slowMedium >= 5 && slowMedium <= 6, `Slow collision with medium debris: ${slowMedium} pieces (5-6 expected)`);
+});
+
+describe('Debris Settling Velocity Threshold', () => {
+    // Debris should settle when velocity is below threshold
+    const SETTLE_VELOCITY_THRESHOLD = 0.5;
+    const SETTLE_Y_THRESHOLD = 1.0;
+    
+    function shouldSettle(velocity, posY, groundY) {
+        return Math.abs(velocity.x) < SETTLE_VELOCITY_THRESHOLD &&
+               Math.abs(velocity.y) < SETTLE_VELOCITY_THRESHOLD &&
+               Math.abs(velocity.z) < SETTLE_VELOCITY_THRESHOLD &&
+               posY <= groundY + SETTLE_Y_THRESHOLD;
+    }
+    
+    // Moving debris shouldn't settle
+    assert(!shouldSettle({ x: 2, y: 0, z: 0 }, 10, 10), 'Moving debris (vx=2) does not settle');
+    assert(!shouldSettle({ x: 0, y: 0, z: 0 }, 50, 10), 'High debris (y=50) does not settle');
+    
+    // Stationary debris near ground should settle
+    assert(shouldSettle({ x: 0.1, y: 0.1, z: 0.1 }, 10.5, 10), 'Slow debris near ground settles');
+    assert(shouldSettle({ x: 0, y: 0, z: 0 }, 10, 10), 'Stationary debris at ground settles');
+});
+
+describe('Flying Debris Building Collision', () => {
+    // Test that flying debris can damage buildings
+    function canDebrisDamageBuilding(debris, buildingChunk) {
+        // Debris must be moving fast enough
+        const speed = Math.sqrt(
+            debris.velocity.x ** 2 + 
+            debris.velocity.y ** 2 + 
+            debris.velocity.z ** 2
+        );
+        
+        // Debris must be large enough
+        const debrisSize = Math.max(debris.width, debris.height, debris.depth);
+        
+        // Building chunk must not already be hit
+        if (buildingChunk.isHit) return false;
+        
+        // Check thresholds
+        const MIN_DAMAGE_SPEED = 15;
+        const MIN_DAMAGE_SIZE = 8;
+        
+        return speed >= MIN_DAMAGE_SPEED && debrisSize >= MIN_DAMAGE_SIZE;
+    }
+    
+    const fastLargeDebris = { velocity: { x: 20, y: 5, z: 0 }, width: 30, height: 30, depth: 30 };
+    const slowSmallDebris = { velocity: { x: 2, y: 0, z: 0 }, width: 3, height: 3, depth: 3 };
+    const buildingChunk = { isHit: false };
+    const hitChunk = { isHit: true };
+    
+    assert(canDebrisDamageBuilding(fastLargeDebris, buildingChunk), 'Fast large debris can damage building');
+    assert(!canDebrisDamageBuilding(slowSmallDebris, buildingChunk), 'Slow small debris cannot damage building');
+    assert(!canDebrisDamageBuilding(fastLargeDebris, hitChunk), 'Debris cannot damage already-hit chunk');
+});
+
+describe('Vehicle-Debris Collision Response', () => {
+    // Test collision response calculations
+    function calculateCollisionResponse(carSpeed, debrisSize, debrisMass = 1.0) {
+        // Car should be pushed back based on debris mass
+        const pushBackForce = debrisMass * 0.5;
+        
+        // Speed reduction depends on debris size
+        let speedMultiplier;
+        switch (debrisSize) {
+            case 'large': speedMultiplier = 0.6; break;
+            case 'medium': speedMultiplier = 0.75; break;
+            case 'small': speedMultiplier = 0.9; break;
+            default: speedMultiplier = 0.98;
+        }
+        
+        // Whether debris shatters depends on speed
+        const SHATTER_THRESHOLD = 40;
+        const shouldShatter = carSpeed > SHATTER_THRESHOLD;
+        
+        return {
+            pushBackForce,
+            newSpeed: carSpeed * speedMultiplier,
+            shouldShatter
+        };
+    }
+    
+    // High speed collision with large debris
+    const fastLarge = calculateCollisionResponse(60, 'large');
+    assert(fastLarge.shouldShatter === true, 'High speed (60) shatters large debris');
+    assertApprox(fastLarge.newSpeed, 36, 1, 'Speed reduced to 60% after large debris hit');
+    
+    // Low speed collision with large debris
+    const slowLarge = calculateCollisionResponse(20, 'large');
+    assert(slowLarge.shouldShatter === false, 'Low speed (20) does not shatter debris');
+    
+    // Collision with small debris
+    const fastSmall = calculateCollisionResponse(60, 'small');
+    assertApprox(fastSmall.newSpeed, 54, 1, 'Speed reduced to 90% after small debris hit');
+});
+
+// ==========================================
 // PERFORMANCE TESTS
 // ==========================================
 

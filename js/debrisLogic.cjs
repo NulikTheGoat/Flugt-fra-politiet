@@ -494,15 +494,182 @@ function validateDebrisPlan(plan) {
     };
 }
 
+// ==========================================
+// UNIFIED DEBRIS SYSTEM HELPERS
+// ==========================================
+
+/**
+ * Debris size thresholds (in world units)
+ */
+const DEBRIS_SIZE_THRESHOLDS = {
+    LARGE: 20,   // >= 20 units
+    MEDIUM: 8,   // >= 8 units
+    SMALL: 2,    // >= 2 units
+    // < 2 units = tiny
+};
+
+/**
+ * Classify debris based on its dimensions
+ * @param {number} width 
+ * @param {number} height 
+ * @param {number} depth 
+ * @returns {'large'|'medium'|'small'|'tiny'}
+ */
+function classifyDebrisSize(width, height, depth) {
+    const maxDim = Math.max(width, height, depth);
+    if (maxDim >= DEBRIS_SIZE_THRESHOLDS.LARGE) return 'large';
+    if (maxDim >= DEBRIS_SIZE_THRESHOLDS.MEDIUM) return 'medium';
+    if (maxDim >= DEBRIS_SIZE_THRESHOLDS.SMALL) return 'small';
+    return 'tiny';
+}
+
+/**
+ * Get collision properties based on debris size
+ * @param {'large'|'medium'|'small'|'tiny'} size 
+ * @returns {Object} Collision properties
+ */
+function getDebrisCollisionProps(size) {
+    switch (size) {
+        case 'large':
+            return { 
+                isCollidable: true, 
+                canShatter: true, 
+                canDestroyBuildings: true,
+                speedReduction: 0.6,      // 40% speed loss
+                pushForce: 1.5
+            };
+        case 'medium':
+            return { 
+                isCollidable: true, 
+                canShatter: true, 
+                canDestroyBuildings: true,
+                speedReduction: 0.75,     // 25% speed loss
+                pushForce: 1.0
+            };
+        case 'small':
+            return { 
+                isCollidable: true, 
+                canShatter: true, 
+                canDestroyBuildings: false,
+                speedReduction: 0.9,      // 10% speed loss
+                pushForce: 0.5
+            };
+        case 'tiny':
+        default:
+            return { 
+                isCollidable: false, 
+                canShatter: false, 
+                canDestroyBuildings: false,
+                speedReduction: 0.98,     // 2% speed loss
+                pushForce: 0.1
+            };
+    }
+}
+
+/**
+ * Calculate how many pieces debris should shatter into
+ * @param {'large'|'medium'|'small'|'tiny'} debrisSize 
+ * @param {number} impactSpeed 
+ * @returns {number} Number of pieces
+ */
+function calculateShatterPieces(debrisSize, impactSpeed) {
+    const baseCount = debrisSize === 'large' ? 8 : debrisSize === 'medium' ? 5 : 3;
+    const speedBonus = Math.floor(impactSpeed / 20);
+    return Math.min(12, baseCount + speedBonus);
+}
+
+/**
+ * Check if debris should settle (become stationary)
+ * @param {Object} velocity - {x, y, z}
+ * @param {number} posY - Current Y position
+ * @param {number} groundY - Ground level (usually half the debris height)
+ * @returns {boolean}
+ */
+function shouldDebrisSettle(velocity, posY, groundY) {
+    const SETTLE_VELOCITY_THRESHOLD = 0.5;
+    const SETTLE_Y_THRESHOLD = 1.0;
+    
+    return Math.abs(velocity.x) < SETTLE_VELOCITY_THRESHOLD &&
+           Math.abs(velocity.y) < SETTLE_VELOCITY_THRESHOLD &&
+           Math.abs(velocity.z) < SETTLE_VELOCITY_THRESHOLD &&
+           posY <= groundY + SETTLE_Y_THRESHOLD;
+}
+
+/**
+ * Check if flying debris can damage a building chunk
+ * @param {Object} debris - Debris with velocity and dimensions
+ * @param {Object} buildingChunk - Building chunk userData
+ * @returns {boolean}
+ */
+function canDebrisDamageBuilding(debris, buildingChunk) {
+    // Building chunk must not already be hit
+    if (buildingChunk.isHit) return false;
+    
+    // Calculate debris speed
+    const speed = Math.sqrt(
+        debris.velocity.x ** 2 + 
+        debris.velocity.y ** 2 + 
+        debris.velocity.z ** 2
+    );
+    
+    // Get debris size
+    const debrisSize = Math.max(debris.width, debris.height, debris.depth);
+    
+    // Thresholds
+    const MIN_DAMAGE_SPEED = 15;
+    const MIN_DAMAGE_SIZE = 8;
+    
+    return speed >= MIN_DAMAGE_SPEED && debrisSize >= MIN_DAMAGE_SIZE;
+}
+
+/**
+ * Calculate collision response for vehicle hitting debris
+ * @param {number} carSpeed - Vehicle speed
+ * @param {'large'|'medium'|'small'|'tiny'} debrisSize - Size category
+ * @param {number} debrisMass - Mass multiplier (default 1.0)
+ * @returns {Object} Collision response data
+ */
+function calculateVehicleDebrisCollision(carSpeed, debrisSize, debrisMass = 1.0) {
+    const props = getDebrisCollisionProps(debrisSize);
+    
+    // Push back force depends on debris mass
+    const pushBackForce = debrisMass * props.pushForce;
+    
+    // Speed after collision
+    const newSpeed = carSpeed * props.speedReduction;
+    
+    // Shatter threshold - high speed impacts break debris
+    const SHATTER_THRESHOLD = 40;
+    const shouldShatter = carSpeed > SHATTER_THRESHOLD && props.canShatter;
+    
+    // Screen shake based on impact
+    const screenShake = Math.min(0.5, carSpeed / 80);
+    
+    return {
+        pushBackForce,
+        newSpeed,
+        shouldShatter,
+        screenShake,
+        canDestroyBuildings: props.canDestroyBuildings
+    };
+}
+
 // Export for both Node.js testing and browser usage
 module.exports = {
     DEBRIS_MATERIALS,
     PHYSICS,
+    DEBRIS_SIZE_THRESHOLDS,
     calculateDebrisCount,
     calculateDebrisVelocity,
     calculateRotationVelocity,
     calculateDebrisSize,
     generateBuildingDebrisPlan,
     generateTreeDebrisPlan,
-    validateDebrisPlan
+    validateDebrisPlan,
+    classifyDebrisSize,
+    getDebrisCollisionProps,
+    calculateShatterPieces,
+    shouldDebrisSettle,
+    canDebrisDamageBuilding,
+    calculateVehicleDebrisCollision
 };
