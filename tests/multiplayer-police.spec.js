@@ -1,4 +1,3 @@
-// @ts-check
 const { test, expect } = require('@playwright/test');
 
 /**
@@ -133,7 +132,7 @@ test.describe('Multiplayer Police Targeting', () => {
             }
             
             // Check other players
-            window.gameState.otherPlayers.forEach((p, id) => {
+            window.gameState.otherPlayers.forEach((p) => {
                 if (!p.state || p.state.arrested) return;
                 
                 const pdx = p.state.x - policePos.x;
@@ -269,7 +268,7 @@ test.describe('Multiplayer Police Targeting', () => {
             for (let i = 0; i < 20; i++) {
                 const candidates = [{ pos: localPos, rot: 0 }];
                 
-                window.gameState.otherPlayers.forEach(p => {
+                window.gameState.otherPlayers.forEach((p) => {
                     if (p.state && !p.state.arrested) {
                         candidates.push({ 
                             pos: { x: p.state.x, z: p.state.z },
@@ -409,7 +408,12 @@ test.describe('Police Spawn Distribution', () => {
                 };
             }
             
-            return { spawned: false };
+            return {
+                spawned: false,
+                distance: 0,
+                minExpected: 700,
+                maxExpected: 1200
+            };
         });
         
         if (result.spawned) {
