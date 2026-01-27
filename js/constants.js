@@ -119,6 +119,7 @@ export const cars = {
         handling: 0.09,     // Good handling, off-road capable
         health: 95,
         color: 0xFF6B35,    // Orange/sandy color
+        type: 'buggy',
         mass: 0.9,
         grip: 0.75          // Good off-road grip
     },
@@ -130,6 +131,7 @@ export const cars = {
         handling: 0.045,
         health: 140,
         color: 0x8B4513,    // Saddle brown
+        type: 'pickup',
         mass: 1.5,
         grip: 0.65          // Heavy but stable
     },
@@ -152,6 +154,7 @@ export const cars = {
         handling: 0.11,     // Excellent handling
         health: 105,
         color: 0x00FF7F,    // Spring green
+        type: 'rally',
         mass: 1.15,
         grip: 0.88          // Rally tires - great grip
     },
@@ -174,6 +177,7 @@ export const cars = {
         handling: 0.06,     // Less handling, more power
         health: 110,
         color: 0xFF1493,    // Deep pink (classic hot rod)
+        type: 'hotrod',
         mass: 1.25,
         grip: 0.70          // Classic street tires
     },
@@ -199,6 +203,7 @@ export const cars = {
         handling: 0.14,     // Best handling
         health: 85,         // Fragile
         color: 0xFF0000,    // Racing red
+        type: 'formula',
         mass: 0.85,
         grip: 0.98,         // Racing slicks, maximum grip
         scale: 0.9          // Smaller, low profile
