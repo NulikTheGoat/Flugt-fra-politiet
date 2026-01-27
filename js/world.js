@@ -155,28 +155,30 @@ export function createDistantCityscape() {
 
 export function createGround() {
     // Larger initial ground - endless system extends it further
+    // Position ground slightly below y=0 to prevent Z-fighting with roads
     const groundGeometry = new THREE.PlaneGeometry(15000, 15000);
     const groundMaterial = new THREE.MeshLambertMaterial({ color: 0x444444 });
     const ground = new THREE.Mesh(groundGeometry, groundMaterial);
     ground.rotation.x = -Math.PI / 2;
+    ground.position.y = -0.1; // Slightly below to prevent Z-fighting
     ground.receiveShadow = true;
     scene.add(ground);
 
     // Main Road - North/South (along Z axis) - Removed long static road to let Loops take over
     // We only keep a small intersection patch to ensure clean connection
-    const roadGeometry = new THREE.BoxGeometry(300, 0.4, 300);
+    const roadGeometry = new THREE.BoxGeometry(300, 0.5, 300);
     const roadMaterial = new THREE.MeshLambertMaterial({ color: 0x222222 });
     const road = new THREE.Mesh(roadGeometry, roadMaterial);
-    road.position.set(0, 0.2, 0);
+    road.position.set(0, 0.25, 0); // Raised to prevent Z-fighting with ground
     road.receiveShadow = true;
     scene.add(road);
 
     // Main Road - East/West (along X axis)
     const roadHorizontal = new THREE.Mesh(
-        new THREE.BoxGeometry(15000, 0.4, 300),
+        new THREE.BoxGeometry(15000, 0.5, 300),
         roadMaterial
     );
-    roadHorizontal.position.set(0, 0.2, 0);
+    roadHorizontal.position.set(0, 0.25, 0); // Raised to prevent Z-fighting
     roadHorizontal.receiveShadow = true;
     scene.add(roadHorizontal);
 
@@ -2486,7 +2488,7 @@ const regionSharedGeo = {
     roadMarkingX: new THREE.PlaneGeometry(5, 150)
 };
 const regionSharedMat = {
-    ground: new THREE.MeshLambertMaterial({ color: 0x3a5a3a }),
+    ground: new THREE.MeshLambertMaterial({ color: 0x444444 }), // Match main ground color
     road: new THREE.MeshLambertMaterial({ color: 0x222222 }),
     markingYellow: new THREE.MeshBasicMaterial({ color: 0xffff00 }),
     edgeWhite: new THREE.MeshBasicMaterial({ color: 0xffffff })
@@ -2576,7 +2578,7 @@ function generateRegion(rx, rz) {
     if (Math.abs(rx) === 0) {
         const roadPatchZ = new THREE.Mesh(regionSharedGeo.roadPatchX, regionSharedMat.road);
         roadPatchZ.rotation.y = Math.PI / 2; // Rotate to align with Z axis
-        roadPatchZ.position.set(0, 0.2, baseZ);
+        roadPatchZ.position.set(0, 0.25, baseZ); // Raised to prevent Z-fighting
         roadPatchZ.receiveShadow = true;
         scene.add(roadPatchZ);
         regionObjects[regionKey].push(roadPatchZ);
@@ -2605,7 +2607,7 @@ function generateRegion(rx, rz) {
     // Road along X-axis (at z=0) - continues infinitely east/west
     if (Math.abs(rz) === 0 && Math.abs(rx) > 0) {
         const roadPatchX = new THREE.Mesh(regionSharedGeo.roadPatchX, regionSharedMat.road);
-        roadPatchX.position.set(baseX, 0.2, 0);
+        roadPatchX.position.set(baseX, 0.25, 0); // Raised to prevent Z-fighting
         roadPatchX.receiveShadow = true;
         scene.add(roadPatchX);
         regionObjects[regionKey].push(roadPatchX);
