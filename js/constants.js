@@ -111,6 +111,28 @@ export const cars = {
         mass: 1.4,
         grip: 0.55          // Muscle cars slide more (classic feel)
     },
+    buggy: {
+        name: 'Strandbuggy',
+        price: 25000,
+        maxSpeed: 26,       // ~94 km/h display
+        acceleration: 0.11,
+        handling: 0.09,     // Good handling, off-road capable
+        health: 95,
+        color: 0xFF6B35,    // Orange/sandy color
+        mass: 0.9,
+        grip: 0.75          // Good off-road grip
+    },
+    pickup: {
+        name: 'Pickup Truck',
+        price: 45000,
+        maxSpeed: 24,       // ~86 km/h display
+        acceleration: 0.10,
+        handling: 0.045,
+        health: 140,
+        color: 0x8B4513,    // Saddle brown
+        mass: 1.5,
+        grip: 0.65          // Heavy but stable
+    },
     super: {
         name: 'Superbil',
         price: 95000,
@@ -122,6 +144,17 @@ export const cars = {
         mass: 1.2,
         grip: 0.9           // Performance tires
     },
+    rally: {
+        name: 'Rallybil',
+        price: 65000,
+        maxSpeed: 36,       // ~130 km/h display
+        acceleration: 0.16,
+        handling: 0.11,     // Excellent handling
+        health: 105,
+        color: 0x00FF7F,    // Spring green
+        mass: 1.15,
+        grip: 0.88          // Rally tires - great grip
+    },
     hyper: {
         name: 'Hyperbil',
         price: 400000,
@@ -132,6 +165,43 @@ export const cars = {
         color: 0x00ffff,
         mass: 1.3,
         grip: 0.95          // Racing slicks
+    },
+    hotrod: {
+        name: 'Hot Rod',
+        price: 120000,
+        maxSpeed: 38,       // ~137 km/h display
+        acceleration: 0.20,
+        handling: 0.06,     // Less handling, more power
+        health: 110,
+        color: 0xFF1493,    // Deep pink (classic hot rod)
+        mass: 1.25,
+        grip: 0.70          // Classic street tires
+    },
+    monstertruck: {
+        name: 'Monster Truck',
+        price: 250000,
+        maxSpeed: 20,       // ~72 km/h display
+        acceleration: 0.08,
+        handling: 0.07,
+        health: 250,
+        color: 0x32CD32,    // Lime green (monster truck style)
+        mass: 3.5,
+        type: 'monstertruck',
+        canRam: true,       // Can destroy police cars on impact
+        grip: 0.80,         // Big tires = good grip
+        scale: 1.4          // Bigger visual size
+    },
+    formula: {
+        name: 'Racerbil F1',
+        price: 500000,
+        maxSpeed: 60,       // ~216 km/h display
+        acceleration: 0.28,
+        handling: 0.14,     // Best handling
+        health: 85,         // Fragile
+        color: 0xFF0000,    // Racing red
+        mass: 0.85,
+        grip: 0.98,         // Racing slicks, maximum grip
+        scale: 0.9          // Smaller, low profile
     },
     tank: {
         name: 'Kampvogn',

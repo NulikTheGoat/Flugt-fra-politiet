@@ -722,6 +722,110 @@ export function renderShop() {
                     </div>
                 `;
             }
+            if (vehicleType === 'monstertruck') {
+                return `
+                    <div class="car-preview-box preview-monstertruck">
+                        <div class="floor-grid"></div>
+                        <div class="vehicle-model vehicle-monstertruck" style="--accent:${colorHex};">
+                            <div class="truck-body" style="background: linear-gradient(135deg, ${colorHex} 0%, ${darkerColor} 100%);"></div>
+                            <div class="truck-cabin" style="background: linear-gradient(135deg, ${colorHex} 0%, ${darkerColor} 100%);"></div>
+                            <div class="monster-wheel front-left"></div>
+                            <div class="monster-wheel front-right"></div>
+                            <div class="monster-wheel back-left"></div>
+                            <div class="monster-wheel back-right"></div>
+                        </div>
+                    </div>
+                `;
+            }
+            if (vehicleType === 'buggy') {
+                return `
+                    <div class="car-preview-box preview-buggy">
+                        <div class="floor-grid"></div>
+                        <div class="car-model-3d">
+                            <div class="car-body buggy-body" style="background: linear-gradient(135deg, ${colorHex} 0%, ${darkerColor} 100%);">
+                                <div class="buggy-roll-cage"></div>
+                                <div class="car-wheel front-left"></div>
+                                <div class="car-wheel front-right"></div>
+                                <div class="car-wheel back-left"></div>
+                                <div class="car-wheel back-right"></div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }
+            if (vehicleType === 'pickup') {
+                return `
+                    <div class="car-preview-box preview-pickup">
+                        <div class="floor-grid"></div>
+                        <div class="car-model-3d">
+                            <div class="car-body pickup-body" style="background: linear-gradient(135deg, ${colorHex} 0%, ${darkerColor} 100%);">
+                                <div class="pickup-bed"></div>
+                                <div class="car-wheel front-left"></div>
+                                <div class="car-wheel front-right"></div>
+                                <div class="car-wheel back-left"></div>
+                                <div class="car-wheel back-right"></div>
+                                <div class="car-headlight left"></div>
+                                <div class="car-headlight right"></div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }
+            if (vehicleType === 'rally') {
+                return `
+                    <div class="car-preview-box preview-rally">
+                        <div class="floor-grid"></div>
+                        <div class="car-model-3d">
+                            <div class="car-body rally-body" style="background: linear-gradient(135deg, ${colorHex} 0%, ${darkerColor} 100%);">
+                                <div class="rally-spoiler"></div>
+                                <div class="rally-hood-scoop"></div>
+                                <div class="car-wheel front-left"></div>
+                                <div class="car-wheel front-right"></div>
+                                <div class="car-wheel back-left"></div>
+                                <div class="car-wheel back-right"></div>
+                                <div class="car-headlight left"></div>
+                                <div class="car-headlight right"></div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }
+            if (vehicleType === 'hotrod') {
+                return `
+                    <div class="car-preview-box preview-hotrod">
+                        <div class="floor-grid"></div>
+                        <div class="car-model-3d">
+                            <div class="car-body hotrod-body" style="background: linear-gradient(135deg, ${colorHex} 0%, ${darkerColor} 100%);">
+                                <div class="hotrod-engine"></div>
+                                <div class="hotrod-exhaust"></div>
+                                <div class="car-wheel front-left"></div>
+                                <div class="car-wheel front-right"></div>
+                                <div class="car-wheel back-left"></div>
+                                <div class="car-wheel back-right"></div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }
+            if (vehicleType === 'formula') {
+                return `
+                    <div class="car-preview-box preview-formula">
+                        <div class="floor-grid"></div>
+                        <div class="car-model-3d">
+                            <div class="car-body formula-body" style="background: linear-gradient(135deg, ${colorHex} 0%, ${darkerColor} 100%);">
+                                <div class="formula-nose"></div>
+                                <div class="formula-wing-front"></div>
+                                <div class="formula-wing-back"></div>
+                                <div class="formula-cockpit"></div>
+                                <div class="car-wheel front-left"></div>
+                                <div class="car-wheel front-right"></div>
+                                <div class="car-wheel back-left"></div>
+                                <div class="car-wheel back-right"></div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }
             if (vehicleType === 'ufo') {
                 return `
                     <div class="car-preview-box preview-ufo">
