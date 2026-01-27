@@ -3,6 +3,7 @@ import { gameState } from './state.js';
 import * as Network from './network.js';
 import { DOM, goToShop, setMultiplayerShopCallback } from './ui.js';
 import { gameConfig } from './config.js';
+import { unlockAudio } from './sfx.js';
 
 // DOM Elements
 const multiplayerLobby = document.getElementById('multiplayerLobby');
@@ -122,6 +123,7 @@ export function initMenu({ startGame, cleanupGame }) {
             if(gameModeModal) gameModeModal.style.display = 'flex';
         });
     }
+        document.addEventListener('pointerdown', unlockAudio, { once: true });
 
     // Solo mode - just start the game
     if (soloModeBtn) {

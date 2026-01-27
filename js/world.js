@@ -7,14 +7,25 @@ import { createSmoke, createSpark } from './particles.js';
 import { addMoney, showFloatingMoney } from './ui.js';
 import { logEvent, EVENTS } from './commentary.js';
 import { BUILDING_TYPES, cars } from './constants.js';
+import { 
+    generateBuildingDebrisPlan, 
+    generateTreeDebrisPlan,
+    DEBRIS_MATERIALS,
+    classifyDebrisSize,
+    getDebrisCollisionProps,
+    calculateShatterPieces,
+    calculateVehicleDebrisCollision
+} from './debrisLogic.js';
+
+let skyMesh = null;
 
 export function createSky() {
     // Gradient Sky
+    // Use local position for gradient calculation so it remains consistent relative to the sphere center (player)
     const vertexShader = `
-        varying vec3 vWorldPosition;
+        varying vec3 vPosition;
         void main() {
-            vec4 worldPosition = modelMatrix * vec4( position, 1.0 );
-            vWorldPosition = worldPosition.xyz;
+            vPosition = position;
             gl_Position = projectionMatrix * modelViewMatrix * vec4( position, 1.0 );
         }
     `;
@@ -23,9 +34,9 @@ export function createSky() {
         uniform vec3 bottomColor;
         uniform float offset;
         uniform float exponent;
-        varying vec3 vWorldPosition;
+        varying vec3 vPosition;
         void main() {
-            float h = normalize( vWorldPosition + offset ).y;
+            float h = normalize( vPosition + vec3(0, offset, 0) ).y;
             gl_FragColor = vec4( mix( bottomColor, topColor, max( pow( max( h, 0.0 ), exponent ), 0.0 ) ), 1.0 );
         }
     `;
@@ -33,12 +44,13 @@ export function createSky() {
     const uniforms = {
         topColor: { value: new THREE.Color(0x0077ff) },
         bottomColor: { value: new THREE.Color(0xffffff) },
-        offset: { value: 33 },
+        offset: { value: 33 }, // Offset moved to vector addition in shader
         exponent: { value: 0.6 }
     };
     uniforms.bottomColor.value.copy(scene.fog.color); // Blend horizon with fog
 
-    const skyGeo = new THREE.SphereGeometry(8000, 32, 15);
+    // Radius 20000 to fit inside camera.far (25000) and outside fog (9000)
+    const skyGeo = new THREE.SphereGeometry(20000, 32, 15);
     const skyMat = new THREE.ShaderMaterial({
         uniforms: uniforms,
         vertexShader: vertexShader,
@@ -48,6 +60,7 @@ export function createSky() {
 
     const sky = new THREE.Mesh(skyGeo, skyMat);
     scene.add(sky);
+    skyMesh = sky;
 }
 
 // Helper to create a procedural window texture for background buildings - Enhanced version
@@ -137,139 +150,55 @@ function createWindowTexture() {
 }
 
 export function createDistantCityscape() {
-    try {
-        // Generate a dense city ring at the EDGE of the map (Map radius is approx 5000)
-        // Moved further out as requested
-        const buildingCount = 450; 
-        const minRadius = 4200;
-        const maxRadius = 4900;
-        const windowTexture = createWindowTexture();
-        
-        const buildingGeo = new THREE.BoxGeometry(100, 300, 100);
-        // Enhanced material with better lighting and texture
-        const buildingMat = new THREE.MeshStandardMaterial({ 
-            map: windowTexture,
-            roughness: 0.8,
-            metalness: 0.1,
-            color: 0xcccccc // Slight tint
-        });
-        
-        // Instanced mesh for performance
-        const instancedMesh = new THREE.InstancedMesh(buildingGeo, buildingMat, buildingCount);
-        
-        // Explicitly create instanceColor buffer to avoid potential crash
-        if (!instancedMesh.instanceColor) {
-             // Let Three.js handle it or verify version compatibility
-        }
-
-        const dummy = new THREE.Object3D();
-        const color = new THREE.Color();
-        // Colorful palette for distant buildings (Neon/Cyberpunk-ish dark tones)
-        const palette = [
-            0x2C3E50, // Dark Blue
-            0x8E44AD, // Purple
-            0x2980B9, // Blue
-            0xC0392B, // Dark Red
-            0xD35400, // Pumpkin
-            0x27AE60, // Green
-            0x1A252F  // Dark Slate
-        ];
-        
-        for (let i = 0; i < buildingCount; i++) {
-            const angle = Math.random() * Math.PI * 2;
-            const r = minRadius + Math.random() * (maxRadius - minRadius);
-            
-            const x = Math.cos(angle) * r;
-            const z = Math.sin(angle) * r;
-            
-            const width = 120 + Math.random() * 200;
-            const depth = 120 + Math.random() * 200;
-            const height = 300 + Math.random() * 800; 
-            
-            dummy.position.set(x, height / 2, z);
-            dummy.rotation.y = Math.random() * Math.PI;
-            dummy.scale.set(width / 100, height / 300, depth / 100);
-            dummy.updateMatrix();
-            
-            instancedMesh.setMatrixAt(i, dummy.matrix);
-            
-            // Random dark color variation
-            color.setHex(palette[Math.floor(Math.random() * palette.length)]);
-            instancedMesh.setColorAt(i, color);
-        }
-        
-        instancedMesh.instanceMatrix.needsUpdate = true;
-        if (instancedMesh.instanceColor) instancedMesh.instanceColor.needsUpdate = true;
-        
-        scene.add(instancedMesh);
-        
-        // Add "Radio Towers"
-        for (let i = 0; i < 12; i++) {
-            const angle = Math.random() * Math.PI * 2;
-            const r = minRadius + Math.random() * (maxRadius - minRadius);
-            const x = Math.cos(angle) * r;
-            const z = Math.sin(angle) * r;
-            
-            const towerHeight = 1000 + Math.random() * 500;
-            
-            const towerGeo = new THREE.CylinderGeometry(5, 30, towerHeight, 4);
-            const towerMat = new THREE.MeshBasicMaterial({ color: 0x111111 });
-            const tower = new THREE.Mesh(towerGeo, towerMat);
-            tower.position.set(x, towerHeight / 2, z);
-            scene.add(tower);
-            
-            const lightGeo = new THREE.SphereGeometry(40, 4, 4);
-            const lightMat = new THREE.MeshBasicMaterial({ color: 0xff0000 });
-            const light = new THREE.Mesh(lightGeo, lightMat);
-            light.position.set(0, towerHeight / 2, 0);
-            tower.add(light);
-        }
-    } catch (err) {
-        console.error("Distant cityscape generation failed:", err);
-    }
+    // Disabled - distant buildings removed for cleaner look
 }
 
 export function createGround() {
-    const groundGeometry = new THREE.PlaneGeometry(10000, 10000);
+    // Larger initial ground - endless system extends it further
+    const groundGeometry = new THREE.PlaneGeometry(15000, 15000);
     const groundMaterial = new THREE.MeshLambertMaterial({ color: 0x444444 });
     const ground = new THREE.Mesh(groundGeometry, groundMaterial);
     ground.rotation.x = -Math.PI / 2;
     ground.receiveShadow = true;
     scene.add(ground);
 
-    // Main Road - Horizontal
-    const roadGeometry = new THREE.BoxGeometry(300, 0.4, 10000);
+    // Main Road - North/South (along Z axis) - Removed long static road to let Loops take over
+    // We only keep a small intersection patch to ensure clean connection
+    const roadGeometry = new THREE.BoxGeometry(300, 0.4, 300);
     const roadMaterial = new THREE.MeshLambertMaterial({ color: 0x222222 });
     const road = new THREE.Mesh(roadGeometry, roadMaterial);
     road.position.set(0, 0.2, 0);
     road.receiveShadow = true;
     scene.add(road);
 
-    // Main Road - Vertical
-    const roadVertical = new THREE.Mesh(roadGeometry, roadMaterial);
-    roadVertical.rotation.y = Math.PI / 2;
-    roadVertical.position.set(0, 0.2, 0);
-    roadVertical.receiveShadow = true;
-    scene.add(roadVertical);
+    // Main Road - East/West (along X axis)
+    const roadHorizontal = new THREE.Mesh(
+        new THREE.BoxGeometry(15000, 0.4, 300),
+        roadMaterial
+    );
+    roadHorizontal.position.set(0, 0.2, 0);
+    roadHorizontal.receiveShadow = true;
+    scene.add(roadHorizontal);
 
-    // Road markings
+    // Road markings - extend further
     const markingGeometry = new THREE.PlaneGeometry(5, 150);
     const markingMaterial = new THREE.MeshLambertMaterial({ color: 0xffff00 });
     
-    // Horizontal markings
-    for (let i = -2500; i < 2500; i += 300) {
+    // Z-axis markings (along the road)
+    for (let i = -5000; i < 5000; i += 300) {
         const marking = new THREE.Mesh(markingGeometry, markingMaterial);
         marking.rotation.x = -Math.PI / 2;
-        marking.position.set(0, 0.55, i); // Raised to prevent z-fighting
+        marking.position.set(0, 0.55, i);
         marking.receiveShadow = true;
         scene.add(marking);
     }
 
-    // Vertical markings
-    for (let i = -2500; i < 2500; i += 300) {
+    // X-axis markings
+    for (let i = -5000; i < 5000; i += 300) {
         const marking = new THREE.Mesh(markingGeometry, markingMaterial);
         marking.rotation.x = -Math.PI / 2;
-        marking.position.set(i, 0.55, 0); // Raised to prevent z-fighting
+        marking.rotation.z = Math.PI / 2;
+        marking.position.set(i, 0.55, 0);
         marking.receiveShadow = true;
         scene.add(marking);
     }
@@ -310,9 +239,9 @@ export function createHotdogStands() {
     
     // Positions around the map - away from roads but visible
     const standPositions = [
-        // Near spawn - easy to find!
-        [80, 80],
-        [-80, -80]
+        // Near spawn - on the corners of the intersection
+        [200, 200],
+        [-200, -200]
     ];
 
     standPositions.forEach(pos => {
@@ -339,72 +268,205 @@ function createWindow(x, y, z, rotY, width, height, isLit) {
     return windowMesh;
 }
 
-// Tilføj vinduer til en bygning
-function addWindowsToBuilding(building, buildingX, buildingZ, width, depth, height, type) {
+// Optimized window creation: Attaches merged windows to chunks to reduce draw calls significantly
+function addWindowsToChunks(chunks, buildingX, buildingZ, width, depth, height, type, dx, dy, dz, nx, ny, nz) {
     const windowWidth = 12;
     const windowHeight = 15;
     const windowSpacingX = 25;
     const windowSpacingY = 35;
-    const windowsPerFloor = Math.floor((width - 20) / windowSpacingX);
-    const floors = Math.floor((height - 20) / windowSpacingY);
     
     const isGlass = type.isGlass;
+    const wW = (isGlass ? windowSpacingX - 3 : windowWidth) / 2; // Half width for vertex calc
+    const wH = (isGlass ? windowSpacingY - 5 : windowHeight) / 2; // Half height
+
+    const windowsPerFloor = Math.floor((width - 20) / windowSpacingX);
+    const windowsPerSide = Math.floor((depth - 20) / windowSpacingX);
+    const floors = Math.floor((height - 20) / windowSpacingY);
     
-    // Front og bag vinduer
+    // Per-chunk data storage
+    // Map<Chunk, { [matIndex]: Array<WindowProps> }>
+    const chunkData = new Map();
+
+    const getChunkData = (chunk) => {
+        if (!chunkData.has(chunk)) {
+            chunkData.set(chunk, { 0: [], 1: [], 2: [] });
+        }
+        return chunkData.get(chunk);
+    };
+
+    const getChunk = (localX, localY, localZ) => {
+        const ix = Math.min(Math.max(Math.floor(localX / dx), 0), nx - 1);
+        const iy = Math.min(Math.max(Math.floor(localY / dy), 0), ny - 1);
+        const iz = Math.min(Math.max(Math.floor(localZ / dz), 0), nz - 1);
+        return (chunks[ix] && chunks[ix][iy]) ? chunks[ix][iy][iz] : null;
+    };
+
+    // 1. Collect all window positions grouped by chunk and material
     for (let floor = 0; floor < floors; floor++) {
+        const windowY = 20 + floor * windowSpacingY;
+        
+        // Front & Back
         for (let w = 0; w < windowsPerFloor; w++) {
             const isLit = Math.random() > 0.4;
-            const windowX = buildingX - width/2 + 15 + w * windowSpacingX;
-            const windowY = 20 + floor * windowSpacingY;
-            
+            const matIdx = isLit ? (Math.random() > 0.5 ? 1 : 2) : 0;
+            const currentX = (15 + w * windowSpacingX) - width/2;
+            const localX = (15 + w * windowSpacingX);
+
             // Front
-            const frontWindow = createWindow(
-                windowX, windowY, buildingZ + depth/2 + 0.5, 0,
-                isGlass ? windowSpacingX - 3 : windowWidth, 
-                isGlass ? windowSpacingY - 5 : windowHeight, 
-                isLit
-            );
-            building.add(frontWindow);
-            
-            // Bag
-            const backWindow = createWindow(
-                windowX, windowY, buildingZ - depth/2 - 0.5, Math.PI,
-                isGlass ? windowSpacingX - 3 : windowWidth,
-                isGlass ? windowSpacingY - 5 : windowHeight,
-                isLit
-            );
-            building.add(backWindow);
+            let chunk = getChunk(localX, windowY, depth - 1);
+            if (chunk) {
+                // Pos relative to chunk (same logic as before)
+                // Chunk local pos relative to building is needed.
+                // chunk.position is relative to building center (which is 0,0,0 relative to building group).
+                // Wait, chunk.position is Set relative to startX/Y/Z which are absolute to World in createSingleBuilding
+                // EXCEPT createSingleBuilding adds them to buildingGroup!
+                // So chunk.position is local to buildingGroup.
+                // And buildingGroup is at 0,0,0? No, buildingGroup is returned and added to scene. 
+                // Ah, createSingleBuilding does `chunk.position.set(startX...)` where startX is based on building center X passed in.
+                // BUT `buildingGroup` is a Group. If we add chunks to it, their positions behave as local.
+                // IF buildingGroup is placed at 0,0,0, then chunk positions are World positions.
+                // IF buildingGroup is placed at building X,Z, then chunk positions should be local integers.
+                
+                // Let's check createSingleBuilding:
+                // startX = x - width/2...
+                // chunk.position.set(startX...)
+                // buildingGroup.add(chunk)
+                // scene.add(buildingGroup)
+                // This means buildingGroup is at 0,0,0 and chunks are at World Coords.
+                // Correct.
+                
+                // So: Window World Pos needs to be computed.
+                // Window World X = buildingX + currentX
+                // Chunk World X = chunk.position.x
+                // RelX = (buildingX + currentX) - chunk.position.x
+                
+                getChunkData(chunk)[matIdx].push({
+                    x: (buildingX + currentX) - chunk.position.x,
+                    y: windowY - chunk.position.y,
+                    z: (buildingZ + depth/2 + 0.6) - chunk.position.z,
+                    rot: 0 // 0 rad
+                });
+            }
+
+            // Back
+            chunk = getChunk(localX, windowY, 0);
+            if (chunk) {
+                getChunkData(chunk)[matIdx].push({
+                    x: (buildingX + currentX) - chunk.position.x,
+                    y: windowY - chunk.position.y,
+                    z: (buildingZ - depth/2 - 0.6) - chunk.position.z,
+                    rot: Math.PI
+                });
+            }
         }
-    }
-    
-    // Side vinduer
-    const windowsPerSide = Math.floor((depth - 20) / windowSpacingX);
-    for (let floor = 0; floor < floors; floor++) {
+        
+        // Sides
         for (let w = 0; w < windowsPerSide; w++) {
             const isLit = Math.random() > 0.4;
-            const windowZ = buildingZ - depth/2 + 15 + w * windowSpacingX;
-            const windowY = 20 + floor * windowSpacingY;
-            
-            // Venstre side
-            const leftWindow = createWindow(
-                buildingX - width/2 - 0.5, windowY, windowZ, Math.PI/2,
-                isGlass ? windowSpacingX - 3 : windowWidth,
-                isGlass ? windowSpacingY - 5 : windowHeight,
-                isLit
-            );
-            building.add(leftWindow);
-            
-            // Højre side
-            const rightWindow = createWindow(
-                buildingX + width/2 + 0.5, windowY, windowZ, -Math.PI/2,
-                isGlass ? windowSpacingX - 3 : windowWidth,
-                isGlass ? windowSpacingY - 5 : windowHeight,
-                isLit
-            );
-            building.add(rightWindow);
+            const matIdx = isLit ? (Math.random() > 0.5 ? 1 : 2) : 0;
+            const currentZ = (15 + w * windowSpacingX) - depth/2;
+            const localZ = 15 + w * windowSpacingX;
+
+            // Left
+            let chunk = getChunk(0, windowY, localZ);
+            if (chunk) {
+                getChunkData(chunk)[matIdx].push({
+                    x: (buildingX - width/2 - 0.6) - chunk.position.x,
+                    y: windowY - chunk.position.y,
+                    z: (buildingZ + currentZ) - chunk.position.z,
+                    rot: Math.PI/2
+                });
+            }
+
+            // Right
+            chunk = getChunk(width - 1, windowY, localZ);
+            if (chunk) {
+                getChunkData(chunk)[matIdx].push({
+                    x: (buildingX + width/2 + 0.6) - chunk.position.x,
+                    y: windowY - chunk.position.y,
+                    z: (buildingZ + currentZ) - chunk.position.z,
+                    rot: -Math.PI/2
+                });
+            }
         }
     }
+
+    // 2. Generate Merged Meshes per Chunk
+    const materials = [winMatDark, winMatLit1, winMatLit2];
+    
+    chunkData.forEach((data, chunk) => {
+        for (let i = 0; i < 3; i++) {
+            const wins = data[i];
+            if (wins.length === 0) continue;
+
+            // Create BufferGeometry manually
+            const vertexCount = wins.length * 4;
+            const indexCount = wins.length * 6;
+            
+            const positionAttr = new Float32Array(vertexCount * 3);
+            const indexAttr = new Uint16Array(indexCount);
+            // Normals and UVs omitted for performance (BasicMaterial doesn't strictly need them if lighting/textures off)
+            // But if we switch to StandardMaterial later, we'd need normals. For now windows are simple.
+            
+            let vIdx = 0;
+            let iIdx = 0;
+            let offset = 0;
+
+            for (const win of wins) {
+                // Compute corners based on rotation
+                // Base: (-wW, -wH), (wW, -wH), (-wW, wH), (wW, wH) ?
+                // PlaneGeometry normal is usually +Z. Vertices:
+                // 0: -w, +h, 0
+                // 1: +w, +h, 0
+                // 2: -w, -h, 0
+                // 3: +w, -h, 0
+                
+                const cos = Math.cos(win.rot);
+                const sin = Math.sin(win.rot);
+
+                const addVert = (lx, ly, lz) => {
+                    // Rotate around Y
+                    const rx = lx * cos - lz * sin;
+                    const rz = lx * sin + lz * cos;
+                    
+                    positionAttr[vIdx++] = win.x + rx;
+                    positionAttr[vIdx++] = win.y + ly;
+                    positionAttr[vIdx++] = win.z + rz;
+                };
+
+                // TL
+                addVert(-wW, wH, 0);
+                // TR
+                addVert(wW, wH, 0);
+                // BL
+                addVert(-wW, -wH, 0);
+                // BR
+                addVert(wW, -wH, 0);
+
+                // Indices (0, 2, 1, 2, 3, 1)
+                indexAttr[iIdx++] = offset + 0;
+                indexAttr[iIdx++] = offset + 2;
+                indexAttr[iIdx++] = offset + 1;
+                indexAttr[iIdx++] = offset + 2;
+                indexAttr[iIdx++] = offset + 3;
+                indexAttr[iIdx++] = offset + 1;
+                
+                offset += 4;
+            }
+
+            const geom = new THREE.BufferGeometry();
+            geom.setAttribute('position', new THREE.BufferAttribute(positionAttr, 3));
+            geom.setIndex(new THREE.BufferAttribute(indexAttr, 1));
+            
+            const mesh = new THREE.Mesh(geom, materials[i]);
+            chunk.add(mesh);
+        }
+    });
 }
+
+// Old functions removed/replaced
+// function addWindowsToBuilding(...) { ... }
+// function createWindow(...) { ... }
 
 // Skab markise til butikker
 function createAwning(x, z, width, depth, color) {
@@ -721,22 +783,112 @@ export function updateBuildingChunks(delta) {
             chunk.userData.velocity.z *= 0.98;
         }
         
+        // Flying debris to building collision - large/medium debris can destroy buildings
+        if (!chunk.userData.isSmallDebris && chunk.userData.velocity) {
+            const debrisSpeed = Math.sqrt(
+                chunk.userData.velocity.x ** 2 + 
+                chunk.userData.velocity.y ** 2 + 
+                chunk.userData.velocity.z ** 2
+            );
+            
+            // Only check if moving fast enough
+            if (debrisSpeed > 15) {
+                const debrisSize = Math.max(chunk.userData.width || 10, chunk.userData.depth || 10);
+                
+                // Check collision with standing building chunks (using grid)
+                const dgx = Math.floor(chunk.position.x / gameState.chunkGridSize);
+                const dgz = Math.floor(chunk.position.z / gameState.chunkGridSize);
+                
+                outerLoop:
+                for (let dx = -1; dx <= 1; dx++) {
+                    for (let dz = -1; dz <= 1; dz++) {
+                        const key = `${dgx + dx},${dgz + dz}`;
+                        const buildingChunks = gameState.chunkGrid[key];
+                        if (!buildingChunks) continue;
+                        
+                        for (const bChunk of buildingChunks) {
+                            if (bChunk.userData.isHit) continue;
+                            
+                            const bdx = bChunk.position.x - chunk.position.x;
+                            const bdz = bChunk.position.z - chunk.position.z;
+                            const bdy = bChunk.position.y - chunk.position.y;
+                            const distSq = bdx * bdx + bdz * bdz + bdy * bdy;
+                            
+                            const collDist = (debrisSize + (bChunk.userData.width || 30)) / 2;
+                            
+                            if (distSq < collDist * collDist && debrisSize >= 8) {
+                                // Flying debris destroys building chunk!
+                                bChunk.userData.isHit = true;
+                                bChunk.matrixAutoUpdate = true;
+                                gameState.activeChunks.push(bChunk);
+                                
+                                // Building chunk gets velocity from impact
+                                const impactForce = debrisSpeed * 0.3;
+                                bChunk.userData.velocity.set(
+                                    chunk.userData.velocity.x * 0.5,
+                                    5 + Math.random() * 5,
+                                    chunk.userData.velocity.z * 0.5
+                                );
+                                bChunk.userData.rotVelocity.set(
+                                    (Math.random() - 0.5) * 0.3,
+                                    (Math.random() - 0.5) * 0.3,
+                                    (Math.random() - 0.5) * 0.3
+                                );
+                                
+                                // Flying debris loses momentum
+                                chunk.userData.velocity.x *= 0.3;
+                                chunk.userData.velocity.z *= 0.3;
+                                chunk.userData.velocity.y *= 0.5;
+                                
+                                // Create debris particles
+                                createBuildingDebris(bChunk.position, bChunk.material.color, debrisSpeed);
+                                createSmoke(bChunk.position);
+                                
+                                gameState.destructionCount = (gameState.destructionCount || 0) + 1;
+                                logEvent(EVENTS.BUILDING_DESTROYED, "Debris cascade!", { speed: debrisSpeed });
+                                
+                                break outerLoop; // Only one collision per frame
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        
         // When chunk comes to rest, mark as fallen debris
-        if (Math.abs(chunk.userData.velocity.y) < 0.1 && 
-            Math.abs(chunk.userData.velocity.x) < 0.1 && 
-            Math.abs(chunk.userData.velocity.z) < 0.1 &&
-            chunk.position.y <= groundY + 0.1) {
+        // Use slightly larger thresholds to ensure chunks settle reliably
+        if (Math.abs(chunk.userData.velocity.y) < 0.5 && 
+            Math.abs(chunk.userData.velocity.x) < 0.5 && 
+            Math.abs(chunk.userData.velocity.z) < 0.5 &&
+            chunk.position.y <= groundY + 1) {
              gameState.activeChunks.splice(i, 1);
+             
+             // Ensure chunk is properly on the ground
+             chunk.position.y = groundY;
              
              // Optimization: Disable updates again as it's now static debris
              chunk.matrixAutoUpdate = false;
              chunk.updateMatrix(); // Ensure final position is locked
 
              // Mark as fallen debris - solid but no damage, can be shattered
-             if (!chunk.userData.isSmallDebris) {
+             // Classify debris by size for proper collision handling
+             const debrisSize = classifyDebrisSize(
+                 chunk.userData.width || 10,
+                 chunk.userData.height || 10,
+                 chunk.userData.depth || 10
+             );
+             
+             // Only track collidable debris (not tiny)
+             if (debrisSize !== 'tiny') {
                  chunk.userData.isFallenDebris = true;
+                 chunk.userData.debrisSize = debrisSize;
+                 chunk.userData.isCollidable = true;
                  if (!gameState.fallenDebris) gameState.fallenDebris = [];
                  gameState.fallenDebris.push(chunk);
+                 
+                 // Also add to unified debris array
+                 if (!gameState.debris) gameState.debris = [];
+                 gameState.debris.push(chunk);
              }
         }
     }
@@ -926,23 +1078,149 @@ export function updateBuildingChunks(delta) {
             }
         }
     }
+
+    // Collisions with standing building chunks (Police cars)
+    if (gameState.policeCars && gameState.policeCars.length > 0) {
+        gameState.policeCars.forEach(policeCar => {
+            if (!policeCar || policeCar.userData?.dead) return;
+
+            const pPos = policeCar.position;
+            const pSpeed = Math.abs(policeCar.userData?.speed || 0);
+            const pAngle = policeCar.rotation.y || 0;
+            const pRadius = 15;
+
+            const pX = Math.floor(pPos.x / gridSize);
+            const pZ = Math.floor(pPos.z / gridSize);
+
+            for (let x = pX - 1; x <= pX + 1; x++) {
+                for (let z = pZ - 1; z <= pZ + 1; z++) {
+                    const key = `${x},${z}`;
+                    const chunks = gameState.chunkGrid[key];
+                    if (!chunks) continue;
+
+                    for (let i = 0; i < chunks.length; i++) {
+                        const chunk = chunks[i];
+                        if (chunk.userData.isHit) continue;
+
+                        if (Math.abs(chunk.position.x - pPos.x) < 40 && Math.abs(chunk.position.z - pPos.z) < 40) {
+                            const dx = chunk.position.x - pPos.x;
+                            const dz = chunk.position.z - pPos.z;
+                            const distSq = dx * dx + dz * dz;
+                            const collisionDist = (pRadius + chunk.userData.width / 2 + 5);
+
+                            if (distSq < collisionDist * collisionDist) {
+                                if (Math.abs(chunk.position.y - pPos.y) < (chunk.userData.height / 2 + 10)) {
+                                    const dist = Math.sqrt(distSq) || 1;
+                                    const overlap = collisionDist - dist;
+                                    if (overlap > 0) {
+                                        pPos.x -= (dx / dist) * overlap * 1.05;
+                                        pPos.z -= (dz / dist) * overlap * 1.05;
+                                    }
+
+                                    const angleToChunk = Math.atan2(dx, dz);
+
+                                    if (chunk.userData.isTree) {
+                                        chunk.userData.health--;
+
+                                        if (chunk.userData.health <= 0 || pSpeed > 25) {
+                                            chunk.userData.isHit = true;
+                                            chunk.matrixAutoUpdate = true;
+                                            gameState.activeChunks.push(chunk);
+
+                                            chunk.userData.velocity.set(
+                                                Math.sin(pAngle) * pSpeed * 0.3,
+                                                2 + Math.random() * 3,
+                                                Math.cos(pAngle) * pSpeed * 0.3
+                                            );
+
+                                            chunk.userData.rotVelocity.set(
+                                                (Math.random() - 0.5) * 0.3,
+                                                0,
+                                                (Math.random() - 0.5) * 0.3
+                                            );
+
+                                            if (chunk.userData.linkedFoliage) {
+                                                const foliage = chunk.userData.linkedFoliage;
+                                                foliage.userData.isHit = true;
+                                                foliage.matrixAutoUpdate = true;
+                                                gameState.activeChunks.push(foliage);
+                                                foliage.userData.velocity = chunk.userData.velocity.clone();
+                                                foliage.userData.velocity.y += 3;
+                                                foliage.userData.rotVelocity = new THREE.Vector3(
+                                                    (Math.random() - 0.5) * 0.5,
+                                                    (Math.random() - 0.5) * 0.3,
+                                                    (Math.random() - 0.5) * 0.5
+                                                );
+                                            }
+
+                                            createTreeDebris(chunk.position, pSpeed, { isPolice: true, impactAngle: pAngle });
+                                            policeCar.userData.speed *= 0.7;
+                                        }
+                                    } else if (chunk.userData.isHotdogStand) {
+                                        chunk.userData.isHit = true;
+                                        chunk.matrixAutoUpdate = true;
+                                        gameState.activeChunks.push(chunk);
+
+                                        chunk.userData.velocity.set(
+                                            Math.sin(pAngle) * (pSpeed * 0.3 + 5),
+                                            5 + Math.random() * 5,
+                                            Math.cos(pAngle) * (pSpeed * 0.3 + 5)
+                                        );
+
+                                        chunk.userData.rotVelocity.set(
+                                            (Math.random() - 0.5) * 0.2,
+                                            (Math.random() - 0.5) * 0.2,
+                                            (Math.random() - 0.5) * 0.2
+                                        );
+
+                                        createTreeDebris(chunk.position, pSpeed, { isPolice: true, impactAngle: pAngle });
+                                        policeCar.userData.speed *= 0.7;
+                                    } else {
+                                        chunk.userData.isHit = true;
+                                        chunk.matrixAutoUpdate = true;
+                                        gameState.activeChunks.push(chunk);
+
+                                        chunk.userData.velocity.set(
+                                            Math.sin(pAngle) * pSpeed * 0.2 + (Math.sin(angleToChunk) * 5),
+                                            Math.abs(pSpeed) * 0.1 + 5 + Math.random() * 5,
+                                            Math.cos(pAngle) * pSpeed * 0.2 + (Math.cos(angleToChunk) * 5)
+                                        );
+
+                                        chunk.userData.rotVelocity.set(
+                                            (Math.random() - 0.5) * 0.5,
+                                            (Math.random() - 0.5) * 0.5,
+                                            (Math.random() - 0.5) * 0.5
+                                        );
+
+                                        createBuildingDebris(chunk.position, chunk.material.color, pSpeed, { isPolice: true, impactAngle: pAngle });
+                                        policeCar.userData.speed *= 0.6;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        });
+    }
     
-    // Collision with fallen debris (no damage, solid push, shatter once)
+    // Collision with fallen debris (solid collision, size-based response)
     if (gameState.fallenDebris && gameState.fallenDebris.length > 0) {
         for (let i = gameState.fallenDebris.length - 1; i >= 0; i--) {
             const debris = gameState.fallenDebris[i];
             if (!debris || !debris.userData || !debris.userData.isFallenDebris) continue;
             
+            // Use debris.position directly - since buildingGroup is at origin, 
+            // local position equals world position for direct children
             const dx = debris.position.x - carPos.x;
             const dz = debris.position.z - carPos.z;
             const distSq = dx * dx + dz * dz;
             
-            // Use actual debris size for collision, with minimum size
-            const debrisSize = Math.max(
-                (debris.userData.width || 10),
-                (debris.userData.depth || 10)
-            ) / 2;
-            const collisionDist = carRadius + debrisSize + 2; // Add buffer
+            // Use actual debris size for collision
+            const debrisWidth = debris.userData.width || 10;
+            const debrisDepth = debris.userData.depth || 10;
+            const debrisSizeVal = Math.max(debrisWidth, debrisDepth) / 2;
+            const collisionDist = carRadius + debrisSizeVal + 2; // Add buffer
             
             if (distSq < collisionDist * collisionDist) {
                 const dist = Math.sqrt(distSq) || 1;
@@ -951,6 +1229,11 @@ export function updateBuildingChunks(delta) {
                 // Debris collision counts as a "hit" for police engagement.
                 if (!gameState.hasHitObject) gameState.hasHitObject = true;
                 
+                // Classify debris and get collision properties
+                const debrisSizeCategory = debris.userData.debrisSize || 
+                    classifyDebrisSize(debrisWidth, debris.userData.height || 10, debrisDepth);
+                const collisionResponse = calculateVehicleDebrisCollision(carSpeed, debrisSizeCategory);
+                
                 // Calculate push direction (away from debris center)
                 const normX = -dx / dist;
                 const normZ = -dz / dist;
@@ -958,26 +1241,41 @@ export function updateBuildingChunks(delta) {
                 // Push CAR back (solid collision - no passing through!)
                 const overlap = collisionDist - dist;
                 if (overlap > 0) {
-                    playerCar.position.x += normX * overlap * 1.2;
-                    playerCar.position.z += normZ * overlap * 1.2;
+                    const pushBack = overlap * collisionResponse.pushBackForce;
+                    playerCar.position.x += normX * pushBack;
+                    playerCar.position.z += normZ * pushBack;
                 }
                 
+                // Apply screen shake
+                gameState.screenShake = Math.max(gameState.screenShake || 0, collisionResponse.screenShake);
+                
                 // Shatter into smaller pieces if going fast enough (not on foot)
-                if (!isOnFoot && carSpeed > 8) {
+                if (!isOnFoot && collisionResponse.shouldShatter) {
                     // Remove from fallen debris
                     gameState.fallenDebris.splice(i, 1);
-                    scene.remove(debris);
                     
-                    // Create smaller debris pieces - more pieces at higher speed
-                    const numPieces = Math.min(12, Math.floor(carSpeed / 3));
+                    // Also remove from unified debris array
+                    const debrisIdx = gameState.debris?.indexOf(debris);
+                    if (debrisIdx > -1) gameState.debris.splice(debrisIdx, 1);
+                    
+                    // Remove from scene
+                    if (debris.parent) {
+                        debris.parent.remove(debris);
+                    } else {
+                        scene.remove(debris);
+                    }
+                    
+                    // Create smaller debris pieces based on size
+                    const numPieces = calculateShatterPieces(debrisSizeCategory, carSpeed);
                     shatterDebris(debris, carSpeed, numPieces);
                     
-                    // Speed reduction based on speed (no damage!)
-                    gameState.speed *= 0.85;
-                    gameState.screenShake = Math.min(0.3, carSpeed / 40);
+                    // Speed reduction based on collision response
+                    gameState.speed = collisionResponse.newSpeed;
+                    
+                    logEvent(EVENTS.COLLISION, "Debris shattered!");
                 } else {
-                    // Slow collision - stop the car more and push debris
-                    gameState.speed *= 0.6;
+                    // Slow collision - push debris instead of shattering
+                    gameState.speed = collisionResponse.newSpeed;
                     
                     // Push debris based on car momentum
                     const pushForce = Math.max(2, carSpeed * 0.5);
@@ -986,10 +1284,94 @@ export function updateBuildingChunks(delta) {
                     
                     // Add some rotation to pushed debris
                     debris.rotation.y += (Math.random() - 0.5) * 0.3;
+                    
+                    // Re-enable matrix updates and update immediately so the visual position updates
+                    debris.matrixAutoUpdate = true;
+                    debris.updateMatrix();
                 }
             }
         }
     }
+    
+    // Police collision with fallen debris (solid body physics)
+    if (gameState.fallenDebris && gameState.fallenDebris.length > 0 && 
+        gameState.policeCars && gameState.policeCars.length > 0) {
+        gameState.policeCars.forEach(policeCar => {
+            if (!policeCar || policeCar.userData?.dead) return;
+            
+            const pPos = policeCar.position;
+            const pSpeed = Math.abs(policeCar.userData?.speed || 0);
+            const pRadius = 15;
+            
+            for (let i = gameState.fallenDebris.length - 1; i >= 0; i--) {
+                const debris = gameState.fallenDebris[i];
+                if (!debris || !debris.userData || !debris.userData.isFallenDebris) continue;
+                
+                // Use debris.position directly - since buildingGroup is at origin,
+                // local position equals world position for direct children
+                const dx = debris.position.x - pPos.x;
+                const dz = debris.position.z - pPos.z;
+                const distSq = dx * dx + dz * dz;
+                
+                const debrisWidth = debris.userData.width || 10;
+                const debrisDepth = debris.userData.depth || 10;
+                const debrisSizeVal = Math.max(debrisWidth, debrisDepth) / 2;
+                const collisionDist = pRadius + debrisSizeVal + 2;
+                
+                if (distSq < collisionDist * collisionDist) {
+                    const dist = Math.sqrt(distSq) || 1;
+                    const normX = -dx / dist;
+                    const normZ = -dz / dist;
+                    
+                    // Classify debris and get collision properties
+                    const debrisSizeCategory = debris.userData.debrisSize || 
+                        classifyDebrisSize(debrisWidth, debris.userData.height || 10, debrisDepth);
+                    const collisionResponse = calculateVehicleDebrisCollision(pSpeed, debrisSizeCategory);
+                    
+                    // Push police car back (solid collision)
+                    const overlap = collisionDist - dist;
+                    if (overlap > 0) {
+                        const pushBack = overlap * collisionResponse.pushBackForce;
+                        pPos.x += normX * pushBack;
+                        pPos.z += normZ * pushBack;
+                    }
+                    
+                    // Police can push debris around but at reduced speed
+                    if (collisionResponse.shouldShatter) {
+                        // High speed: shatter the debris
+                        gameState.fallenDebris.splice(i, 1);
+                        
+                        // Also remove from unified debris array
+                        const debrisIdx = gameState.debris?.indexOf(debris);
+                        if (debrisIdx > -1) gameState.debris.splice(debrisIdx, 1);
+                        
+                        if (debris.parent) {
+                            debris.parent.remove(debris);
+                        } else {
+                            scene.remove(debris);
+                        }
+                        const numPieces = calculateShatterPieces(debrisSizeCategory, pSpeed);
+                        shatterDebris(debris, pSpeed, numPieces);
+                        policeCar.userData.speed = collisionResponse.newSpeed;
+                    } else {
+                        // Low speed: push the debris
+                        policeCar.userData.speed = collisionResponse.newSpeed;
+                        const pushForce = Math.max(1, pSpeed * 0.3);
+                        debris.position.x += (-normX) * pushForce;
+                        debris.position.z += (-normZ) * pushForce;
+                        debris.rotation.y += (Math.random() - 0.5) * 0.2;
+                        
+                        // Re-enable matrix updates and update immediately so the visual position updates
+                        debris.matrixAutoUpdate = true;
+                        debris.updateMatrix();
+                    }
+                }
+            }
+        });
+    }
+    
+    // Check for unsupported chunks (floating buildings) - apply delayed gravity
+    checkFloatingChunks(delta);
     
     // Collision with small debris - can also be smashed further
     if (gameState.smallDebris && gameState.smallDebris.length > 0) {
@@ -1040,25 +1422,50 @@ export function updateBuildingChunks(delta) {
     }
 }
 
-// Create tree debris (wood chunks and leaves)
-function createTreeDebris(position, carSpeed) {
-    const impactX = Math.sin(playerCar?.rotation.y || 0);
-    const impactZ = Math.cos(playerCar?.rotation.y || 0);
+/**
+ * Create tree debris (wood chunks and leaves)
+ * Uses unified debris physics for consistency
+ * 
+ * @param {THREE.Vector3|Object} position - Impact position
+ * @param {number} carSpeed - Speed at impact
+ * @param {Object} options - Optional settings
+ * @param {boolean} options.isPolice - Whether this is a police collision
+ * @param {number} options.impactAngle - Override impact angle (defaults to playerCar rotation)
+ * @param {number} options.vehicleMass - Vehicle mass multiplier
+ */
+function createTreeDebris(position, carSpeed, options = {}) {
+    const {
+        isPolice = false,
+        impactAngle = playerCar?.rotation.y || 0,
+        vehicleMass = 1.0
+    } = options;
     
-    // Wood splinters
-    const woodMaterial = new THREE.MeshLambertMaterial({ color: 0x5D4037 });
-    for (let i = 0; i < 6; i++) {
+    // Generate debris plan using unified physics
+    const plan = generateTreeDebrisPlan({
+        speed: carSpeed,
+        impactAngle,
+        vehicleMass,
+        isPolice,
+        position: { x: position.x, y: position.y, z: position.z }
+    });
+    
+    // Create wood splinters
+    for (const splinterData of plan.wood) {
         const splinterGeometry = new THREE.BoxGeometry(
-            2 + Math.random() * 3,
-            8 + Math.random() * 15,
-            2 + Math.random() * 3
+            splinterData.size.width,
+            splinterData.size.height,
+            splinterData.size.depth
         );
-        const splinter = new THREE.Mesh(splinterGeometry, woodMaterial.clone());
+        const splinterMaterial = new THREE.MeshLambertMaterial({ 
+            color: splinterData.color 
+        });
+        const splinter = new THREE.Mesh(splinterGeometry, splinterMaterial);
         
-        splinter.position.copy(position);
-        splinter.position.y += Math.random() * 30;
-        splinter.position.x += (Math.random() - 0.5) * 10;
-        splinter.position.z += (Math.random() - 0.5) * 10;
+        splinter.position.set(
+            splinterData.position.x,
+            splinterData.position.y,
+            splinterData.position.z
+        );
         
         splinter.rotation.set(
             Math.random() * Math.PI,
@@ -1069,20 +1476,20 @@ function createTreeDebris(position, carSpeed) {
         splinter.userData = {
             isSmallDebris: true,
             velocity: new THREE.Vector3(
-                impactX * carSpeed * 0.3 + (Math.random() - 0.5) * 10,
-                5 + Math.random() * 8,
-                impactZ * carSpeed * 0.3 + (Math.random() - 0.5) * 10
+                splinterData.velocity.x,
+                splinterData.velocity.y,
+                splinterData.velocity.z
             ),
             rotVelocity: new THREE.Vector3(
-                (Math.random() - 0.5) * 0.6,
-                (Math.random() - 0.5) * 0.6,
-                (Math.random() - 0.5) * 0.6
+                splinterData.rotation.x,
+                splinterData.rotation.y,
+                splinterData.rotation.z
             ),
-            width: 3,
-            height: 10,
-            depth: 3,
-            lifetime: 300,
-            gravity: 0.3
+            width: splinterData.size.width,
+            height: splinterData.size.height,
+            depth: splinterData.size.depth,
+            lifetime: splinterData.lifetime,
+            gravity: splinterData.gravity
         };
         
         scene.add(splinter);
@@ -1091,38 +1498,41 @@ function createTreeDebris(position, carSpeed) {
         gameState.smallDebris.push(splinter);
     }
     
-    // Leaves
-    const leafMaterial = new THREE.MeshLambertMaterial({ color: 0x2E7D32 });
-    for (let i = 0; i < 12; i++) {
+    // Create leaves
+    for (const leafData of plan.leaves) {
         const leafGeometry = new THREE.BoxGeometry(
-            3 + Math.random() * 4,
-            1,
-            3 + Math.random() * 4
+            leafData.size.width,
+            leafData.size.height,
+            leafData.size.depth
         );
-        const leaf = new THREE.Mesh(leafGeometry, leafMaterial.clone());
+        const leafMaterial = new THREE.MeshLambertMaterial({ 
+            color: leafData.color 
+        });
+        const leaf = new THREE.Mesh(leafGeometry, leafMaterial);
         
-        leaf.position.copy(position);
-        leaf.position.y += 40 + Math.random() * 40;
-        leaf.position.x += (Math.random() - 0.5) * 30;
-        leaf.position.z += (Math.random() - 0.5) * 30;
+        leaf.position.set(
+            leafData.position.x,
+            leafData.position.y,
+            leafData.position.z
+        );
         
         leaf.userData = {
             isSmallDebris: true,
             velocity: new THREE.Vector3(
-                (Math.random() - 0.5) * 8,
-                2 + Math.random() * 4,
-                (Math.random() - 0.5) * 8
+                leafData.velocity.x,
+                leafData.velocity.y,
+                leafData.velocity.z
             ),
             rotVelocity: new THREE.Vector3(
-                (Math.random() - 0.5) * 0.4,
-                (Math.random() - 0.5) * 0.4,
-                (Math.random() - 0.5) * 0.4
+                leafData.rotation.x,
+                leafData.rotation.y,
+                leafData.rotation.z
             ),
-            width: 4,
-            height: 1,
-            depth: 4,
-            lifetime: 400,
-            gravity: 0.08 // Leaves float down slowly
+            width: leafData.size.width,
+            height: leafData.size.height,
+            depth: leafData.size.depth,
+            lifetime: leafData.lifetime,
+            gravity: leafData.gravity
         };
         
         scene.add(leaf);
@@ -1132,33 +1542,66 @@ function createTreeDebris(position, carSpeed) {
     }
 }
 
-// Create building debris (concrete chunks, glass shards, dust particles)
-export function createBuildingDebris(position, buildingColor, carSpeed) {
-    const impactX = Math.sin(playerCar?.rotation.y || 0);
-    const impactZ = Math.cos(playerCar?.rotation.y || 0);
+/**
+ * Create building debris (concrete chunks, glass shards, dust particles)
+ * Uses unified debris physics for consistency between player and police
+ * 
+ * @param {THREE.Vector3|Object} position - Impact position
+ * @param {THREE.Color|number} buildingColor - Color of the building material
+ * @param {number} carSpeed - Speed at impact
+ * @param {Object} options - Optional settings
+ * @param {boolean} options.isPolice - Whether this is a police collision
+ * @param {number} options.impactAngle - Override impact angle (defaults to playerCar rotation)
+ * @param {number} options.vehicleMass - Vehicle mass multiplier
+ * @param {boolean} options.hasWindows - Whether building has windows (default true)
+ */
+export function createBuildingDebris(position, buildingColor, carSpeed, options = {}) {
+    const {
+        isPolice = false,
+        impactAngle = playerCar?.rotation.y || 0,
+        vehicleMass = 1.0,
+        hasWindows = true
+    } = options;
     
-    // Number of debris based on speed
-    const numChunks = Math.min(15, 4 + Math.floor(carSpeed / 5));
+    // Convert color to hex if it's a THREE.Color
+    let colorHex = buildingColor;
+    if (buildingColor && buildingColor.getHex) {
+        colorHex = buildingColor.getHex();
+    } else if (!buildingColor) {
+        colorHex = DEBRIS_MATERIALS.concrete.color;
+    }
     
-    // Concrete/brick chunks
-    const chunkColor = buildingColor || new THREE.Color(0x8D6E63);
-    for (let i = 0; i < numChunks; i++) {
-        const size = 1 + Math.random() * 4;
+    // Generate debris plan using unified physics
+    const plan = generateBuildingDebrisPlan({
+        speed: carSpeed,
+        impactAngle,
+        vehicleMass,
+        isPolice,
+        position: { x: position.x, y: position.y, z: position.z },
+        buildingColor: colorHex,
+        hasWindows
+    });
+    
+    // Create concrete chunks
+    const baseColor = new THREE.Color(colorHex);
+    for (const chunkData of plan.concrete) {
         const chunkGeometry = new THREE.BoxGeometry(
-            size * (0.5 + Math.random()),
-            size * (0.5 + Math.random()),
-            size * (0.5 + Math.random())
+            chunkData.size.width,
+            chunkData.size.height,
+            chunkData.size.depth
         );
-        // Slightly vary the color for each chunk
-        const variedColor = chunkColor.clone();
+        
+        // Vary color slightly for realism
+        const variedColor = baseColor.clone();
         variedColor.offsetHSL(0, (Math.random() - 0.5) * 0.1, (Math.random() - 0.5) * 0.2);
         const chunkMaterial = new THREE.MeshLambertMaterial({ color: variedColor });
         const chunk = new THREE.Mesh(chunkGeometry, chunkMaterial);
         
-        chunk.position.copy(position);
-        chunk.position.y += Math.random() * 20;
-        chunk.position.x += (Math.random() - 0.5) * 15;
-        chunk.position.z += (Math.random() - 0.5) * 15;
+        chunk.position.set(
+            chunkData.position.x,
+            chunkData.position.y,
+            chunkData.position.z
+        );
         
         chunk.rotation.set(
             Math.random() * Math.PI,
@@ -1166,27 +1609,23 @@ export function createBuildingDebris(position, buildingColor, carSpeed) {
             Math.random() * Math.PI
         );
         
-        // Spread pattern based on impact
-        const spreadAngle = Math.random() * Math.PI * 2;
-        const spreadForce = 3 + Math.random() * carSpeed * 0.4;
-        
         chunk.userData = {
             isSmallDebris: true,
             velocity: new THREE.Vector3(
-                impactX * carSpeed * 0.25 + Math.sin(spreadAngle) * spreadForce,
-                3 + Math.random() * (carSpeed * 0.3),
-                impactZ * carSpeed * 0.25 + Math.cos(spreadAngle) * spreadForce
+                chunkData.velocity.x,
+                chunkData.velocity.y,
+                chunkData.velocity.z
             ),
             rotVelocity: new THREE.Vector3(
-                (Math.random() - 0.5) * 0.8,
-                (Math.random() - 0.5) * 0.8,
-                (Math.random() - 0.5) * 0.8
+                chunkData.rotation.x,
+                chunkData.rotation.y,
+                chunkData.rotation.z
             ),
-            width: size,
-            height: size,
-            depth: size,
-            lifetime: 250 + Math.floor(Math.random() * 150),
-            gravity: 0.35
+            width: chunkData.size.width,
+            height: chunkData.size.height,
+            depth: chunkData.size.depth,
+            lifetime: chunkData.lifetime,
+            gravity: chunkData.gravity
         };
         
         scene.add(chunk);
@@ -1195,25 +1634,25 @@ export function createBuildingDebris(position, buildingColor, carSpeed) {
         gameState.smallDebris.push(chunk);
     }
     
-    // Glass shards (if building has windows)
-    const numShards = Math.min(8, 2 + Math.floor(carSpeed / 8));
-    for (let i = 0; i < numShards; i++) {
+    // Create glass shards
+    for (const shardData of plan.glass) {
         const shardGeometry = new THREE.BoxGeometry(
-            0.5 + Math.random() * 2,
-            0.2,
-            0.5 + Math.random() * 2
+            shardData.size.width,
+            shardData.size.height,
+            shardData.size.depth
         );
         const shardMaterial = new THREE.MeshBasicMaterial({ 
-            color: Math.random() > 0.3 ? 0x90CAF9 : 0xE3F2FD,
-            transparent: true,
-            opacity: 0.7
+            color: shardData.color,
+            transparent: shardData.transparent,
+            opacity: shardData.opacity
         });
         const shard = new THREE.Mesh(shardGeometry, shardMaterial);
         
-        shard.position.copy(position);
-        shard.position.y += 10 + Math.random() * 30;
-        shard.position.x += (Math.random() - 0.5) * 20;
-        shard.position.z += (Math.random() - 0.5) * 20;
+        shard.position.set(
+            shardData.position.x,
+            shardData.position.y,
+            shardData.position.z
+        );
         
         shard.rotation.set(
             Math.random() * Math.PI,
@@ -1224,20 +1663,20 @@ export function createBuildingDebris(position, buildingColor, carSpeed) {
         shard.userData = {
             isSmallDebris: true,
             velocity: new THREE.Vector3(
-                (Math.random() - 0.5) * 12,
-                2 + Math.random() * 6,
-                (Math.random() - 0.5) * 12
+                shardData.velocity.x,
+                shardData.velocity.y,
+                shardData.velocity.z
             ),
             rotVelocity: new THREE.Vector3(
-                (Math.random() - 0.5) * 1.2,
-                (Math.random() - 0.5) * 1.2,
-                (Math.random() - 0.5) * 1.2
+                shardData.rotation.x,
+                shardData.rotation.y,
+                shardData.rotation.z
             ),
-            width: 1.5,
-            height: 0.2,
-            depth: 1.5,
-            lifetime: 180 + Math.floor(Math.random() * 100),
-            gravity: 0.25
+            width: shardData.size.width,
+            height: shardData.size.height,
+            depth: shardData.size.depth,
+            lifetime: shardData.lifetime,
+            gravity: shardData.gravity
         };
         
         scene.add(shard);
@@ -1246,36 +1685,38 @@ export function createBuildingDebris(position, buildingColor, carSpeed) {
         gameState.smallDebris.push(shard);
     }
     
-    // Dust particles
-    const numDust = Math.min(10, 3 + Math.floor(carSpeed / 6));
-    for (let i = 0; i < numDust; i++) {
-        const dustGeometry = new THREE.SphereGeometry(1 + Math.random() * 2, 6, 6);
+    // Create dust particles
+    for (const dustData of plan.dust) {
+        const dustGeometry = new THREE.SphereGeometry(
+            dustData.size.width / 2, 6, 6
+        );
         const dustMaterial = new THREE.MeshBasicMaterial({ 
-            color: 0x9E9E9E,
-            transparent: true,
-            opacity: 0.4 + Math.random() * 0.3
+            color: dustData.color,
+            transparent: dustData.transparent,
+            opacity: dustData.opacity
         });
         const dust = new THREE.Mesh(dustGeometry, dustMaterial);
         
-        dust.position.copy(position);
-        dust.position.y += Math.random() * 15;
-        dust.position.x += (Math.random() - 0.5) * 10;
-        dust.position.z += (Math.random() - 0.5) * 10;
+        dust.position.set(
+            dustData.position.x,
+            dustData.position.y,
+            dustData.position.z
+        );
         
         dust.userData = {
             isSmallDebris: true,
             isDust: true,
             velocity: new THREE.Vector3(
-                impactX * carSpeed * 0.15 + (Math.random() - 0.5) * 5,
-                1 + Math.random() * 3,
-                impactZ * carSpeed * 0.15 + (Math.random() - 0.5) * 5
+                dustData.velocity.x,
+                dustData.velocity.y,
+                dustData.velocity.z
             ),
             rotVelocity: new THREE.Vector3(0, 0, 0),
-            width: 2,
-            height: 2,
-            depth: 2,
-            lifetime: 120 + Math.floor(Math.random() * 80),
-            gravity: -0.02 // Dust rises slightly then dissipates
+            width: dustData.size.width,
+            height: dustData.size.height,
+            depth: dustData.size.depth,
+            lifetime: dustData.lifetime,
+            gravity: dustData.gravity
         };
         
         scene.add(dust);
@@ -1285,7 +1726,177 @@ export function createBuildingDebris(position, buildingColor, carSpeed) {
     }
     
     // Create sparks on impact
-    createDebrisSparks(position, Math.min(6, Math.floor(carSpeed / 5)));
+    createDebrisSparks(position, plan.sparkCount);
+}
+
+/**
+ * Check for unsupported building chunks (floating in air) and make them fall with gravity.
+ * A chunk is "unsupported" if there's no chunk directly below it, or the chunk below was destroyed.
+ * Chunks get a delay before falling (wobble effect) to make it look realistic.
+ */
+function checkFloatingChunks(delta) {
+    const gridSize = gameState.chunkGridSize;
+    const checkRadius = 100; // Only check chunks near player for performance
+    
+    if (!playerCar) return;
+    
+    const playerX = playerCar.position.x;
+    const playerZ = playerCar.position.z;
+    
+    // Get grid cells near player
+    const pGridX = Math.floor(playerX / gridSize);
+    const pGridZ = Math.floor(playerZ / gridSize);
+    
+    for (let gx = pGridX - 2; gx <= pGridX + 2; gx++) {
+        for (let gz = pGridZ - 2; gz <= pGridZ + 2; gz++) {
+            const key = `${gx},${gz}`;
+            const chunks = gameState.chunkGrid[key];
+            if (!chunks) continue;
+            
+            for (let i = 0; i < chunks.length; i++) {
+                const chunk = chunks[i];
+                
+                // Skip chunks already falling, hit, or trees/hotdog stands
+                if (!chunk || chunk.userData.isHit || chunk.userData.isTree || 
+                    chunk.userData.isHotdogStand || chunk.userData.isFloating) continue;
+                
+                // Skip chunks on the ground level (first layer)
+                const chunkHeight = chunk.userData.height || 80;
+                if (chunk.position.y <= chunkHeight / 2 + 5) continue;
+                
+                // Check distance from player (only process nearby chunks)
+                const dx = chunk.position.x - playerX;
+                const dz = chunk.position.z - playerZ;
+                if (dx * dx + dz * dz > checkRadius * checkRadius) continue;
+                
+                // Check if this chunk has support below it
+                const hasSupport = checkChunkSupport(chunk, chunks, key);
+                
+                if (!hasSupport) {
+                    // Mark as floating and start the fall timer
+                    if (!chunk.userData.floatTimer) {
+                        chunk.userData.floatTimer = 0;
+                        chunk.userData.isUnsupported = true;
+                    }
+                    
+                    // Increment timer
+                    chunk.userData.floatTimer += delta;
+                    
+                    // Wobble effect before falling (creates tension)
+                    if (chunk.userData.floatTimer < 1.0) {
+                        // Slight wobble
+                        chunk.position.x += (Math.random() - 0.5) * 0.3;
+                        chunk.position.z += (Math.random() - 0.5) * 0.3;
+                        chunk.rotation.x = (Math.random() - 0.5) * 0.02;
+                        chunk.rotation.z = (Math.random() - 0.5) * 0.02;
+                        chunk.updateMatrix();
+                    } else {
+                        // Time to fall!
+                        chunk.userData.isHit = true;
+                        chunk.userData.isFloating = true;
+                        chunk.matrixAutoUpdate = true;
+                        gameState.activeChunks.push(chunk);
+                        
+                        // Small initial velocity (mostly just gravity takes over)
+                        chunk.userData.velocity = new THREE.Vector3(
+                            (Math.random() - 0.5) * 2,
+                            -1,  // Start moving down
+                            (Math.random() - 0.5) * 2
+                        );
+                        
+                        chunk.userData.rotVelocity = new THREE.Vector3(
+                            (Math.random() - 0.5) * 0.2,
+                            (Math.random() - 0.5) * 0.1,
+                            (Math.random() - 0.5) * 0.2
+                        );
+                        
+                        // Remove from grid to avoid double-processing
+                        const idx = chunks.indexOf(chunk);
+                        if (idx > -1) chunks.splice(idx, 1);
+                        
+                        // Create dust particles as chunk starts falling
+                        createSmoke({ 
+                            x: chunk.position.x, 
+                            y: chunk.position.y - chunkHeight/2, 
+                            z: chunk.position.z 
+                        });
+                    }
+                }
+            }
+        }
+    }
+}
+
+/**
+ * Check if a chunk has support from chunks below it
+ */
+function checkChunkSupport(chunk, sameGridChunks, gridKey) {
+    const chunkHeight = chunk.userData.height || 80;
+    const chunkWidth = chunk.userData.width || 80;
+    const chunkDepth = chunk.userData.depth || 80;
+    const tolerance = 10;
+    
+    // Position of center of chunk below this one
+    const belowY = chunk.position.y - chunkHeight;
+    
+    // If at ground level, it's supported
+    if (belowY <= tolerance) return true;
+    
+    // Check chunks in same grid cell
+    for (const other of sameGridChunks) {
+        if (other === chunk || other.userData.isHit) continue;
+        
+        // Check if other chunk is directly below
+        const yDiff = Math.abs(other.position.y - belowY);
+        if (yDiff > tolerance) continue;
+        
+        // Check horizontal overlap
+        const xDiff = Math.abs(other.position.x - chunk.position.x);
+        const zDiff = Math.abs(other.position.z - chunk.position.z);
+        
+        const otherWidth = other.userData.width || 80;
+        const otherDepth = other.userData.depth || 80;
+        
+        // Needs at least partial overlap to count as support
+        if (xDiff < (chunkWidth + otherWidth) / 2 - tolerance &&
+            zDiff < (chunkDepth + otherDepth) / 2 - tolerance) {
+            return true;
+        }
+    }
+    
+    // Also check adjacent grid cells for support
+    const gridSize = gameState.chunkGridSize;
+    const [gx, gz] = gridKey.split(',').map(Number);
+    
+    for (let dx = -1; dx <= 1; dx++) {
+        for (let dz = -1; dz <= 1; dz++) {
+            if (dx === 0 && dz === 0) continue;
+            
+            const neighborKey = `${gx + dx},${gz + dz}`;
+            const neighborChunks = gameState.chunkGrid[neighborKey];
+            if (!neighborChunks) continue;
+            
+            for (const other of neighborChunks) {
+                if (other === chunk || other.userData.isHit) continue;
+                
+                const yDiff = Math.abs(other.position.y - belowY);
+                if (yDiff > tolerance) continue;
+                
+                const xDiff = Math.abs(other.position.x - chunk.position.x);
+                const zDiff = Math.abs(other.position.z - chunk.position.z);
+                
+                const otherWidth = other.userData.width || 80;
+                const otherDepth = other.userData.depth || 80;
+                
+                if (xDiff < (chunkWidth + otherWidth) / 2 - tolerance &&
+                    zDiff < (chunkDepth + otherDepth) / 2 - tolerance) {
+                    return true;
+                }
+            }
+        }
+    }
+    
+    return false;
 }
 
 // Shatter fallen debris into smaller pieces
@@ -1585,6 +2196,11 @@ export function addObjectToWorld(object) {
     });
 }
 
+// Shared Window Materials
+const winMatDark = new THREE.MeshBasicMaterial({ color: 0x263238, side: THREE.DoubleSide });
+const winMatLit1 = new THREE.MeshBasicMaterial({ color: 0xFFF9C4, side: THREE.DoubleSide });
+const winMatLit2 = new THREE.MeshBasicMaterial({ color: 0xFFE082, side: THREE.DoubleSide });
+
 export function createSingleBuilding(x, z, width, depth, height, type) {
     const buildingGroup = new THREE.Group();
     
@@ -1592,7 +2208,10 @@ export function createSingleBuilding(x, z, width, depth, height, type) {
     const colors = type.colors;
     const buildingColor = colors[Math.floor(Math.random() * colors.length)];
     
-    const chunkSize = 30;
+    // BALANCED OPTIMIZATION:
+    // chunkSize 80 gives a good balance between destruction detail and performance.
+    // Windows are merged per-chunk to minimize draw calls.
+    const chunkSize = 80; 
     const nx = Math.ceil(width / chunkSize);
     const ny = Math.ceil(height / chunkSize);
     const nz = Math.ceil(depth / chunkSize);
@@ -1612,6 +2231,15 @@ export function createSingleBuilding(x, z, width, depth, height, type) {
     const startX = x - width / 2 + dx / 2;
     const startY = dy / 2;
     const startZ = z - depth / 2 + dz / 2;
+
+    // Store chunks in a grid for window attachment
+    const chunks = []; 
+    for(let ix = 0; ix < nx; ix++) {
+        chunks[ix] = [];
+        for(let iy = 0; iy < ny; iy++) {
+            chunks[ix][iy] = [];
+        }
+    }
 
     for(let ix = 0; ix < nx; ix++) {
         for(let iy = 0; iy < ny; iy++) {
@@ -1637,9 +2265,12 @@ export function createSingleBuilding(x, z, width, depth, height, type) {
                     depth: dz
                 };
                 
-                // scene.add(chunk); // REMOVED: Managed by group
-                buildingGroup.add(chunk); // ADDED: Add to group
+                buildingGroup.add(chunk); 
                 gameState.chunks.push(chunk);
+                // Store in 3D array
+                if(chunks[ix] && chunks[ix][iy]) {
+                    chunks[ix][iy][iz] = chunk;
+                }
 
                 const gridX = Math.floor(chunk.position.x / gameState.chunkGridSize);
                 const gridZ = Math.floor(chunk.position.z / gameState.chunkGridSize);
@@ -1650,8 +2281,8 @@ export function createSingleBuilding(x, z, width, depth, height, type) {
         }
     }
     
-    // Tilføj vinduer til bygningen (vinduer er visuelle og ikke destruerbare)
-    addWindowsToBuilding(buildingGroup, x, z, width, depth, height, type);
+    // Add windows attached directly to chunks so they move with debris
+    addWindowsToChunks(chunks, x, z, width, depth, height, type, dx, dy, dz, nx, ny, nz);
     
     // Tilføj specielle elementer baseret på type
     if (type.hasAwning) {
@@ -1833,4 +2464,241 @@ export function createSingleHotdogStand(x, z) {
     body.add(wheel4);
     
     return body;
+}
+
+// ============================================
+// ENDLESS WORLD SYSTEM - Procedural Generation
+// ============================================
+
+// Track which world regions have been generated
+const generatedRegions = new Set();
+const REGION_SIZE = 1500; // Size of each procedurally generated region
+const RENDER_DISTANCE = 3; // How many regions to keep loaded around player
+const regionObjects = {}; // Store objects per region for cleanup
+
+// PERFORMANCE: Shared geometries and materials for region generation
+const regionSharedGeo = {
+    ground: new THREE.PlaneGeometry(REGION_SIZE, REGION_SIZE),
+    roadSegment: new THREE.BoxGeometry(300, 0.5, 310),
+    roadMarking: new THREE.BoxGeometry(4, 0.6, 150),
+    roadEdge: new THREE.BoxGeometry(3, 0.55, 300),
+    roadPatchX: new THREE.BoxGeometry(REGION_SIZE + 10, 0.5, 300),
+    roadMarkingX: new THREE.PlaneGeometry(5, 150)
+};
+const regionSharedMat = {
+    ground: new THREE.MeshLambertMaterial({ color: 0x3a5a3a }),
+    road: new THREE.MeshLambertMaterial({ color: 0x222222 }),
+    markingYellow: new THREE.MeshBasicMaterial({ color: 0xffff00 }),
+    edgeWhite: new THREE.MeshBasicMaterial({ color: 0xffffff })
+};
+
+// Seeded random number generator for consistent world generation
+function seededRandom(seed) {
+    const x = Math.sin(seed) * 10000;
+    return x - Math.floor(x);
+}
+
+// Generate a deterministic seed from region coordinates
+function regionSeed(rx, rz) {
+    return rx * 73856093 + rz * 19349663;
+}
+
+// Generate content for a specific region
+function generateRegion(rx, rz) {
+    const regionKey = `${rx},${rz}`;
+    if (generatedRegions.has(regionKey)) return;
+    
+    generatedRegions.add(regionKey);
+    regionObjects[regionKey] = [];
+    
+    const seed = regionSeed(rx, rz);
+    const baseX = rx * REGION_SIZE;
+    const baseZ = rz * REGION_SIZE;
+    
+    // Don't generate buildings in the spawn region (0,0) - that has static buildings
+    const isSpawnRegion = rx >= -1 && rx <= 1 && rz >= -1 && rz <= 1;
+    
+    // Check if this region is on a main road axis (roads go infinitely along x=0 and z=0)
+    const isOnMainRoadX = Math.abs(baseX) < 200; // Road along Z axis
+    const isOnMainRoadZ = Math.abs(baseZ) < 200; // Road along X axis
+    
+    // Generate buildings for this region - avoid road areas
+    const numBuildings = isSpawnRegion ? 0 : 4 + Math.floor(seededRandom(seed) * 6);
+    for (let i = 0; i < numBuildings; i++) {
+        const bSeed = seed + i * 1000;
+        let bx = baseX + seededRandom(bSeed) * REGION_SIZE - REGION_SIZE/2;
+        let bz = baseZ + seededRandom(bSeed + 1) * REGION_SIZE - REGION_SIZE/2;
+        
+        // Avoid main straight roads
+        if (Math.abs(bx) < 250) bx += (bx >= 0 ? 300 : -300);
+        if (Math.abs(bz) < 250) bz += (bz >= 0 ? 300 : -300);
+        
+        const width = 80 + seededRandom(bSeed + 2) * 60;
+        const depth = 60 + seededRandom(bSeed + 3) * 50;
+        const height = 100 + seededRandom(bSeed + 4) * 150;
+        const typeIndex = Math.floor(seededRandom(bSeed + 5) * Object.keys(BUILDING_TYPES).length);
+        const type = Object.values(BUILDING_TYPES)[typeIndex];
+        
+        try {
+            const building = createSingleBuilding(bx, bz, width, depth, height, type);
+            scene.add(building);
+            regionObjects[regionKey].push(building);
+        } catch(e) { /* skip failed buildings */ }
+    }
+    
+    // Generate trees for this region
+    const numTrees = 3 + Math.floor(seededRandom(seed + 500) * 5);
+    for (let i = 0; i < numTrees; i++) {
+        const tSeed = seed + 500 + i * 100;
+        let tx = baseX + seededRandom(tSeed) * REGION_SIZE - REGION_SIZE/2;
+        let tz = baseZ + seededRandom(tSeed + 1) * REGION_SIZE - REGION_SIZE/2;
+        
+        // Avoid main roads
+        if (Math.abs(tx) < 200 || Math.abs(tz) < 200) continue;
+        
+        try {
+            const tree = createSingleTree(tx, tz);
+            scene.add(tree);
+            regionObjects[regionKey].push(tree);
+        } catch(e) { /* skip failed trees */ }
+    }
+    
+    // Generate ground for ALL regions (endless ground) - using shared geometry/material
+    const groundPatch = new THREE.Mesh(regionSharedGeo.ground, regionSharedMat.ground);
+    groundPatch.rotation.x = -Math.PI / 2;
+    groundPatch.position.set(baseX, -0.1, baseZ);
+    groundPatch.receiveShadow = true;
+    scene.add(groundPatch);
+    regionObjects[regionKey].push(groundPatch);
+    
+    // === SIMPLE STRAIGHT ROADS ===
+    // Road along Z-axis (at x=0) - continues infinitely north/south
+    if (Math.abs(rx) === 0) {
+        const roadPatchZ = new THREE.Mesh(regionSharedGeo.roadPatchX, regionSharedMat.road);
+        roadPatchZ.rotation.y = Math.PI / 2; // Rotate to align with Z axis
+        roadPatchZ.position.set(0, 0.2, baseZ);
+        roadPatchZ.receiveShadow = true;
+        scene.add(roadPatchZ);
+        regionObjects[regionKey].push(roadPatchZ);
+        
+        // Road markings (center line)
+        for (let i = 0; i < 3; i++) {
+            const markingsZ = new THREE.Mesh(regionSharedGeo.roadMarkingX, regionSharedMat.markingYellow);
+            markingsZ.rotation.x = -Math.PI / 2;
+            markingsZ.position.set(0, 0.35, baseZ - REGION_SIZE/2 + (i + 0.5) * REGION_SIZE/3);
+            scene.add(markingsZ);
+            regionObjects[regionKey].push(markingsZ);
+        }
+        
+        // Edge lines
+        const edgeLeftZ = new THREE.Mesh(regionSharedGeo.roadEdge, regionSharedMat.edgeWhite);
+        edgeLeftZ.position.set(-140, 0.32, baseZ);
+        scene.add(edgeLeftZ);
+        regionObjects[regionKey].push(edgeLeftZ);
+        
+        const edgeRightZ = new THREE.Mesh(regionSharedGeo.roadEdge, regionSharedMat.edgeWhite);
+        edgeRightZ.position.set(140, 0.32, baseZ);
+        scene.add(edgeRightZ);
+        regionObjects[regionKey].push(edgeRightZ);
+    }
+    
+    // Road along X-axis (at z=0) - continues infinitely east/west
+    if (Math.abs(rz) === 0 && Math.abs(rx) > 0) {
+        const roadPatchX = new THREE.Mesh(regionSharedGeo.roadPatchX, regionSharedMat.road);
+        roadPatchX.position.set(baseX, 0.2, 0);
+        roadPatchX.receiveShadow = true;
+        scene.add(roadPatchX);
+        regionObjects[regionKey].push(roadPatchX);
+        
+        // Road markings (center line)
+        for (let i = 0; i < 3; i++) {
+            const markingsX = new THREE.Mesh(regionSharedGeo.roadMarkingX, regionSharedMat.markingYellow);
+            markingsX.rotation.x = -Math.PI / 2;
+            markingsX.rotation.z = Math.PI / 2;
+            markingsX.position.set(baseX - REGION_SIZE/2 + (i + 0.5) * REGION_SIZE/3, 0.35, 0);
+            scene.add(markingsX);
+            regionObjects[regionKey].push(markingsX);
+        }
+        
+        // Edge lines
+        const edgeLeft = new THREE.Mesh(regionSharedGeo.roadEdge, regionSharedMat.edgeWhite);
+        edgeLeft.rotation.y = Math.PI / 2;
+        edgeLeft.position.set(baseX, 0.32, -140);
+        scene.add(edgeLeft);
+        regionObjects[regionKey].push(edgeLeft);
+        
+        const edgeRight = new THREE.Mesh(regionSharedGeo.roadEdge, regionSharedMat.edgeWhite);
+        edgeRight.rotation.y = Math.PI / 2;
+        edgeRight.position.set(baseX, 0.32, 140);
+        scene.add(edgeRight);
+        regionObjects[regionKey].push(edgeRight);
+    }
+}
+
+// Remove a region's objects from the scene
+function unloadRegion(rx, rz) {
+    const regionKey = `${rx},${rz}`;
+    if (!regionObjects[regionKey]) return;
+    
+    regionObjects[regionKey].forEach(obj => {
+        scene.remove(obj);
+        // Clean up geometries and materials
+        if (obj.geometry) obj.geometry.dispose();
+        if (obj.material) {
+            if (Array.isArray(obj.material)) {
+                obj.material.forEach(m => m.dispose());
+            } else {
+                obj.material.dispose();
+            }
+        }
+        // Recursively clean children
+        obj.traverse(child => {
+            if (child.geometry) child.geometry.dispose();
+            if (child.material) {
+                if (Array.isArray(child.material)) {
+                    child.material.forEach(m => m.dispose());
+                } else {
+                    child.material.dispose();
+                }
+            }
+        });
+    });
+    
+    delete regionObjects[regionKey];
+    generatedRegions.delete(regionKey);
+}
+
+// Update endless world based on player position
+export function updateEndlessWorld(playerPosition) {
+    if (!playerPosition) return;
+
+    // Move sky with player to maintain "endless" horizon illusion
+    if (skyMesh) {
+        skyMesh.position.x = playerPosition.x;
+        skyMesh.position.z = playerPosition.z;
+        skyMesh.position.y = 0; // Keep sky grounded
+    }
+    
+    const playerRX = Math.floor(playerPosition.x / REGION_SIZE);
+    const playerRZ = Math.floor(playerPosition.z / REGION_SIZE);
+    
+    // Generate regions around player
+    for (let dx = -RENDER_DISTANCE; dx <= RENDER_DISTANCE; dx++) {
+        for (let dz = -RENDER_DISTANCE; dz <= RENDER_DISTANCE; dz++) {
+            generateRegion(playerRX + dx, playerRZ + dz);
+        }
+    }
+    
+    // Unload distant regions more aggressively
+    const regionsToUnload = [];
+    for (const key of generatedRegions) {
+        const [rx, rz] = key.split(',').map(Number);
+        // Unload if more than RENDER_DISTANCE away (was +1, now exact)
+        if (Math.abs(rx - playerRX) > RENDER_DISTANCE || 
+            Math.abs(rz - playerRZ) > RENDER_DISTANCE) {
+            regionsToUnload.push([rx, rz]);
+        }
+    }
+    
+    regionsToUnload.forEach(([rx, rz]) => unloadRegion(rx, rz));
 }

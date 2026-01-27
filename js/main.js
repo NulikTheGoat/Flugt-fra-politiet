@@ -39,7 +39,7 @@ import { scene, camera, renderer } from './core.js';
 import { cars } from './constants.js';
 import { createPlayerCar, rebuildPlayerCar, updatePlayer, playerCar, setUICallbacks, createOtherPlayerCar, updateOtherPlayerCar, removeOtherPlayerCar } from './player.js';
 import { spawnPoliceCar, updatePoliceAI, updateProjectiles, firePlayerProjectile, syncPoliceFromNetwork, getPoliceStateForNetwork, resetPoliceNetworkIds, createPoliceCar } from './police.js';
-import { createGround, createTrees, createBuildings, updateBuildingChunks, updateCollectibles, cleanupSmallDebris, createSky, createDistantCityscape, createHotdogStands } from './world.js';
+import { createGround, createTrees, createBuildings, updateBuildingChunks, updateCollectibles, cleanupSmallDebris, createSky, createDistantCityscape, createHotdogStands, updateEndlessWorld } from './world.js';
 import { updateHUD, updateHealthUI, DOM, goToShop, showGameOver, setStartGameCallback, triggerDamageEffect, setMultiplayerShopCallback } from './ui.js';
 import { updateSpeedEffects, updateSparks, updateTireMarks } from './particles.js';
 import * as Network from './network.js';
@@ -48,6 +48,7 @@ import { initLevelEditor, openLevelEditor } from './levelEditor.js';
 import { exposeDevtools } from './devtools.js';
 import { initMenu } from './menu.js';
 import { resetSheriffState } from './sheriff.js';
+import { updateWorldDirector, clearSpawnedObjects } from './worldDirector.js';
 
 // Expose gameState globally for debugging and testing
 window.gameState = gameState;
@@ -508,6 +509,7 @@ function resetRunState(opts = {}) {
     }
 
     resetCommentary();
+    clearSpawnedObjects(); // Clear world director objects
 }
 
 // Single stable entrypoint for tests/debug/LLM tooling
@@ -610,6 +612,14 @@ function animate() {
         // Chunks
         updateBuildingChunks(delta);
         cleanupSmallDebris();
+        
+        // Endless World - generate new regions as player moves
+        if (playerCar) {
+            updateEndlessWorld(playerCar.position);
+            
+            // World Director - LLM decides what to spawn on the road
+            updateWorldDirector(delta);
+        }
 
         // Collectibles & Heat
         updateCollectibles();

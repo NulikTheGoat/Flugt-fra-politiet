@@ -155,8 +155,9 @@ export const gameState = {
     chunks: [],
     chunkGrid: {},
     activeChunks: [],
-    fallenDebris: [],
-    smallDebris: [],
+    debris: [],            // Unified debris array (replaces fallenDebris/smallDebris)
+    fallenDebris: [],      // Deprecated - use debris instead
+    smallDebris: [],       // Deprecated - use debris instead
     chunkGridSize: 200,
     collectibles: [],
     

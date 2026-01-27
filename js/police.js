@@ -631,10 +631,13 @@ export function updatePoliceAI(delta) {
                         chunk.userData.isHit = true;
                         gameState.activeChunks.push(chunk);
 
-                        // Create debris
-                        createBuildingDebris(chunk.position, chunk.material.color, policeSpeed);
-                        
+                        // Create debris with police-specific physics
                         const policeAngle = policeCar.rotation.y;
+                        createBuildingDebris(chunk.position, chunk.material.color, policeSpeed, { 
+                            isPolice: true, 
+                            impactAngle: policeAngle 
+                        });
+                        
                         const impactSpeed = policeSpeed * 0.01;
                         
                         chunk.userData.velocity.set(
