@@ -2,7 +2,7 @@ import { gameState, keys } from './state.js';
 import { scene, camera } from './core.js';
 import { cars } from './constants.js';
 import { sharedGeometries, sharedMaterials } from './assets.js';
-import { createSmoke, createSpark, createTireMark, updateTireMarks } from './particles.js';
+import { createSmoke, createSpark, createTireMark, updateTireMarks, createWheelDust, updateDustParticles } from './particles.js';
 
 let uiCallbacks = {
     triggerDamageEffect: () => {},
@@ -1039,6 +1039,19 @@ export function updatePlayer(delta, now) {
         // ROLL (Cornering)
         playerCar.userData.chassis.rotation.z = gameState.carTilt;
         
+        // DRIFT SLIDE VISUAL - counter-steer body rotation when drifting
+        // The car body rotates slightly opposite to travel direction during drift
+        const driftSlideAngle = gameState.driftFactor * steerInput * 0.15 * speedRatio;
+        gameState.driftVisualAngle = gameState.driftVisualAngle || 0;
+        gameState.driftVisualAngle += (driftSlideAngle - gameState.driftVisualAngle) * 0.1 * delta;
+        
+        // Apply subtle yaw offset to chassis for that "tail out" look
+        if (Math.abs(gameState.driftFactor) > 0.1) {
+            playerCar.userData.chassis.rotation.y = gameState.driftVisualAngle;
+        } else {
+            playerCar.userData.chassis.rotation.y *= 0.9; // Smooth return
+        }
+        
         // PITCH (Accel/Braking) - Inertia simulation
         // Acceleration = Squat (negative pitch)
         // Braking = Dive (positive pitch)
@@ -1071,6 +1084,14 @@ export function updatePlayer(delta, now) {
             createTireMark(playerCar.position.x, playerCar.position.z, playerCar.rotation.y);
         }
         updateTireMarks(delta);
+        
+        // Dust clouds from wheels at high speed or when drifting
+        const speedRatio = absSpeed / gameState.maxSpeed;
+        const shouldCreateDust = (speedRatio > 0.5 && Math.abs(steerInput) > 0.3) || gameState.driftFactor > 0.2;
+        if (shouldCreateDust && Math.random() < 0.4) {
+            createWheelDust(playerCar.position, playerCar.rotation.y, gameState.speed, gameState.driftFactor);
+        }
+        updateDustParticles(delta);
     }
 
     // Wheel spin + steering visuals
