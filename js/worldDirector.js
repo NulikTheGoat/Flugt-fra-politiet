@@ -235,6 +235,12 @@ function createSpawnedObject(type, x, z, moving = false, speed = 0) {
     const config = OBJECT_CONFIGS[type];
     if (!config) return null;
     
+    // Enforce minimum spawn distance from player to prevent sudden appearances
+    const minSpawnDistance = 800;
+    if (playerCar && z - playerCar.position.z < minSpawnDistance) {
+        z = playerCar.position.z + minSpawnDistance + Math.random() * 200;
+    }
+    
     const geometry = config.geometry();
     
     // Different materials based on category
@@ -386,32 +392,35 @@ function spawnObjects(objectList, baseZ, event, mood) {
     directorState.currentMood = mood || 'calm';
     directorState.activeEvent = event;
     
-    // Event-specific spawn patterns
+    // Use spawn distance for all events (spawn far ahead, not near player)
+    const eventSpawnZ = baseZ + directorState.spawnDistance;
+    
+    // Event-specific spawn patterns (now spawned at horizon)
     if (event === 'convoy') {
         // Spawn trucks in a line
         for (let i = 0; i < 5; i++) {
-            createSpawnedObject('truck', 0, baseZ + 300 + i * 80, true, 50);
+            createSpawnedObject('truck', 0, eventSpawnZ + i * 80, true, 50);
         }
     } else if (event === 'race') {
         // Sports cars racing by
         for (let i = 0; i < 3; i++) {
             const side = (i - 1) * 60;
-            createSpawnedObject('sports_car', side, baseZ + 400 + i * 100, true, 180 + Math.random() * 40);
+            createSpawnedObject('sports_car', side, eventSpawnZ + i * 100, true, 180 + Math.random() * 40);
         }
     } else if (event === 'money_rain') {
         // Lots of money!
         for (let i = 0; i < 15; i++) {
             const x = (Math.random() - 0.5) * 200;
-            const z = baseZ + 300 + Math.random() * 400;
+            const z = eventSpawnZ + Math.random() * 400;
             createSpawnedObject('money', x, z);
         }
     } else if (event === 'accident') {
         // Create accident scene
-        createSpawnedObject('explosion', 0, baseZ + 350);
-        createSpawnedObject('fire', -30, baseZ + 380);
-        createSpawnedObject('fire', 30, baseZ + 380);
-        createSpawnedObject('barrier', -60, baseZ + 300);
-        createSpawnedObject('barrier', 60, baseZ + 300);
+        createSpawnedObject('explosion', 0, eventSpawnZ + 50);
+        createSpawnedObject('fire', -30, eventSpawnZ + 80);
+        createSpawnedObject('fire', 30, eventSpawnZ + 80);
+        createSpawnedObject('barrier', -60, eventSpawnZ);
+        createSpawnedObject('barrier', 60, eventSpawnZ);
     }
     
     // Spawn regular objects from LLM response - far on the horizon
