@@ -359,15 +359,22 @@ export function initMenu({ startGame, cleanupGame }) {
         // --- SIMPLE MENU NAVIGATION LOGIC (Game Mode & Game Over) ---
         let contextButtons = [];
         
+        // Helper to check if an element is truly visible
+        const isElementVisible = (el) => {
+            if (!el) return false;
+            const style = window.getComputedStyle(el);
+            return style.display !== 'none' && style.visibility !== 'hidden' && style.opacity !== '0';
+        };
+        
         if (isGameModeVisible) {
             contextButtons = Array.from(modeModalEl.querySelectorAll('button:not([disabled])'))
-                .filter(b => b.offsetParent !== null); // Check visibility robustly
+                .filter(b => isElementVisible(b));
         } else if (isGameOverVisible) {
             contextButtons = Array.from(gameOverEl.querySelectorAll('button:not([disabled])'))
-                .filter(b => b.offsetParent !== null);
+                .filter(b => isElementVisible(b));
         } else if (isLobbyVisible) {
             contextButtons = Array.from(lobbyEl.querySelectorAll('button:not([disabled]), input:not([disabled])'))
-                .filter(b => b.offsetParent !== null);
+                .filter(b => isElementVisible(b));
         }
         
         if (contextButtons.length === 0) return;

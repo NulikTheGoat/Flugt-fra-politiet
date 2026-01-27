@@ -3,7 +3,7 @@
 
 import { scene } from './core.js';
 import { gameState } from './state.js';
-import { playerCar } from './player.js';
+import { playerCar, repairCar } from './player.js';
 import { addMoney, showFloatingMoney } from './ui.js';
 import { createBuildingDebris } from './world.js';
 import { buildSpawnPlan } from './worldDirectorLogic.js';
@@ -19,8 +19,8 @@ const directorState = {
     maxSpawnedObjects: 100,
     enabled: true,
     lastPlayerZ: 0,
-    spawnDistance: 1200, // Spawn far ahead on horizon
-    cleanupDistance: 400, // Cleanup behind player
+    spawnDistance: 3000, // Spawn far ahead on horizon (increased for better draw distance)
+    cleanupDistance: 600, // Cleanup behind player
     currentMood: 'calm',
     activeEvent: null,
     recentEvents: [],
@@ -625,7 +625,7 @@ function handleObjectCollision(obj) {
             directorState.comboCount++;
             playSfx('pickup');
         } else if (config.healAmount) {
-            gameState.health = Math.min(100, (gameState.health || 100) + config.healAmount);
+            repairCar(config.healAmount);
             showCollectNotification(`+${config.healAmount}% Sundhed! ${config.label}`);
             playSfx('health');
         } else if (config.nitroBoost) {

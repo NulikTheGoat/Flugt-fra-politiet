@@ -383,11 +383,26 @@ window.addEventListener('keydown', (e) => {
              }
         }
     }
-    if (e.key === ' ') e.preventDefault();
+    // Only prevent space scrolling during active gameplay, not in menus
+    if (e.key === ' ' && !gameState.arrested && gameState.startTime > 0) {
+        e.preventDefault();
+    }
 });
 
 window.addEventListener('keyup', (e) => {
     keys[e.key.toLowerCase()] = false;
+});
+
+// Reset all keys when window loses focus (prevents "stuck" keys)
+window.addEventListener('blur', () => {
+    Object.keys(keys).forEach(key => { keys[key] = false; });
+});
+
+// Also reset keys when tab becomes hidden
+document.addEventListener('visibilitychange', () => {
+    if (document.hidden) {
+        Object.keys(keys).forEach(key => { keys[key] = false; });
+    }
 });
 
 // Create World
@@ -513,7 +528,12 @@ function resetRunState(opts = {}) {
 }
 
 // Single stable entrypoint for tests/debug/LLM tooling
-exposeDevtools({ startGame, startMultiplayerGame });
+exposeDevtools({ 
+    startGame, 
+    startMultiplayerGame,
+    renderer,  // Expose renderer for perf metrics
+    scene      // Expose scene for object counting
+});
 
 let lastTime = performance.now();
 

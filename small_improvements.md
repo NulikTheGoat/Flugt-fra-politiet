@@ -64,3 +64,9 @@
 - [x] **Balance**: Player Tank needs to be killable/destructible (currently invincible)
 - [x] **Bug Fix**: Police health bar flickers black at certain angles (Visual/Z-fighting)
 - [x] **UI**: Shop cars now display "EJET" (Owned) instead of price when purchased
+- [ ] **Physics**: Debris from buildings should be solid bodies that can be pushed around - collide with player and police cars
+- - [ ] **Test** make tests to verify this
+- - [ ] **Test** ask end user to cerify this manually before nest step
+- [ ] **Physics**: Buildings in the air should fall down after a second (gravity for unsupported chunks)
+- - [ ] **Test** make tests to verify this
+- - [ ] **Test** ask end user to cerify this manually before nest step
