@@ -156,21 +156,42 @@ export function spawnPoliceCar() {
     const minSpawnDist = 700; // Increased from 500 to give more reaction time
     const maxSpawnDist = 1200; // Increased from 900
     
+    // Determine Spawn Anchor (Host or Random Player in Multiplayer)
+    let anchorPos = playerCar.position;
+    let anchorRot = playerCar.rotation.y;
+    
+    if (gameState.isMultiplayer && gameState.otherPlayers && gameState.otherPlayers.size > 0) {
+        const candidates = [{ pos: playerCar.position, rot: playerCar.rotation.y }];
+        gameState.otherPlayers.forEach(p => {
+             if (p.state && !p.state.arrested) {
+                 candidates.push({ 
+                     pos: { x: p.state.x, z: p.state.z }, // Simplified object, avoids THREE instantiation
+                     rot: p.state.rotY || 0 
+                 });
+             }
+        });
+        // Filter out arrested remote players (local is checked naturally later via game over)
+        if (candidates.length > 0) {
+             const choice = candidates[Math.floor(Math.random() * candidates.length)];
+             anchorPos = choice.pos;
+             anchorRot = choice.rot;
+        }
+    }
+
     // 70% chance to spawn in front of player (for roadblocks/intercept), 30% from behind/sides
-    const playerRotation = playerCar.rotation.y;
     // Random angle: 70% chance within +/- 60 degrees of front, 30% anywhere
     let spawnAngle;
     if (Math.random() < 0.7) {
-        spawnAngle = playerRotation + (Math.random() - 0.5) * (Math.PI / 1.5); // +/- 60 deg cone
+        spawnAngle = anchorRot + (Math.random() - 0.5) * (Math.PI / 1.5); // +/- 60 deg cone
     } else {
         spawnAngle = Math.random() * Math.PI * 2;
     }
     
     const dist = minSpawnDist + Math.random() * (maxSpawnDist - minSpawnDist);
     
-    const x = playerCar.position.x + Math.sin(spawnAngle) * dist; // Math.sin/cos swapped because THREE.js rotation is Y-axis and 0 is typically -Z or +Z depending on model. 
+    const x = anchorPos.x + Math.sin(spawnAngle) * dist; // Math.sin/cos swapped because THREE.js rotation is Y-axis and 0 is typically -Z or +Z depending on model. 
     // Player moves using: x += Math.sin(rotation) * speed, z += Math.cos(rotation) * speed
-    const z = playerCar.position.z + Math.cos(spawnAngle) * dist;
+    const z = anchorPos.z + Math.cos(spawnAngle) * dist;
 
     policeCar.position.x = x;
     policeCar.position.z = z;
@@ -381,13 +402,60 @@ export function updatePoliceAI(delta) {
             }
         }
 
-        const dx = playerCar.position.x - policeCar.position.x;
-        const dz = playerCar.position.z - policeCar.position.z;
+        // === TARGET SELECTION (Multiplayer Support) ===
+        // Determine closest target (Local player OR Network players)
+        let targetPosX = playerCar.position.x;
+        let targetPosZ = playerCar.position.z;
+        let targetVelX = gameState.velocityX || 0;
+        let targetVelZ = gameState.velocityZ || 0;
+        let targetSpeedKmh = Math.abs(gameState.speed) * 3.6;
+        
+        if (gameState.isMultiplayer) {
+            let minTargetDistSq = Infinity;
+            
+            // Check local player first
+            if (!gameState.arrested) {
+                const dx = playerCar.position.x - policeCar.position.x;
+                const dz = playerCar.position.z - policeCar.position.z;
+                minTargetDistSq = dx*dx + dz*dz;
+            }
+            
+            // Check other players
+            if (gameState.otherPlayers && gameState.otherPlayers.size > 0) {
+                gameState.otherPlayers.forEach((p) => {
+                    if (!p.state || p.state.arrested) return;
+                    
+                    const pdx = p.state.x - policeCar.position.x;
+                    const pdz = p.state.z - policeCar.position.z;
+                    const pDistSq = pdx*pdx + pdz*pdz;
+                    
+                    if (pDistSq < minTargetDistSq) {
+                        minTargetDistSq = pDistSq;
+                        targetPosX = p.state.x;
+                        targetPosZ = p.state.z;
+                        
+                        // Approximate velocity from speed and rotation
+                        const s = p.state.speed || 0;
+                        const r = p.state.rotY || 0;
+                        targetVelX = Math.sin(r) * s;
+                        targetVelZ = Math.cos(r) * s;
+                        targetSpeedKmh = Math.abs(s) * 3.6;
+                        // Determine if RAM logic can apply (handled below via distance)
+                    }
+                });
+            }
+            
+            // If everyone arrested, fallback to local player defaults (already set)
+        }
+
+        const dx = targetPosX - policeCar.position.x;
+        const dz = targetPosZ - policeCar.position.z;
         const distance = Math.sqrt(dx * dx + dz * dz);
 
         // Vehicle Ramming Logic (e.g. Tank)
         const currentCar = cars[gameState.selectedCar];
-        if (currentCar && currentCar.canRam && distance < 50) {
+        // Only allow ramming if target is local player (simplified)
+        if (currentCar && currentCar.canRam && distance < 50 && targetPosX === playerCar.position.x) {
              policeCar.userData.dead = true;
              policeCar.userData.deathTime = Date.now();
              const enemyType = policeCar.userData.type || 'standard';
@@ -403,7 +471,12 @@ export function updatePoliceAI(delta) {
         // SHERIFF COMMAND SYSTEM - Apply commands to non-Sheriff police
         let commandModifiers = {};
         if (currentCommand && policeCar.userData.type !== 'sheriff') {
-            commandModifiers = applySheriffCommand(currentCommand.type, policeCar, playerCar);
+            // Use the selected target for Sheriff commands so police coordinate against their actual target
+            const targetProxy = {
+                position: { x: targetPosX, z: targetPosZ, y: (targetPosX === playerCar.position.x ? playerCar.position.y : 0) },
+                userData: { velocity: { x: targetVelX, z: targetVelZ } }
+            };
+            commandModifiers = applySheriffCommand(currentCommand.type, policeCar, targetProxy);
             // Store active command for visual feedback
             policeCar.userData.activeCommand = currentCommand.type;
         } else {
@@ -416,12 +489,10 @@ export function updatePoliceAI(delta) {
         
         // === PREDICTIVE INTERCEPT TARGETING ===
         // Police predict where player will be and aim there
-        const playerVelX = gameState.velocityX || 0;
-        const playerVelZ = gameState.velocityZ || 0;
         const predictionTime = Math.min(distance / 300, 2.0); // Look ahead up to 2 seconds
         
-        const predictedX = playerCar.position.x + playerVelX * predictionTime * 60;
-        const predictedZ = playerCar.position.z + playerVelZ * predictionTime * 60;
+        const predictedX = targetPosX + targetVelX * predictionTime * 60;
+        const predictedZ = targetPosZ + targetVelZ * predictionTime * 60;
         
         // === FORMATION PURSUIT ===
         // Distribute police around player for surround tactics
@@ -430,10 +501,10 @@ export function updatePoliceAI(delta) {
         }
         
         const formationRadius = 100; // Preferred distance for formation
-        const formationAngle = Math.atan2(playerVelZ, playerVelX) + policeCar.userData.formationOffset;
+        const formationAngle = Math.atan2(targetVelZ, targetVelX) + policeCar.userData.formationOffset;
         
-        const formationTargetX = playerCar.position.x + Math.cos(formationAngle) * formationRadius;
-        const formationTargetZ = playerCar.position.z + Math.sin(formationAngle) * formationRadius;
+        const formationTargetX = targetPosX + Math.cos(formationAngle) * formationRadius;
+        const formationTargetZ = targetPosZ + Math.sin(formationAngle) * formationRadius;
         
         // Blend between direct intercept and formation based on distance and heat
         const useFormation = distance < 300 && gameState.heatLevel >= 2;
@@ -444,8 +515,8 @@ export function updatePoliceAI(delta) {
         
         // --- SHERIFF AI OVERRIDE ---
         if (commandModifiers.targetOffset !== undefined) {
-             targetX = playerCar.position.x + Math.sin(commandModifiers.targetOffset) * 100;
-             targetZ = playerCar.position.z + Math.cos(commandModifiers.targetOffset) * 100;
+             targetX = targetPosX + Math.sin(commandModifiers.targetOffset) * 100;
+             targetZ = targetPosZ + Math.cos(commandModifiers.targetOffset) * 100;
         }
 
         const finalDx = targetX - policeCar.position.x;
@@ -545,11 +616,11 @@ export function updatePoliceAI(delta) {
         }
         
         // Slow down police when near player and player is slow (for arrest)
-        const playerSpeedKmh = Math.abs(gameState.speed) * 3.6;
+        // targetSpeedKmh is already calculated in target selection block
         const maxSpeedKmh = gameState.maxSpeed * 3.6;
         const speedThreshold = maxSpeedKmh * 0.1;
         
-        if (distance < 150 && playerSpeedKmh < speedThreshold) {
+        if (distance < 150 && targetSpeedKmh < speedThreshold) {
             // Match player speed when close and player is slow
             const slowFactor = Math.max(0.1, distance / 150);
             targetPoliceSpeed *= slowFactor;
