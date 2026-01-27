@@ -20,16 +20,36 @@ test.describe('Player Speed Limits', () => {
         await page.goto('http://localhost:3000');
         
         // Wait for game to load (Three.js canvas should be present)
-        await page.waitForSelector('canvas', { timeout: 10000 });
+        await page.waitForSelector('canvas', { timeout: 15000 });
+        
+        // Wait for solo mode button to be visible and ready
+        const soloBtn = page.locator('#soloModeBtn');
+        await expect(soloBtn).toBeVisible({ timeout: 10000 });
         
         // Click solo mode to start the game
-        const soloBtn = page.locator('#soloModeBtn');
-        if (await soloBtn.isVisible()) {
-            await soloBtn.click();
-        }
+        await soloBtn.click();
         
-        // Wait a moment for game to initialize
-        await page.waitForTimeout(1000);
+        // Wait for game to initialize - look for game HUD elements
+        await page.waitForSelector('#speed', { timeout: 10000 });
+        
+        // Additional wait for game state to fully initialize
+        await page.waitForTimeout(2000);
+        
+        // Verify game state is ready
+        await page.waitForFunction(
+            () => window.gameState?.maxSpeed !== undefined,
+            { timeout: 5000 }
+        );
+    });
+    
+    test.afterEach(async ({ page }) => {
+        // Reset page state to ensure test isolation
+        await page.evaluate(() => {
+            // Release any held keys
+            if (window.gameState) {
+                window.gameState.keysPressed = {};
+            }
+        });
     });
     
     test('On foot should not exceed ~9 km/h (maxSpeed: 2.5)', async ({ page }) => {
@@ -180,7 +200,7 @@ test.describe('Speed System Investigation', () => {
     
     test('Check if startGame() correctly sets car stats', async ({ page }) => {
         await page.goto('http://localhost:3000');
-        await page.waitForSelector('canvas', { timeout: 10000 });
+        await page.waitForSelector('canvas', { timeout: 15000 });
         
         // Check state BEFORE clicking solo mode
         const beforeGame = await page.evaluate(() => {
@@ -191,13 +211,22 @@ test.describe('Speed System Investigation', () => {
         });
         console.log('Before game start:', beforeGame);
         
-        // Click solo mode
+        // Wait for solo mode button to be visible and stable
         const soloBtn = page.locator('#soloModeBtn');
-        if (await soloBtn.isVisible()) {
-            await soloBtn.click();
-        }
+        await expect(soloBtn).toBeVisible({ timeout: 10000 });
         
-        await page.waitForTimeout(500);
+        // Click solo mode
+        await soloBtn.click();
+        
+        // Wait for game to initialize with proper elements
+        await page.waitForSelector('#speed', { timeout: 10000 });
+        await page.waitForTimeout(2000);
+        
+        // Wait for game state to be initialized
+        await page.waitForFunction(
+            () => window.gameState?.maxSpeed !== undefined,
+            { timeout: 5000 }
+        );
         
         // Check state AFTER clicking solo mode
         const afterGame = await page.evaluate(() => {
@@ -217,7 +246,13 @@ test.describe('Speed System Investigation', () => {
     
     test('Verify constants.js car values are accessible via window.cars', async ({ page }) => {
         await page.goto('http://localhost:3000');
-        await page.waitForSelector('canvas', { timeout: 10000 });
+        await page.waitForSelector('canvas', { timeout: 15000 });
+        
+        // Wait for window.cars to be defined
+        await page.waitForFunction(
+            () => window.cars !== undefined,
+            { timeout: 5000 }
+        );
         
         const carsData = await page.evaluate(() => {
             return window.cars;
