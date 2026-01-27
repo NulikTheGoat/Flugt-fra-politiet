@@ -672,6 +672,16 @@ export function takeDamage(amount) {
     }
 }
 
+export function repairCar(amount) {
+    // Current health or assumption of 0 if undefined, caps at 100
+    // If player was dead/arrested, this might give a second wind unless arrested is final
+    if (gameState.arrested) return;
+
+    gameState.health = Math.min(100, (gameState.health || 0) + amount);
+    uiCallbacks.updateHealthUI();
+    // Visual feedback handled by caller or generic 'heal' sound here if consistent
+}
+
 function applyKickScooterAnimation(target, now, wantsForward) {
     const kick = target.userData.kick;
     const parts = target.userData.kickParts;

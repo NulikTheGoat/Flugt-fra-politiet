@@ -1,9 +1,10 @@
 // Three.js Scene Setup (Singletons)
 export const scene = new THREE.Scene();
 scene.background = new THREE.Color(0x87ceeb);
-scene.fog = new THREE.Fog(0x87ceeb, 3000, 6000);
+// Fog setup - starts at 2000, fully opaque at 9000 to hide the horizon edge smoothly
+scene.fog = new THREE.Fog(0x87ceeb, 2000, 9000);
 
-export const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 3000);
+export const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 25000);
 
 export const listener = new THREE.AudioListener();
 camera.add(listener);

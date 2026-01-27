@@ -44,7 +44,7 @@ export function createSpark(position) {
 
 // Create smoke for dead cars
 export function createSmoke(position, scale = 1) {
-    if (gameState.sparks.length > 300) return; // Limit total particles
+    if (gameState.sparks.length > 150) return; // Reduced particle limit for performance
     
     const smoke = getParticleFromPool('smoke', sharedGeometries.smoke, sharedMaterials.smoke);
     
@@ -73,7 +73,7 @@ export function createSmoke(position, scale = 1) {
 
 // Create fire particle for burning cars
 export function createFire(position) {
-    if (gameState.sparks.length > 300) return;
+    if (gameState.sparks.length > 150) return; // Reduced particle limit for performance
     
     const fire = getParticleFromPool('smoke', sharedGeometries.spark, sharedMaterials.fire);
     

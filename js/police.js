@@ -4,7 +4,7 @@ import { scene, camera } from './core.js';
 import { enemies, cars } from './constants.js';
 import { sharedGeometries, sharedMaterials } from './assets.js';
 import { createSmoke, createSpeedParticle, createFire, createMoneyExplosion, createWheelDust } from './particles.js';
-import { playerCar, takeDamage } from './player.js';
+import { playerCar, takeDamage, repairCar } from './player.js';
 import { normalizeAngleRadians, clamp } from './utils.js';
 import { createBuildingDebris } from './world.js';
 import { addMoney, showFloatingMoney, showGameOver } from './ui.js';
@@ -241,6 +241,9 @@ export function updatePoliceAI(delta) {
                      const reward = enemyConfig.pickupReward || 300;
                      addMoney(reward);
                      
+                     // Heal player for collecting salvage
+                     repairCar(25); 
+
                      // Show floating text animation
                      showFloatingMoney(reward, policeCar.position, camera);
 
@@ -265,15 +268,15 @@ export function updatePoliceAI(delta) {
              const timeSinceDeath = now - policeCar.userData.deathTime;
              const lastParticle = policeCar.userData.lastParticleTime || 0;
              
-             // Throttle particle spawning to every 100ms
-             if (now - lastParticle > 100) {
+             // Throttle particle spawning to every 200ms (reduced from 100ms)
+             if (now - lastParticle > 200) {
                  policeCar.userData.lastParticleTime = now;
                  
-                 // Smoke constantly (30% chance per tick)
-                 if (Math.random() < 0.4) createSmoke(policeCar.position);
+                 // Smoke constantly (20% chance per tick - reduced)
+                 if (Math.random() < 0.2) createSmoke(policeCar.position);
                  
-                 // Fire sparks after 2 seconds (25% chance per tick)
-                 if (timeSinceDeath > 2000 && Math.random() < 0.3) {
+                 // Fire sparks after 2 seconds (15% chance per tick - reduced)
+                 if (timeSinceDeath > 2000 && Math.random() < 0.15) {
                      createFire(policeCar.position);
                  }
              }
