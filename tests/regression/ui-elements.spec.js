@@ -17,9 +17,21 @@ test.describe('📊 HUD Elements', () => {
     
     test.beforeEach(async ({ page }) => {
         await page.goto('http://localhost:3000');
-        await page.waitForSelector('canvas', { timeout: 10000 });
+        await page.waitForSelector('canvas', { timeout: 15000 });
         const soloBtn = page.locator('#soloModeBtn');
-        if (await soloBtn.isVisible()) await soloBtn.click();
+        if (await soloBtn.isVisible()) {
+            await soloBtn.click();
+            // Wait for game state to fully initialize
+            await page.waitForFunction(
+                () => window.gameState && window.gameState.startTime > 0,
+                { timeout: 15000, polling: 200 }
+            );
+            // Wait for HUD elements to render
+            await page.waitForFunction(
+                () => !!document.querySelector('#speed'),
+                { timeout: 15000, polling: 200 }
+            );
+        }
         await page.waitForTimeout(500);
     });
 

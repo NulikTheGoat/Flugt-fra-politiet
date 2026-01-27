@@ -7,12 +7,17 @@ test.describe('🏎️ Cornering Physics', () => {
         page.on('console', msg => console.log(`BROWSER: ${msg.text()}`));
         
         await page.goto('http://localhost:3000');
+        await page.waitForSelector('canvas', { timeout: 15000 });
         // Clear previous state to prevent interference
         await page.evaluate(() => localStorage.clear());
         
-        await page.waitForSelector('#soloModeBtn');
-        await page.click('#soloModeBtn');
-        await page.waitForFunction(() => window.gameState && window.gameState.startTime > 0);
+        const soloBtn = page.locator('#soloModeBtn');
+        await expect(soloBtn).toBeVisible({ timeout: 10000 });
+        await soloBtn.click();
+        await page.waitForFunction(
+            () => window.gameState && window.gameState.startTime > 0,
+            { timeout: 15000, polling: 200 }
+        );
         // Wait for any async loading/init to settle
         await page.waitForTimeout(500);
     });
@@ -99,7 +104,9 @@ test.describe('🏎️ Cornering Physics', () => {
             localStorage.setItem = () => {}; // Disable saving
         });
         await page.reload();
-        await page.waitForSelector('#soloModeBtn');
+        await page.waitForSelector('canvas', { timeout: 15000 });
+        const soloBtn = page.locator('#soloModeBtn');
+        await expect(soloBtn).toBeVisible({ timeout: 10000 });
     }
 
     async function softReset(page) {
@@ -112,8 +119,12 @@ test.describe('🏎️ Cornering Physics', () => {
         // --- RUN 1: STRAIGHT ---
         // Force fresh start
         await forceCleanReload(page);
-        await page.click('#soloModeBtn');
-        await page.waitForFunction(() => window.gameState && window.gameState.startTime > 0);
+        const soloBtn = page.locator('#soloModeBtn');
+        await soloBtn.click();
+        await page.waitForFunction(
+            () => window.gameState && window.gameState.startTime > 0,
+            { timeout: 15000, polling: 200 }
+        );
         await page.waitForTimeout(1000); // Wait for loading to finish definitely
 
         // Setup Run 1

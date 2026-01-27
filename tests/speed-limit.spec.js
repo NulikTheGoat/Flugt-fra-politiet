@@ -29,17 +29,20 @@ test.describe('Player Speed Limits', () => {
         // Click solo mode to start the game
         await soloBtn.click();
         
-        // Wait for game to initialize - look for game HUD elements
-        await page.waitForSelector('#speed', { timeout: 10000 });
-        
-        // Additional wait for game state to fully initialize
-        await page.waitForTimeout(2000);
-        
-        // Verify game state is ready
+        // Wait for game state to fully initialize (more reliable than selector)
         await page.waitForFunction(
-            () => window.gameState?.maxSpeed !== undefined,
-            { timeout: 5000 }
+            () => window.gameState && window.gameState.startTime > 0 && window.gameState.maxSpeed !== undefined,
+            { timeout: 15000, polling: 200 }
         );
+        
+        // Wait for HUD element using polling (handles async rendering)
+        await page.waitForFunction(
+            () => !!document.querySelector('#speed'),
+            { timeout: 15000, polling: 200 }
+        );
+        
+        // Small buffer for UI to stabilize
+        await page.waitForTimeout(500);
     });
     
     test.afterEach(async ({ page }) => {
@@ -218,15 +221,20 @@ test.describe('Speed System Investigation', () => {
         // Click solo mode
         await soloBtn.click();
         
-        // Wait for game to initialize with proper elements
-        await page.waitForSelector('#speed', { timeout: 10000 });
-        await page.waitForTimeout(2000);
-        
-        // Wait for game state to be initialized
+        // Wait for game state to fully initialize (more reliable than selector)
         await page.waitForFunction(
-            () => window.gameState?.maxSpeed !== undefined,
-            { timeout: 5000 }
+            () => window.gameState && window.gameState.startTime > 0 && window.gameState.maxSpeed !== undefined,
+            { timeout: 15000, polling: 200 }
         );
+        
+        // Wait for HUD element using polling
+        await page.waitForFunction(
+            () => !!document.querySelector('#speed'),
+            { timeout: 15000, polling: 200 }
+        );
+        
+        // Small buffer for UI to stabilize
+        await page.waitForTimeout(500);
         
         // Check state AFTER clicking solo mode
         const afterGame = await page.evaluate(() => {

@@ -15,9 +15,16 @@ test.describe('🚔 Police Spawning', () => {
     
     test.beforeEach(async ({ page }) => {
         await page.goto('http://localhost:3000');
-        await page.waitForSelector('canvas', { timeout: 10000 });
+        await page.waitForSelector('canvas', { timeout: 15000 });
         const soloBtn = page.locator('#soloModeBtn');
-        if (await soloBtn.isVisible()) await soloBtn.click();
+        if (await soloBtn.isVisible()) {
+            await soloBtn.click();
+            // Wait for game state to fully initialize
+            await page.waitForFunction(
+                () => window.gameState && window.gameState.startTime > 0,
+                { timeout: 15000, polling: 200 }
+            );
+        }
         await page.waitForTimeout(500);
     });
 

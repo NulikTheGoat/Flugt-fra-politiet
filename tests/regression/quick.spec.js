@@ -13,17 +13,17 @@ const { test, expect } = require('@playwright/test');
 // Shared setup - venter til spillet faktisk er startet
 const setupGame = async (page) => {
     await page.goto('/');
-    await page.waitForSelector('canvas', { timeout: 5000 });
+    await page.waitForSelector('canvas', { timeout: 15000 });
     const soloBtn = page.locator('#soloModeBtn');
-    if (await soloBtn.isVisible({ timeout: 2000 })) {
+    if (await soloBtn.isVisible({ timeout: 5000 })) {
         await soloBtn.click();
     }
     // Vent til gameState er klar og chunks er loaded
     await page.waitForFunction(() => {
         const gs = window.gameState;
-        return gs && gs.chunkGrid && Object.keys(gs.chunkGrid).length > 0;
-    }, { timeout: 5000 });
-    await page.waitForTimeout(200);
+        return gs && gs.startTime > 0 && gs.chunkGrid && Object.keys(gs.chunkGrid).length > 0;
+    }, { timeout: 15000, polling: 200 });
+    await page.waitForTimeout(300);
 };
 
 test.describe('🎯 Core Systems', () => {

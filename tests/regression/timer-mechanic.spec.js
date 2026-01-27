@@ -4,9 +4,15 @@ const { test, expect } = require('@playwright/test');
 test.describe('⏱️ Game Timer Logic', () => {
     test.beforeEach(async ({ page }) => {
         await page.goto('http://localhost:3000');
+        await page.waitForSelector('canvas', { timeout: 15000 });
         // Click solo button to start game
-        await page.click('#soloModeBtn');
-        await page.waitForFunction(() => window.gameState !== undefined && window.gameState.startTime > 0);
+        const soloBtn = page.locator('#soloModeBtn');
+        await expect(soloBtn).toBeVisible({ timeout: 10000 });
+        await soloBtn.click();
+        await page.waitForFunction(
+            () => window.gameState !== undefined && window.gameState.startTime > 0,
+            { timeout: 15000, polling: 200 }
+        );
     });
 
     test('Timer should NOT start immediately on game load', async ({ page }) => {
