@@ -50,6 +50,33 @@
             box-shadow: 0 0 50px rgba(0, 102, 255, 0.3);
         }
 
+        .judge-verdict {
+            margin: 20px 0;
+            padding: 15px;
+            background: #f4e1c1;
+            color: #3d2b1f;
+            font-family: 'Courier New', Courier, monospace;
+            font-weight: bold;
+            border-radius: 5px;
+            box-shadow: 2px 2px 5px rgba(0,0,0,0.3);
+            border: 2px solid #8b5a2b;
+            min-height: 60px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+            line-height: 1.4;
+            transform: rotate(-1deg);
+            max-width: 90%;
+            margin-left: auto;
+            margin-right: auto;
+        }
+        .judge-verdict::before {
+            content: '⚖️';
+            margin-right: 10px;
+            font-size: 24px;
+        }
+
         .lobby-content h1 {
             text-align: center;
             color: #0088ff;
@@ -1048,6 +1075,322 @@
             display: none; /* Using ::before instead */
         }
 
+        /* ==========================
+           Shop vehicle previews
+           ========================== */
+        .vehicle-model {
+            position: relative;
+            width: 90px;
+            height: 55px;
+            transform-style: preserve-3d;
+            filter: drop-shadow(0 10px 18px rgba(0,0,0,0.55));
+        }
+
+        .preview-onfoot .vehicle-model {
+            animation: personBob 1.4s ease-in-out infinite;
+        }
+        @keyframes personBob {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-3px); }
+        }
+        .vehicle-onfoot .person-head {
+            position: absolute;
+            width: 14px;
+            height: 14px;
+            border-radius: 50%;
+            background: #ffd0b0;
+            left: 38px;
+            top: 2px;
+        }
+        .vehicle-onfoot .person-body {
+            position: absolute;
+            width: 18px;
+            height: 20px;
+            border-radius: 6px;
+            background: linear-gradient(135deg, var(--accent), #222);
+            left: 36px;
+            top: 16px;
+        }
+        .vehicle-onfoot .person-leg {
+            position: absolute;
+            width: 7px;
+            height: 18px;
+            border-radius: 4px;
+            background: #1c1f2a;
+            top: 34px;
+        }
+        .vehicle-onfoot .person-leg.left { left: 38px; transform: rotate(8deg); }
+        .vehicle-onfoot .person-leg.right { left: 47px; transform: rotate(-8deg); }
+
+        .vehicle-bike .bike-wheel,
+        .vehicle-scooter .scooter-wheel {
+            position: absolute;
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: radial-gradient(circle at 30% 30%, #444, #111);
+            border: 2px solid #222;
+            top: 30px;
+        }
+        .vehicle-bike .bike-wheel.left { left: 10px; }
+        .vehicle-bike .bike-wheel.right { right: 10px; }
+        .vehicle-bike .bike-frame {
+            position: absolute;
+            left: 18px;
+            top: 22px;
+            width: 54px;
+            height: 6px;
+            border-radius: 6px;
+            background: linear-gradient(135deg, var(--accent), #1a1a22);
+        }
+        .vehicle-bike .bike-handle {
+            position: absolute;
+            right: 16px;
+            top: 16px;
+            width: 20px;
+            height: 4px;
+            border-radius: 4px;
+            background: #a0a0a0;
+        }
+
+        .vehicle-scooter-electric .kick-wheel {
+            position: absolute;
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            background: radial-gradient(circle at 30% 30%, #444, #111);
+            border: 2px solid #222;
+            top: 34px;
+        }
+        .vehicle-scooter-electric .kick-wheel.left { left: 12px; }
+        .vehicle-scooter-electric .kick-wheel.right { right: 12px; }
+        .vehicle-scooter-electric .kick-deck {
+            position: absolute;
+            left: 18px;
+            top: 36px;
+            width: 54px;
+            height: 5px;
+            border-radius: 6px;
+            background: linear-gradient(135deg, var(--accent), #1a1a22);
+        }
+        .vehicle-scooter-electric .kick-stem {
+            position: absolute;
+            right: 22px;
+            top: 10px;
+            width: 5px;
+            height: 26px;
+            border-radius: 4px;
+            background: #8a8a8a;
+        }
+        .vehicle-scooter-electric .kick-handle {
+            position: absolute;
+            right: 16px;
+            top: 8px;
+            width: 18px;
+            height: 4px;
+            border-radius: 4px;
+            background: #8a8a8a;
+        }
+        .vehicle-scooter-electric .kick-front {
+            position: absolute;
+            right: 18px;
+            top: 18px;
+            width: 12px;
+            height: 18px;
+            border-radius: 8px;
+            background: linear-gradient(135deg, var(--accent), #0f151b);
+        }
+        .vehicle-scooter-electric .kick-rider-head {
+            position: absolute;
+            left: 30px;
+            top: 6px;
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: #f2f2f2;
+        }
+        .vehicle-scooter-electric .kick-rider-body {
+            position: absolute;
+            left: 28px;
+            top: 16px;
+            width: 14px;
+            height: 16px;
+            border-radius: 6px;
+            background: var(--accent);
+        }
+        .vehicle-scooter-electric .kick-rider-leg {
+            position: absolute;
+            width: 6px;
+            height: 14px;
+            border-radius: 4px;
+            background: var(--accent);
+            top: 30px;
+        }
+        .vehicle-scooter-electric .kick-rider-leg.front { left: 30px; transform: rotate(10deg); }
+        .vehicle-scooter-electric .kick-rider-leg.back { left: 38px; transform: rotate(-18deg); }
+        .vehicle-scooter-electric .kick-rider-arm {
+            position: absolute;
+            left: 34px;
+            top: 18px;
+            width: 16px;
+            height: 4px;
+            border-radius: 4px;
+            background: #8a8a8a;
+            transform: rotate(-12deg);
+        }
+
+        .vehicle-scooter .scooter-wheel.left { left: 14px; }
+        .vehicle-scooter .scooter-wheel.right { right: 14px; }
+        .vehicle-scooter .scooter-body {
+            position: absolute;
+            left: 18px;
+            top: 20px;
+            width: 54px;
+            height: 24px;
+            border-radius: 12px 14px 12px 10px;
+            background: linear-gradient(135deg, var(--accent), #1a1a22);
+        }
+        .vehicle-scooter .scooter-front {
+            position: absolute;
+            right: 20px;
+            top: 12px;
+            width: 26px;
+            height: 32px;
+            border-radius: 12px 12px 10px 10px;
+            background: linear-gradient(135deg, var(--accent), #0f151b);
+        }
+        .vehicle-scooter .scooter-seat {
+            position: absolute;
+            left: 22px;
+            top: 14px;
+            width: 34px;
+            height: 10px;
+            border-radius: 6px 10px 4px 4px;
+            background: #d9d9d9;
+        }
+        .vehicle-scooter .scooter-floor {
+            position: absolute;
+            left: 22px;
+            top: 34px;
+            width: 44px;
+            height: 6px;
+            border-radius: 6px;
+            background: linear-gradient(135deg, var(--accent), #1a1a22);
+        }
+        .vehicle-scooter .scooter-stem {
+            position: absolute;
+            right: 30px;
+            top: 12px;
+            width: 6px;
+            height: 14px;
+            border-radius: 4px;
+            background: #8a8a8a;
+        }
+        .vehicle-scooter .scooter-handle {
+            position: absolute;
+            right: 22px;
+            top: 14px;
+            width: 22px;
+            height: 4px;
+            border-radius: 4px;
+            background: #8a8a8a;
+        }
+        .vehicle-scooter .scooter-headlight {
+            position: absolute;
+            right: 16px;
+            top: 16px;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #fff3c4;
+            box-shadow: 0 0 6px rgba(255, 243, 196, 0.8);
+        }
+        .vehicle-scooter .scooter-taillight {
+            position: absolute;
+            left: 12px;
+            top: 26px;
+            width: 6px;
+            height: 4px;
+            border-radius: 2px;
+            background: #ff3333;
+        }
+
+        .vehicle-tank .tank-body {
+            position: absolute;
+            left: 16px;
+            top: 18px;
+            width: 58px;
+            height: 22px;
+            border-radius: 6px;
+            background: linear-gradient(135deg, var(--accent), #203030);
+        }
+        .vehicle-tank .tank-turret {
+            position: absolute;
+            left: 30px;
+            top: 10px;
+            width: 30px;
+            height: 14px;
+            border-radius: 5px;
+            background: rgba(0,0,0,0.25);
+        }
+        .vehicle-tank .tank-barrel {
+            position: absolute;
+            left: 44px;
+            top: 14px;
+            width: 34px;
+            height: 5px;
+            border-radius: 5px;
+            background: #333;
+        }
+        .vehicle-tank .tank-track {
+            position: absolute;
+            top: 40px;
+            width: 32px;
+            height: 10px;
+            border-radius: 6px;
+            background: #111;
+        }
+        .vehicle-tank .tank-track.left { left: 14px; }
+        .vehicle-tank .tank-track.right { right: 14px; }
+
+        .preview-ufo .vehicle-model {
+            animation: ufoHover 2.0s ease-in-out infinite;
+        }
+        @keyframes ufoHover {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-5px); }
+        }
+        .vehicle-ufo .ufo-disc {
+            position: absolute;
+            left: 16px;
+            top: 24px;
+            width: 58px;
+            height: 14px;
+            border-radius: 50px;
+            background: linear-gradient(135deg, var(--accent), #555);
+            box-shadow: 0 0 18px rgba(0,255,255,0.15);
+        }
+        .vehicle-ufo .ufo-dome {
+            position: absolute;
+            left: 34px;
+            top: 14px;
+            width: 22px;
+            height: 14px;
+            border-radius: 22px 22px 8px 8px;
+            background: linear-gradient(135deg, rgba(120,200,255,0.75), rgba(40,80,160,0.35));
+        }
+        .vehicle-ufo .ufo-lights {
+            position: absolute;
+            left: 22px;
+            top: 33px;
+            width: 46px;
+            height: 6px;
+            border-radius: 50px;
+            background: repeating-linear-gradient(90deg, rgba(0,255,200,0.9) 0 6px, transparent 6px 10px);
+            filter: blur(0.2px);
+            opacity: 0.9;
+        }
+
         .carCard h3 {
             color: #fff;
             margin: 0;
@@ -1075,6 +1418,21 @@
         .car-type-badge.special {
             background: linear-gradient(135deg, rgba(255,0,255,0.3), rgba(0,255,255,0.3));
             color: #fff;
+        }
+
+        @keyframes spinAndGrow {
+            0% {
+                transform: scale(0.1) rotate(720deg);
+                opacity: 0;
+            }
+            100% {
+                transform: scale(1) rotate(-2deg);
+                opacity: 1;
+            }
+        }
+
+        .newspaper-animation {
+            animation: spinAndGrow 1.5s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
         }
 
         /* Stats Bars */
@@ -1348,12 +1706,20 @@
         #playBtn:active {
             transform: translateY(0) scale(0.98);
         }
+
+        /* Keyboard Navigation Support */
+        .keyboard-selected {
+            outline: 3px solid #ffffff !important;
+            outline-offset: 2px;
+            transform: scale(1.05) !important;
+            z-index: 1000;
+        }
     </style>
 </head>
 <body>
     <div id="gameContainer"></div>
     
-    <div id="hud">
+    <div id="hud" data-testid="hud">
         <style>
             @keyframes hudMoneyPop {
                 0% { transform: scale(1); }
@@ -1364,27 +1730,50 @@
                 display: inline-block;
                 animation: hudMoneyPop 0.3s ease-out;
             }
+            .money-container {
+                display: flex;
+                flex-direction: column;
+                gap: 2px;
+            }
+            .money-row {
+                display: flex;
+                justify-content: space-between;
+                width: 200px; /* Align widths */
+            }
+            .money-label { color: #aaa; font-size: 14px; }
+            .money-value { font-weight: bold; }
+            .total-money { color: #ffd700; } /* Gold for total */
         </style>
-        <div>Penge: <span id="money">0</span>kr</div>
-        <div>Tid: <span id="time">0</span>s</div>
-        <div>Heat Level: <span id="heatLevel">1</span></div>
-        <div>Politibiler: <span id="policeCount">0</span> <span style="color: #ff4444;">💀</span><span id="deadPoliceCount" style="color: #ff4444;">0</span></div>
-        <div>Hastighed: <span id="speed">0</span> km/t</div>
-        <div id="speedometer">
+        <div data-testid="money-display" class="money-container">
+            <div class="money-row">
+                <span class="money-label">Denne runde:</span>
+                <span class="money-value"><span id="money" data-testid="money">0</span> kr</span>
+            </div>
+            <div class="money-row total-money">
+                <span class="money-label">Total tjent:</span>
+                <span class="money-value"><span id="totalMoney" data-testid="totalMoney">0</span> kr</span>
+            </div>
+        </div>
+        <div data-testid="time-display">Tid: <span id="time" data-testid="time">0</span>s</div>
+        <div data-testid="heat-display">Heat Level: <span id="heatLevel" data-testid="heatLevel">1</span></div>
+        <div data-testid="police-display">Politibiler: <span id="policeCount" data-testid="policeCount">0</span> <span style="color: #ff4444;">💀</span><span id="deadPoliceCount" data-testid="deadPoliceCount" style="color: #ff4444;">0</span></div>
+        <div data-testid="speed-display">Hastighed: <span id="speed" data-testid="speed">0</span> km/t</div>
+        <div id="speedometer" data-testid="speedometer">
             <div id="speedBar">
-                <div id="speedFill"></div>
+                <div id="speedFill" data-testid="speedFill"></div>
             </div>
         </div>
-        <div id="healthDisplay" style="margin-top: 10px; margin-bottom: 5px;">
-            <div>Helbred: <span id="healthValue">100</span>%</div>
+        <div id="healthDisplay" data-testid="health-display" style="margin-top: 10px; margin-bottom: 5px;">
+            <div>Helbred: <span id="healthValue" data-testid="healthValue">100</span>%</div>
             <div id="healthBar" style="width: 200px; height: 15px; background: #333; border: 1px solid #ff0000; margin-top: 5px;">
-                <div id="healthFill" style="height: 100%; background: #ff0000; width: 100%; transition: width 0.1s;"></div>
+                <div id="healthFill" data-testid="healthFill" style="height: 100%; background: #ff0000; width: 100%; transition: width 0.1s;"></div>
             </div>
         </div>
-        <div id="driftIndicator" style="display: none; color: #ff6600; font-weight: bold; text-shadow: 0 0 10px #ff6600;">🔥 DRIFT!</div>
-        <div id="policeStatus">
-            <div>Politiet: <span id="policeDistance">-</span> m</div>
-            <div>Status: <span id="status" style="color: #00ff00;">Fri</span></div>
+        <div id="driftIndicator" data-testid="driftIndicator" style="display: none; color: #ff6600; font-weight: bold; text-shadow: 0 0 10px #ff6600;">🔥 DRIFT!</div>
+        <div id="policeStatus" data-testid="police-status">
+            <div>Politiet: <span id="policeDistance" data-testid="policeDistance">-</span> m</div>
+            <div>Status: <span id="status" data-testid="status" style="color: #00ff00;">Fri</span></div>
+            <div id="sheriffIndicator" data-testid="sheriffIndicator" style="display: none; color: #ffd700; font-weight: bold; text-shadow: 0 0 10px #ffd700;">⭐ SHERIFF AKTIV</div>
         </div>
     </div>
 
@@ -1403,8 +1792,27 @@
 
     <div id="gameOver">
         <h1 id="gameOverTitle">Du blev arresteret!</h1>
+        
+        <!-- NEWSPAPER SECTION -->
+        <div id="newspaper" style="display: none; background: #eae1d5; color: black; padding: 15px; margin: 20px auto; max-width: 400px; box-shadow: 0 5px 20px rgba(0,0,0,0.5); transform: rotate(-2deg); border: 1px solid #c0b9ad;">
+            <div style="border-bottom: 2px solid #333; margin-bottom: 10px; padding-bottom: 5px; display: flex; justify-content: space-between; align-items: flex-end;">
+                <span style="font-family: 'Times New Roman', serif; font-weight: 900; font-size: 24px; text-transform: uppercase; letter-spacing: -1px;">DAGENS DRAMA</span>
+                <span style="font-size: 10px; font-family: sans-serif; opacity: 0.7;">Pris: 15 kr.</span>
+            </div>
+            
+            <div id="newspaperHeadline" style="font-family: 'Impact', sans-serif; font-size: 32px; line-height: 1.0; text-transform: uppercase; margin-bottom: 10px; text-align: center; color: #cc0000; text-shadow: 1px 1px 0px rgba(0,0,0,0.1);">
+                TRYKKER EKSTRA OPLAG...
+            </div>
+            
+            <div id="newspaperSubhead" style="font-family: 'Georgia', serif; font-style: italic; font-size: 14px; line-height: 1.4; border-top: 1px solid #999; border-bottom: 1px solid #999; padding: 10px 0;">
+                Vent venligst...
+            </div>
+        </div>
+
         <p id="gameOverMessage">Du blev fanget af politiet.</p>
         
+        <div id="judgeVerdict" class="judge-verdict" style="display:none;">Dommeren voterer...</div>
+
         <div id="gameOverStats">
             <div class="stat-row" style="animation-delay: 0.2s">
                 <span class="stat-icon">⏱️</span>
@@ -1438,6 +1846,7 @@
             <div id="shopHeader">
                 <h1>🏎️ Garage & Shop</h1>
                 <div style="display: flex; gap: 15px; align-items: center;">
+                    <a href="/editor" class="config-link" style="background: linear-gradient(135deg, #00aaff, #0066cc);">🏗️ Editor</a>
                     <a href="/config" class="config-link">⚙️ Config</a>
                     <div id="moneyDisplay"><span id="shopMoney">0</span> KR</div>
                 </div>
@@ -1479,6 +1888,10 @@
                 <button id="menuShopBtn" class="gamemode-btn" style="background: linear-gradient(135deg, #ff9900, #ff6600);">
                     <span class="icon">🛒</span> SHOP
                     <span style="font-size: 11px; display: block; opacity: 0.8; margin-top: 3px;">Køb og vælg biler</span>
+                </button>
+                <button id="resetProgressBtn" class="gamemode-btn" style="background: linear-gradient(135deg, #cc0000, #990000); margin-top: 15px;">
+                    <span class="icon">⚠️</span> NULSTIL PROGRES
+                    <span style="font-size: 11px; display: block; opacity: 0.8; margin-top: 3px;">Starter forfra (penge og biler)</span>
                 </button>
             </div>
         </div>
@@ -1558,7 +1971,198 @@
         </div>
     </div>
 
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <!-- Level Editor -->
+    <div id="levelEditor" style="display: none;">
+        <div id="editorToolbar">
+            <h2>🏗️ Level Editor</h2>
+            <div class="editor-section">
+                <label>Objekt Type:</label>
+                <select id="editorObjectType">
+                    <option value="building">🏢 Bygning</option>
+                    <option value="hotdog">🌭 Pølsevogn</option>
+                    <option value="tree">🌲 Træ</option>
+                </select>
+            </div>
+            <div class="editor-section" id="buildingOptions">
+                <label>Bygningstype:</label>
+                <select id="editorBuildingType">
+                    <option value="GENERIC">Generisk</option>
+                    <option value="SHOP">Butik</option>
+                    <option value="BANK">Bank</option>
+                    <option value="PIZZERIA">Pizzeria</option>
+                    <option value="RESIDENTIAL">Bolig</option>
+                    <option value="OFFICE">Kontor</option>
+                    <option value="WAREHOUSE">Lager</option>
+                    <option value="POLICE_STATION">Politistation</option>
+                </select>
+            </div>
+            <div class="editor-section">
+                <label>Bredde: <span id="widthVal">100</span></label>
+                <input type="range" id="editorWidth" min="50" max="200" value="100">
+            </div>
+            <div class="editor-section">
+                <label>Dybde: <span id="depthVal">80</span></label>
+                <input type="range" id="editorDepth" min="50" max="150" value="80">
+            </div>
+            <div class="editor-section">
+                <label>Højde: <span id="heightVal">150</span></label>
+                <input type="range" id="editorHeight" min="50" max="300" value="150">
+            </div>
+            <div class="editor-buttons">
+                <button id="editorDeleteMode" class="editor-btn">🗑️ Slet Mode</button>
+                <button id="editorUndo" class="editor-btn">↩️ Fortryd</button>
+                <button id="editorClear" class="editor-btn danger">🧹 Ryd Alt</button>
+            </div>
+            <div class="editor-buttons">
+                <button id="editorSave" class="editor-btn save">💾 Gem Level</button>
+                <button id="editorLoad" class="editor-btn">📂 Indlæs</button>
+                <button id="editorExport" class="editor-btn">📋 Eksporter</button>
+            </div>
+            <div class="editor-section">
+                <label>Objekter: <span id="objectCount">0</span></label>
+            </div>
+            <button id="editorClose" class="editor-btn close">✖ Luk Editor</button>
+        </div>
+        <div id="editorPreview"></div>
+        <div id="editorCoords">X: 0, Z: 0</div>
+        <input type="file" id="editorFileInput" accept=".json" style="display: none;">
+    </div>
+
+    <style>
+        #levelEditor {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 500;
+            pointer-events: none;
+        }
+        
+        #editorToolbar {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            width: 280px;
+            background: rgba(20, 20, 40, 0.95);
+            border: 2px solid #00aaff;
+            border-radius: 12px;
+            padding: 20px;
+            pointer-events: auto;
+            box-shadow: 0 0 30px rgba(0, 170, 255, 0.3);
+        }
+        
+        #editorToolbar h2 {
+            color: #00aaff;
+            text-align: center;
+            margin-bottom: 20px;
+            font-size: 22px;
+        }
+        
+        .editor-section {
+            margin-bottom: 15px;
+        }
+        
+        .editor-section label {
+            display: block;
+            color: #aaa;
+            font-size: 13px;
+            margin-bottom: 5px;
+        }
+        
+        .editor-section select,
+        .editor-section input[type="range"] {
+            width: 100%;
+            padding: 8px;
+            background: #1a1a2e;
+            border: 1px solid #444;
+            border-radius: 6px;
+            color: #fff;
+            font-size: 14px;
+        }
+        
+        .editor-section input[type="range"] {
+            padding: 0;
+            height: 8px;
+            cursor: pointer;
+        }
+        
+        .editor-buttons {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 10px;
+            flex-wrap: wrap;
+        }
+        
+        .editor-btn {
+            flex: 1;
+            min-width: 70px;
+            padding: 10px 8px;
+            border: none;
+            border-radius: 6px;
+            font-size: 12px;
+            font-weight: bold;
+            cursor: pointer;
+            background: linear-gradient(135deg, #333, #222);
+            color: #fff;
+            transition: all 0.2s;
+        }
+        
+        .editor-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+        }
+        
+        .editor-btn.save {
+            background: linear-gradient(135deg, #00aa00, #008800);
+        }
+        
+        .editor-btn.danger {
+            background: linear-gradient(135deg, #aa0000, #880000);
+        }
+        
+        .editor-btn.close {
+            width: 100%;
+            margin-top: 15px;
+            background: linear-gradient(135deg, #666, #444);
+        }
+        
+        .editor-btn.active {
+            background: linear-gradient(135deg, #ff6600, #cc4400);
+            box-shadow: 0 0 15px rgba(255, 102, 0, 0.5);
+        }
+        
+        #editorPreview {
+            position: absolute;
+            pointer-events: none;
+            border: 3px dashed #00ff00;
+            background: rgba(0, 255, 0, 0.1);
+            display: none;
+        }
+        
+        #editorCoords {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            background: rgba(0, 0, 0, 0.8);
+            color: #00ff00;
+            padding: 10px 20px;
+            border-radius: 8px;
+            font-family: monospace;
+            font-size: 16px;
+            pointer-events: none;
+        }
+        
+        #levelEditor.delete-mode #editorPreview {
+            border-color: #ff0000;
+            background: rgba(255, 0, 0, 0.1);
+        }
+    </style>
+
+    <script src="/public/lib/three.min.js"></script>
+    <script type="module" src="js/main.js"></script></script>
+    <script type="module" src="js/main.js"></script></script>
+    <script type="module" src="js/main.js"></script></script>
     <script type="module" src="js/main.js"></script>
 </body>
 </html>

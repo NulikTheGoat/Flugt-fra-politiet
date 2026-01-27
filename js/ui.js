@@ -1,4 +1,5 @@
-import { gameState } from './state.js';
+import { gameState, saveProgress } from './state.js';
+import { generateVerdict, generateNewspaper } from './commentary.js';
 import { gameConfig } from './config.js';
 import { clamp, darkenColor } from './utils.js';
 import { cars } from './constants.js';
@@ -20,6 +21,7 @@ export const DOM = {
     policeCount: document.getElementById('policeCount'),
     deadPoliceCount: document.getElementById('deadPoliceCount'),
     money: document.getElementById('money'),
+    totalMoney: document.getElementById('totalMoney'),
     policeDistance: document.getElementById('policeDistance'),
     status: document.getElementById('status'),
     gameOver: document.getElementById('gameOver'),
@@ -35,9 +37,105 @@ export const DOM = {
     healthValue: document.getElementById('healthValue'),
     healthFill: document.getElementById('healthFill'),
     playBtn: document.getElementById('playBtn'),
-    gameOverShopBtn: document.getElementById('gameOverShopBtn')
+    gameOverShopBtn: document.getElementById('gameOverShopBtn'),
+    sheriffIndicator: document.getElementById('sheriffIndicator')
 };
 
+// ==========================================
+// HIGH SCORE SYSTEM
+// ==========================================
+
+function getHighScores() {
+    try {
+        const stored = localStorage.getItem('flugt_highscores');
+        return stored ? JSON.parse(stored) : [];
+    } catch (e) {
+        console.error("Failed to load highscores", e);
+        return [];
+    }
+}
+
+function saveHighScore(time) {
+    if (!time || time < 1) return;
+    
+    let scores = getHighScores();
+    
+    // Check if score qualifies for top 5
+    const qualifies = scores.length < 5 || time > scores[scores.length - 1].time;
+    
+    if (qualifies) {
+        // Simple prompt for name
+        let playerName = prompt("NY REKORD! Indtast dit navn:", "Anonym");
+        if (!playerName || playerName.trim() === "") playerName = "Anonym";
+        
+        // Format date as DD/MM
+        const date = new Date().toLocaleDateString('da-DK', { day: '2-digit', month: '2-digit' });
+        
+        scores.push({ name: playerName.substring(0, 10), time, date });
+        
+        // Sort descending by time
+        scores.sort((a, b) => b.time - a.time);
+        
+        // Keep top 5
+        scores = scores.slice(0, 5);
+        
+        localStorage.setItem('flugt_highscores', JSON.stringify(scores));
+        updateHighScoreDisplay();
+    }
+}
+
+function formatTime(seconds) {
+    const m = Math.floor(seconds / 60);
+    const s = Math.floor(seconds % 60);
+    return `${m}:${s.toString().padStart(2, '0')}`;
+}
+
+function updateHighScoreDisplay() {
+    let container = document.getElementById('highscoreContainer');
+    if (!container) {
+        container = document.createElement('div');
+        container.id = 'highscoreContainer';
+        container.style.cssText = `
+            position: fixed;
+            bottom: 20px;
+            left: 20px;
+            background: rgba(0, 0, 0, 0.7);
+            color: #fff;
+            padding: 10px 15px;
+            border-radius: 8px;
+            font-family: 'Courier New', monospace;
+            z-index: 1000;
+            border: 1px solid #444;
+            min-width: 280px;
+            pointer-events: none;
+        `;
+        document.body.appendChild(container);
+    }
+
+    const scores = getHighScores();
+    if (scores.length === 0) {
+        container.innerHTML = `<div style="text-align:center;color:#aaa;font-size:12px;">INGEN REKORDER</div>`;
+        return;
+    }
+
+    let html = `<div style="text-align:center;font-weight:bold;margin-bottom:8px;border-bottom:1px solid #666;padding-bottom:4px;font-size:18px;color:#f1c40f;">TOP 5 TIDER</div>`;
+    
+    scores.forEach((score, index) => {
+        const color = index === 0 ? '#ffd700' : (index === 1 ? '#c0c0c0' : (index === 2 ? '#cd7f32' : '#fff'));
+        const name = score.name || 'Spiller';
+        html += `
+            <div style="display:flex;justify-content:space-between;align-items:center;font-size:14px;margin-bottom:4px;color:${color};font-weight:bold;">
+                <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:160px;">${index + 1}. ${name}</span>
+                <span>${formatTime(score.time)}</span>
+            </div>
+        `;
+    });
+
+    container.innerHTML = html;
+}
+
+// Initial display load
+document.addEventListener('DOMContentLoaded', updateHighScoreDisplay);
 
 export function updateHUD(policeDistance) {
     const speedKmh = Math.round(gameState.speed * 3.6);
@@ -59,12 +157,14 @@ export function updateHUD(policeDistance) {
     }
 
     // Update time and money
-    let elapsedSeconds;
-    if (gameState.arrested && gameState.elapsedTime) {
-         elapsedSeconds = Math.floor(gameState.elapsedTime);
-    } else {
-         elapsedSeconds = Math.floor((Date.now() - gameState.startTime) / 1000);
-    }
+        let elapsedSeconds;
+        if (gameState.arrested && gameState.elapsedTime) {
+            elapsedSeconds = Math.floor(gameState.elapsedTime);
+        } else if (gameState.timerStartTime) {
+            elapsedSeconds = Math.floor((Date.now() - gameState.timerStartTime) / 1000);
+        } else {
+            elapsedSeconds = 0;
+        }
     DOM.time.textContent = elapsedSeconds;
     DOM.heatLevel.textContent = gameState.heatLevel;
     
@@ -74,6 +174,12 @@ export function updateHUD(policeDistance) {
     DOM.policeCount.textContent = activeCount;
     DOM.deadPoliceCount.textContent = deadCount;
     
+    // Check if Sheriff is active
+    const hasSheriff = gameState.policeCars.some(c => c.userData.type === 'sheriff' && !c.userData.dead);
+    if (DOM.sheriffIndicator) {
+        DOM.sheriffIndicator.style.display = hasSheriff ? 'block' : 'none';
+    }
+    
     // Style heat level
     const heatColor = ['#00ff00', '#99ff00', '#ffff00', '#ff8800', '#ff4400', '#ff0000'][gameState.heatLevel - 1] || '#ff0000';
     DOM.heatLevel.style.color = heatColor;
@@ -81,14 +187,18 @@ export function updateHUD(policeDistance) {
     gameState.elapsedTime = elapsedSeconds;
 
     // Give money every configured interval without being arrested (Passive)
-    // Scale passive income with heat level: base * level
+    // Scale passive income exponentially with heat level: base * heat^exponent
     if (elapsedSeconds > 0 && elapsedSeconds % gameConfig.passiveIncomeInterval === 0 && (Date.now() - gameState.lastMoneyCheckTime) > 500) {
         const rebirthMult = (gameState.rebirthPoints || 0) + 1;
-        addMoney((gameConfig.passiveIncomeBase * gameState.heatLevel) * rebirthMult);
+        const heatExponent = gameConfig.passiveIncomeExponent || 1.5;
+        const scaledIncome = Math.round(gameConfig.passiveIncomeBase * Math.pow(gameState.heatLevel, heatExponent));
+        addMoney(scaledIncome * rebirthMult);
         gameState.lastMoneyCheckTime = Date.now();
     }
 
-    DOM.money.textContent = gameState.money;
+    // Display money
+    if (DOM.money) DOM.money.textContent = Math.floor(gameState.money).toLocaleString();
+    if (DOM.totalMoney) DOM.totalMoney.textContent = Math.floor((gameState.totalMoney || 0) + gameState.money).toLocaleString();
 
     if (policeDistance > 0) {
         DOM.policeDistance.textContent = Math.round(policeDistance);
@@ -113,21 +223,124 @@ export function updateHUD(policeDistance) {
     }
 }
 
+
+export function showFloatingMoney(amount, worldPosition, camera) {
+    if (!amount || amount <= 0) return;
+    
+    // Create container
+    const floatingEl = document.createElement('div');
+    floatingEl.innerHTML = `
+        <span style="font-size: 1.5em; vertical-align: middle;">💸</span> 
+        <span>+${amount}</span>
+    `;
+    
+    // Assertive Design: Big, Bold, Gold & Black
+    Object.assign(floatingEl.style, {
+        position: 'absolute',
+        fontFamily: '"Arial Black", "Impact", sans-serif',
+        color: '#FFD700', // Gold
+        webkitTextStroke: '1.5px black', // Thick outline
+        textShadow: '3px 3px 0px rgba(0,0,0,0.5)', // Hard drop shadow
+        fontWeight: '900',
+        fontSize: '42px', // Much bigger
+        pointerEvents: 'none',
+        zIndex: '2000', // Very top
+        transform: 'translate(-50%, -50%) scale(0)', // Start invisible/small
+        transition: 'none', // We manage transitions manually or via animation
+        whiteSpace: 'nowrap'
+    });
+
+    let startX = window.innerWidth / 2;
+    let startY = window.innerHeight / 2;
+
+    // Project world position
+    if (worldPosition && camera) {
+        const vector = worldPosition.clone();
+        // Slightly offset upwards from the car wreck
+        vector.y += 5;
+        vector.project(camera);
+        startX = (vector.x * 0.5 + 0.5) * window.innerWidth;
+        startY = (-(vector.y * 0.5) + 0.5) * window.innerHeight;
+    }
+    
+    floatingEl.style.left = startX + 'px';
+    floatingEl.style.top = startY + 'px';
+    document.body.appendChild(floatingEl);
+    
+    // Animation Phase 1: THE IMPACT (Boom!)
+    requestAnimationFrame(() => {
+        // Force Reflow
+        void floatingEl.offsetWidth;
+        
+        floatingEl.style.transition = 'transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275)'; // Overshoot "Spring" easing
+        // Random tilt for dynamic look
+        const tilt = (Math.random() - 0.5) * 30; 
+        floatingEl.style.transform = `translate(-50%, -50%) scale(1.5) rotate(${tilt}deg)`;
+        
+        // Add a "Shockwave" flash behind if possible, or just keep it simple text for now.
+    });
+
+    // Animation Phase 2: THE COLLECTION (Swoosh to HUD)
+    // Wait for user to register the "Boom" (400ms)
+    setTimeout(() => {
+        const moneyRect = DOM.money.getBoundingClientRect();
+        // Target center of money counter
+        const targetX = moneyRect.left + moneyRect.width / 2;
+        const targetY = moneyRect.top + moneyRect.height / 2;
+        
+        // Calculate deltas
+        // We use transition for this movement
+        floatingEl.style.transition = 'all 0.6s cubic-bezier(0.6, -0.28, 0.735, 0.045)'; // Back-in / Anticipation easing? maybe too complex. 
+        // Let's use Ease-In (accelerate away)
+        floatingEl.style.transition = 'top 0.5s ease-in, left 0.5s ease-in, transform 0.5s ease-in, opacity 0.5s ease-in';
+        
+        floatingEl.style.left = targetX + 'px';
+        floatingEl.style.top = targetY + 'px';
+        floatingEl.style.transform = 'translate(-50%, -50%) scale(0.3) rotate(0deg)'; // Shrink into the wallet
+        floatingEl.style.opacity = '0.5';
+
+    }, 500);
+    
+    // Cleanup
+    setTimeout(() => {
+        floatingEl.remove();
+        // Trigger HUD bump exactly when it arrives
+        DOM.money.parentElement.classList.remove('hud-money-pop');
+        void DOM.money.parentElement.offsetWidth;
+        DOM.money.parentElement.classList.add('hud-money-pop');
+    }, 1000);
+}
+
 // Helper to add money and animate
 export function addMoney(amount) {
     if (amount <= 0) return;
     if (gameState.arrested) return; // Stop money gain when arrested/game over
     
-    // No points when speed is below 5% of max speed
-    const speedPercent = Math.abs(gameState.speed) / gameState.maxSpeed;
-    if (speedPercent < 0.05) return;
+    // No points when speed is below 5% of max speed (prevents AFK farming)
+    // Exception: on-foot / very slow vehicles should still be able to progress.
+    const max = Math.max(0.0001, gameState.maxSpeed || 1);
+    const speedPercent = Math.abs(gameState.speed) / max;
+    const isVerySlow = max <= 3; // on-foot is 2.5
+    if (!isVerySlow && speedPercent < 0.05) return;
     
     gameState.money += amount;
     
     // Animate HUD money
-    DOM.money.parentElement.classList.remove('hud-money-pop');
-    void DOM.money.parentElement.offsetWidth; // Trigger reflow to restart animation
-    DOM.money.parentElement.classList.add('hud-money-pop');
+    if (DOM.money && DOM.money.parentElement) {
+        // Find the wrapper we added in index.html for animation targeting
+        // The structure changed to .money-container > .money-row > .money-value > span#money
+        const container = DOM.money.closest('.money-container'); 
+        if(container) {
+             container.classList.remove('hud-money-pop');
+             void container.offsetWidth; 
+             container.classList.add('hud-money-pop');
+        } else {
+             // Fallback
+             DOM.money.parentElement.classList.remove('hud-money-pop');
+             void DOM.money.parentElement.offsetWidth;
+             DOM.money.parentElement.classList.add('hud-money-pop');
+        }
+    }
 }
 
 export function showGameOver(customMessage) {
@@ -146,6 +359,48 @@ export function showGameOver(customMessage) {
     DOM.gameOverMessage.textContent = customMessage || 'Du blev fanget af politiet og sat i fængsel!';
     DOM.gameOver.style.display = 'block';
     
+    // Newspaper Headline (New Feature)
+    const newspaperElement = document.getElementById('newspaper');
+    if (newspaperElement) {
+        // Reset to loading state
+        document.getElementById('newspaperHeadline').textContent = "TRYKKER EKSTRA OPLAG...";
+        document.getElementById('newspaperSubhead').textContent = "Vent venligst...";
+        
+        // Reset animation
+        newspaperElement.classList.remove('newspaper-animation');
+        void newspaperElement.offsetWidth; // Trigger reflow
+        newspaperElement.classList.add('newspaper-animation');
+        
+        newspaperElement.style.display = 'block';
+
+        generateNewspaper({
+            time: gameState.elapsedTime,
+            policeKilled: gameState.policeKilled,
+            heatLevel: gameState.heatLevel,
+            money: gameState.money,
+            maxSpeed: Math.round((gameState.maxSpeedAchieved || 0) * 3.6) // Assuming we track this, or just current speed
+        }).then(paper => {
+            document.getElementById('newspaperHeadline').textContent = paper.headline;
+            document.getElementById('newspaperSubhead').textContent = paper.subheadline;
+        });
+    }
+
+    // Judge Verdict
+    const judgeElement = document.getElementById('judgeVerdict');
+    if (judgeElement) {
+        judgeElement.style.display = 'flex';
+        judgeElement.textContent = 'Dommeren voterer...';
+        
+        generateVerdict({
+            time: gameState.elapsedTime,
+            policeKilled: gameState.policeKilled,
+            heatLevel: gameState.heatLevel,
+            money: gameState.money
+        }).then(verdict => {
+            judgeElement.textContent = verdict;
+        });
+    }
+    
     // Show/hide rejoin button based on multiplayer state
     const rejoinBtn = document.getElementById('gameOverRejoinBtn');
     if (rejoinBtn) {
@@ -161,9 +416,20 @@ export function showGameOver(customMessage) {
     // Animated counting for stats
     const finalTime = Math.round(gameState.elapsedTime);
     const finalMoney = gameState.money;
+    
+    // Bank the money immediately so it's available in Shop and persisted
+    if (finalMoney > 0) {
+        gameState.totalMoney = (gameState.totalMoney || 0) + finalMoney;
+        gameState.money = 0; // Reset run money so we don't double count
+        saveProgress();
+    }
+    
     const finalKilled = gameState.policeKilled || 0;
     const finalHeat = gameState.heatLevel;
     
+    // Save High Score
+    saveHighScore(finalTime);
+
     // Reset values for animation
     DOM.gameOverTime.textContent = '0';
     DOM.gameOverMoney.textContent = '0';
@@ -209,7 +475,15 @@ export function setMultiplayerShopCallback(cb) {
 
 export function goToShop(isMultiplayerRespawn = false) {
     multiplayerShopMode = isMultiplayerRespawn;
-    gameState.totalMoney += gameState.money;
+    
+    // Safely transfer session money to total money
+    if (gameState.money > 0) {
+        gameState.totalMoney += gameState.money;
+        gameState.money = 0; // Prevent double counting
+        
+        saveProgress();
+    }
+    
     DOM.shop.style.display = 'flex';
     
     // Show/hide respawn notice
@@ -321,7 +595,7 @@ export function renderShop() {
         const carCategory = getCarCategory(key, car);
         if (currentShopCategory !== 'all' && carCategory !== currentShopCategory) return;
 
-        const owned = gameState.ownedCars && gameState.ownedCars[key] || key === 'standard';
+        const owned = gameState.ownedCars && gameState.ownedCars[key];
         const isSelected = gameState.selectedCar === key;
         const canAfford = gameState.totalMoney >= car.price;
         
@@ -355,6 +629,9 @@ export function renderShop() {
         else if (owned) { actionText = 'VÆLG'; actionIcon = '→'; }
         else if (canAfford) { actionText = 'KØB'; actionIcon = '🛒'; }
         else { actionText = 'LÅST'; actionIcon = '🔒'; }
+
+        // Price display logic
+        const priceDisplay = owned ? "EJET" : `${car.price.toLocaleString()} kr`;
         
         // Category badge
         let categoryBadge = '';
@@ -363,22 +640,122 @@ export function renderShop() {
         else if (carCategory === 'premium') categoryBadge = `<span class="car-type-badge">PREMIUM</span>`;
         else if (carCategory === 'sport') categoryBadge = `<span class="car-type-badge">SPORT</span>`;
 
-        carCard.innerHTML = `
-            <div class="car-preview-box">
-                <div class="floor-grid"></div>
-                <div class="car-model-3d">
-                    <div class="car-body" style="background: linear-gradient(135deg, ${colorHex} 0%, ${darkerColor} 100%);">
-                        <div class="car-wheel front-left"></div>
-                        <div class="car-wheel front-right"></div>
-                        <div class="car-wheel back-left"></div>
-                        <div class="car-wheel back-right"></div>
-                        <div class="car-headlight left"></div>
-                        <div class="car-headlight right"></div>
-                        <div class="car-taillight left"></div>
-                        <div class="car-taillight right"></div>
+        const vehicleType = car.type || key;
+        const previewHTML = (() => {
+            // Keep the same "garage" framing, but swap the model depending on vehicle type.
+            if (vehicleType === 'onfoot') {
+                return `
+                    <div class="car-preview-box preview-onfoot">
+                        <div class="floor-grid"></div>
+                        <div class="vehicle-model vehicle-onfoot" style="--accent:${colorHex};">
+                            <div class="person-head"></div>
+                            <div class="person-body"></div>
+                            <div class="person-leg left"></div>
+                            <div class="person-leg right"></div>
+                        </div>
+                    </div>
+                `;
+            }
+            if (vehicleType === 'bicycle') {
+                return `
+                    <div class="car-preview-box preview-bike">
+                        <div class="floor-grid"></div>
+                        <div class="vehicle-model vehicle-bike" style="--accent:${colorHex};">
+                            <div class="bike-wheel left"></div>
+                            <div class="bike-wheel right"></div>
+                            <div class="bike-frame"></div>
+                            <div class="bike-handle"></div>
+                        </div>
+                    </div>
+                `;
+            }
+            if (vehicleType === 'scooter_electric') {
+                return `
+                    <div class="car-preview-box preview-scooter-electric">
+                        <div class="floor-grid"></div>
+                        <div class="vehicle-model vehicle-scooter-electric" style="--accent:${colorHex};">
+                            <div class="kick-wheel left"></div>
+                            <div class="kick-wheel right"></div>
+                            <div class="kick-deck"></div>
+                            <div class="kick-stem"></div>
+                            <div class="kick-handle"></div>
+                            <div class="kick-front"></div>
+                            <div class="kick-rider-head"></div>
+                            <div class="kick-rider-body"></div>
+                            <div class="kick-rider-leg front"></div>
+                            <div class="kick-rider-leg back"></div>
+                            <div class="kick-rider-arm"></div>
+                        </div>
+                    </div>
+                `;
+            }
+            if (vehicleType === 'scooter') {
+                return `
+                    <div class="car-preview-box preview-scooter">
+                        <div class="floor-grid"></div>
+                        <div class="vehicle-model vehicle-scooter" style="--accent:${colorHex};">
+                            <div class="scooter-wheel left"></div>
+                            <div class="scooter-wheel right"></div>
+                            <div class="scooter-body"></div>
+                            <div class="scooter-front"></div>
+                            <div class="scooter-seat"></div>
+                            <div class="scooter-floor"></div>
+                            <div class="scooter-stem"></div>
+                            <div class="scooter-handle"></div>
+                            <div class="scooter-headlight"></div>
+                            <div class="scooter-taillight"></div>
+                        </div>
+                    </div>
+                `;
+            }
+            if (vehicleType === 'tank') {
+                return `
+                    <div class="car-preview-box preview-tank">
+                        <div class="floor-grid"></div>
+                        <div class="vehicle-model vehicle-tank" style="--accent:${colorHex};">
+                            <div class="tank-body"></div>
+                            <div class="tank-turret"></div>
+                            <div class="tank-barrel"></div>
+                            <div class="tank-track left"></div>
+                            <div class="tank-track right"></div>
+                        </div>
+                    </div>
+                `;
+            }
+            if (vehicleType === 'ufo') {
+                return `
+                    <div class="car-preview-box preview-ufo">
+                        <div class="floor-grid"></div>
+                        <div class="vehicle-model vehicle-ufo" style="--accent:${colorHex};">
+                            <div class="ufo-disc"></div>
+                            <div class="ufo-dome"></div>
+                            <div class="ufo-lights"></div>
+                        </div>
+                    </div>
+                `;
+            }
+            // Default: car preview
+            return `
+                <div class="car-preview-box">
+                    <div class="floor-grid"></div>
+                    <div class="car-model-3d">
+                        <div class="car-body" style="background: linear-gradient(135deg, ${colorHex} 0%, ${darkerColor} 100%);">
+                            <div class="car-wheel front-left"></div>
+                            <div class="car-wheel front-right"></div>
+                            <div class="car-wheel back-left"></div>
+                            <div class="car-wheel back-right"></div>
+                            <div class="car-headlight left"></div>
+                            <div class="car-headlight right"></div>
+                            <div class="car-taillight left"></div>
+                            <div class="car-taillight right"></div>
+                        </div>
                     </div>
                 </div>
-            </div>
+            `;
+        })();
+
+        carCard.innerHTML = `
+            ${previewHTML}
             
             <div class="card-content">
                 <h3>${car.name} ${categoryBadge}</h3>
@@ -412,7 +789,7 @@ export function renderShop() {
             </div>
 
             <div class="card-footer">
-                <span class="price-tag">${car.price > 0 ? car.price.toLocaleString() + ' kr' : 'GRATIS'}</span>
+                <span class="price-tag" style="color: ${owned ? '#88ff88' : (canAfford ? '#fff' : '#ff5555')};">${priceDisplay}</span>
                 <span class="action-indicator">${actionIcon} ${actionText}</span>
             </div>
         `;
@@ -434,6 +811,8 @@ export function renderShop() {
                     if (!gameState.ownedCars) gameState.ownedCars = {};
                     gameState.ownedCars[key] = true;
                     gameState.selectedCar = key;
+                    
+                    saveProgress();
                     updateCarStats(key);
                     renderShop();
                     
@@ -451,11 +830,13 @@ export function renderShop() {
 
 function performRebirth() {
     gameState.rebirthPoints = (gameState.rebirthPoints || 0) + 1;
-    gameState.totalMoney = 0;
+    gameState.totalMoney = 150; // Startpenge til nyt køretøj
     gameState.money = 0;
-    gameState.ownedCars = { 'standard': true };
-    gameState.selectedCar = 'standard';
+    gameState.ownedCars = {};   // Ingen gratis biler
+    gameState.selectedCar = 'onfoot'; // Start på fods
     
+    saveProgress();
+
     // Reset Game State but keep Rebirth Points
     if (startGameCallback) startGameCallback();
     

@@ -1,6 +1,7 @@
 // LAN Multiplayer Server for Flugt fra Politiet
 // Persistent "floating" server - always running, anyone can join
 const http = require('http');
+const https = require('https');
 const fs = require('fs');
 const path = require('path');
 const { WebSocketServer } = require('ws');
@@ -11,8 +12,385 @@ const WS_PORT = 3001;
 // Default room code - always available
 const DEFAULT_ROOM = 'SPIL';
 
+// Load environment variables from .env file
+function loadEnv() {
+    try {
+        const envPath = path.join(__dirname, '.env');
+        if (fs.existsSync(envPath)) {
+            const envContent = fs.readFileSync(envPath, 'utf8');
+            envContent.split('\n').forEach(line => {
+                line = line.trim();
+                if (line && !line.startsWith('#')) {
+                    const [key, ...valueParts] = line.split('=');
+                    const value = valueParts.join('=').trim();
+                    if (key && value) {
+                        process.env[key.trim()] = value;
+                    }
+                }
+            });
+            console.log('✅ Environment variables loaded from .env');
+        }
+    } catch (err) {
+        console.warn('⚠️ Could not load .env file:', err.message);
+    }
+}
+loadEnv();
+
+// MPS API Configuration
+const MPS_CONFIG = {
+    endpoint: process.env.MPS_ENDPOINT,
+    apiKey: process.env.MPS_API_KEY || '',
+    deployment: process.env.MPS_DEPLOYMENT || 'anthropic.claude-haiku-4-5-20251001-v1:0',
+    maxTokens: parseInt(process.env.MPS_MAX_TOKENS) || 256,
+    anthropicVersion: process.env.MPS_ANTHROPIC_VERSION || '2023-06-01'
+};
+
+const MPS_DISABLED =
+    process.env.DISABLE_MPS === '1' ||
+    process.env.MPS_DISABLED === '1' ||
+    process.env.PLAYWRIGHT === '1' ||
+    process.env.NODE_ENV === 'test';
+
+function getFallbackCommentary() {
+    const canned = [
+        'Fantastisk! Kaos i gaderne!',
+        'Hold fast—det her bliver vildt!',
+        'Politiet er lige i hælene!',
+        'Du slipper ikke let denne gang!'
+    ];
+    return canned[Math.floor(Math.random() * canned.length)];
+}
+
+function getFallbackSheriffCommand() {
+    const canned = [
+        'CHASE: Hold trykket og hold afstand kort!',
+        'INTERCEPT: Skær vejen af ved næste kryds!',
+        'SURROUND: Omring fra begge sider, nu!',
+        'BLOCK: Spær hovedvejen og pres ham ind!'
+    ];
+    return canned[Math.floor(Math.random() * canned.length)];
+}
+
+// Commentary rate limiting
+let lastCommentaryRequest = 0;
+const COMMENTARY_COOLDOWN = 5000; // 5 seconds
+
+// Sheriff command rate limiting
+let lastSheriffRequest = 0;
+const SHERIFF_COOLDOWN = 8000; // 8 seconds between commands
+
+// Sheriff system prompt
+const SHERIFF_SYSTEM_PROMPT = `Du er Sheriff, en erfaren politichef der koordinerer en biljagt.
+Du styrer andre politibiler gennem taktiske kommandoer.
+Analyser situationen og giv EN klar, kort ordre på dansk (maks 20 ord).
+
+Kommando-typer du kan give:
+- CHASE: Forfølg målrettet (brug når mistænkt er langt væk)
+- BLOCK: Bloker flugtruter (brug ved høj fart eller nær bygninger)
+- SURROUND: Omring mistænkt (brug når mistænkt er langsom eller fanget)
+- SPREAD: Spred jer ud (brug når mistænkt er hurtig og unpredictable)
+- RETREAT: Træk tilbage (brug når for mange enheder er ødelagt)
+- INTERCEPT: Skær vejen af (brug når du kan forudse mistænkts rute)
+- REINFORCE: Tilkald forstærkning (brug når jagten tager for lang tid eller du mangler enheder)
+
+VIGTIGT: Brug REINFORCE kommandoen hvis:
+- Jagten har varet over 60 sekunder uden anholdelse
+- Flere end halvdelen af dine enheder er ødelagt
+- Mistænkts sundhed stadig er høj efter lang tid
+
+Vær kortfattet og autoritær. Brug politijargon.
+Format: "[KOMMANDO]: [Kort beskrivelse]"
+Eksempel: "REINFORCE: Alle ledige enheder til sektor 7 - NU!"`;
+
+// Helper function to determine reinforcement types based on heat level
+function getReinforcementTypes(count, requestedType, heatLevel) {
+    const types = [];
+    for (let i = 0; i < count; i++) {
+        if (requestedType === 'mixed') {
+            const rand = Math.random();
+            if (heatLevel >= 4 && rand > 0.7) types.push('military');
+            else if (heatLevel >= 3 && rand > 0.6) types.push('swat');
+            else if (heatLevel >= 2 && rand > 0.5) types.push('interceptor');
+            else types.push('standard');
+        } else {
+            types.push(requestedType);
+        }
+    }
+    return types;
+}
+function sendErrorResponse(res, statusCode, errorMessage, extraData = {}) {
+    res.writeHead(statusCode, { 
+        'Content-Type': 'application/json', 
+        'Access-Control-Allow-Origin': '*' 
+    });
+    res.end(JSON.stringify({ error: errorMessage, ...extraData }));
+}
+
+// Helper function to make HTTPS requests
+function httpsPost(url, headers, body) {
+    return new Promise((resolve, reject) => {
+        const urlObj = new URL(url);
+        const options = {
+            hostname: urlObj.hostname,
+            port: urlObj.port || 443,
+            path: urlObj.pathname,
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Content-Length': Buffer.byteLength(body),
+                ...headers
+            }
+        };
+        
+        const req = https.request(options, (res) => {
+            let data = '';
+            res.on('data', chunk => data += chunk);
+            res.on('end', () => {
+                resolve({ status: res.statusCode, data });
+            });
+        });
+        
+        req.on('error', reject);
+        req.write(body);
+        req.end();
+    });
+}
+
 // Simple HTTP server for static files + discovery endpoint
-const httpServer = http.createServer((req, res) => {
+const httpServer = http.createServer(async (req, res) => {
+    // Handle CORS preflight
+    if (req.method === 'OPTIONS') {
+        res.writeHead(200, {
+            'Access-Control-Allow-Origin': '*',
+            'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+            'Access-Control-Allow-Headers': 'Content-Type'
+        });
+        res.end();
+        return;
+    }
+    
+    // Commentary API endpoint
+    if (req.url === '/api/commentary' && req.method === 'POST') {
+        if (MPS_DISABLED) {
+            // Avoid external calls/noise during automated tests.
+            res.writeHead(200, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' });
+            res.end(JSON.stringify({ commentary: getFallbackCommentary() }));
+            return;
+        }
+
+        // Rate limiting
+        const now = Date.now();
+        if (now - lastCommentaryRequest < COMMENTARY_COOLDOWN) {
+            sendErrorResponse(res, 429, 'Rate limited', { 
+                retryAfter: COMMENTARY_COOLDOWN - (now - lastCommentaryRequest) 
+            });
+            return;
+        }
+        
+        // Check if API key is configured
+        if (!MPS_CONFIG.apiKey) {
+            sendErrorResponse(res, 503, 'API not configured');
+            return;
+        }
+        
+        let body = '';
+        req.on('data', chunk => body += chunk);
+        req.on('end', async () => {
+            try {
+                const { systemPrompt, eventSummary } = JSON.parse(body);
+                
+                if (!eventSummary) {
+                    sendErrorResponse(res, 400, 'Missing eventSummary');
+                    return;
+                }
+                
+                lastCommentaryRequest = now;
+                
+                // Build MPS request payload
+                const payload = {
+                    model: MPS_CONFIG.deployment,
+                    system: systemPrompt || 'You are an excited sports commentator. Keep responses under 25 words.',
+                    messages: [{ role: 'user', content: eventSummary }],
+                    max_tokens: MPS_CONFIG.maxTokens
+                };
+                
+                if (!MPS_CONFIG.endpoint) {
+                    throw new Error('MPS_ENDPOINT is not configured');
+                }
+
+                const endpoint = MPS_CONFIG.endpoint;
+                const headers = {
+                    'Authorization': `Bearer ${MPS_CONFIG.apiKey}`,
+                    'api-key': MPS_CONFIG.apiKey,
+                    'anthropic-version': MPS_CONFIG.anthropicVersion
+                };
+                
+                console.log('[Commentary] Requesting from MPS...');
+                const mpsResponse = await httpsPost(endpoint, headers, JSON.stringify(payload));
+                
+                if (mpsResponse.status !== 200) {
+                    console.error('[Commentary] MPS error:', mpsResponse.status, mpsResponse.data);
+                    sendErrorResponse(res, 502, 'LLM request failed', { status: mpsResponse.status });
+                    return;
+                }
+                
+                const mpsData = JSON.parse(mpsResponse.data);
+                let commentary = '';
+                
+                // Extract text from Anthropic response format
+                if (mpsData.content && Array.isArray(mpsData.content) && mpsData.content[0]?.text) {
+                    commentary = mpsData.content[0].text;
+                }
+                
+                console.log('[Commentary] Received:', commentary);
+                
+                res.writeHead(200, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' });
+                res.end(JSON.stringify({ commentary }));
+                
+            } catch (err) {
+                console.error('[Commentary] Error:', err);
+                sendErrorResponse(res, 500, 'Internal server error');
+            }
+        });
+        return;
+    }
+    
+    // Sheriff Command API endpoint
+    if (req.url === '/api/sheriff-command' && req.method === 'POST') {
+        if (MPS_DISABLED) {
+            // Avoid external calls/noise during automated tests.
+            res.writeHead(200, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' });
+            res.end(JSON.stringify({ command: getFallbackSheriffCommand() }));
+            return;
+        }
+
+        // Rate limiting
+        const now = Date.now();
+        if (now - lastSheriffRequest < SHERIFF_COOLDOWN) {
+            sendErrorResponse(res, 429, 'Rate limited', {
+                retryAfter: SHERIFF_COOLDOWN - (now - lastSheriffRequest)
+            });
+            return;
+        }
+        
+        // Check if API key is configured
+        if (!MPS_CONFIG.apiKey) {
+            sendErrorResponse(res, 503, 'API not configured');
+            return;
+        }
+        
+        let body = '';
+        req.on('data', chunk => body += chunk);
+        req.on('end', async () => {
+            try {
+                const gameState = JSON.parse(body);
+                
+                if (!gameState) {
+                    sendErrorResponse(res, 400, 'Missing game state');
+                    return;
+                }
+                
+                lastSheriffRequest = now;
+
+                // Build context about game state
+                const context = `Situation rapport:
+- Mistænkts fart: ${gameState.playerSpeed} km/t
+- Aktive enheder: ${gameState.policeCount}
+- Ødelagte enheder: ${gameState.policeDestroyed}
+- Heat level: ${gameState.heatLevel}/6
+- Afstand til mistænkt: ${gameState.distanceToPlayer}m
+- Mistænkts sundhed: ${gameState.playerHealth}%
+- Tid i jagt: ${gameState.survivalTime}s
+${gameState.recentEvents ? `- Seneste events: ${gameState.recentEvents}` : ''}`;
+                
+                // Build MPS request payload
+                const payload = {
+                    model: MPS_CONFIG.deployment,
+                    system: SHERIFF_SYSTEM_PROMPT,
+                    messages: [{ role: 'user', content: context }],
+                    max_tokens: 128
+                };
+                
+                if (!MPS_CONFIG.endpoint) {
+                    throw new Error('MPS_ENDPOINT is not configured');
+                }
+
+                const endpoint = MPS_CONFIG.endpoint;
+                const headers = {
+                    'Authorization': `Bearer ${MPS_CONFIG.apiKey}`,
+                    'api-key': MPS_CONFIG.apiKey,
+                    'anthropic-version': MPS_CONFIG.anthropicVersion
+                };
+                
+                console.log('[Sheriff] Requesting tactical command from MPS...');
+                const mpsResponse = await httpsPost(endpoint, headers, JSON.stringify(payload));
+                
+                if (mpsResponse.status !== 200) {
+                    console.error('[Sheriff] MPS error:', mpsResponse.status, mpsResponse.data);
+                    sendErrorResponse(res, 502, 'LLM request failed', { status: mpsResponse.status });
+                    return;
+                }
+                
+                const mpsData = JSON.parse(mpsResponse.data);
+                let command = '';
+                
+                // Extract text from Anthropic response format
+                if (mpsData.content && Array.isArray(mpsData.content) && mpsData.content[0]?.text) {
+                    command = mpsData.content[0].text;
+                }
+                
+                console.log('[Sheriff] Command issued:', command);
+                
+                res.writeHead(200, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' });
+                res.end(JSON.stringify({ command }));
+                
+            } catch (err) {
+                console.error('[Sheriff] Error:', err);
+                sendErrorResponse(res, 500, 'Internal server error');
+            }
+        });
+        return;
+    }
+    
+    // Spawn Reinforcements API endpoint - Sheriff can call for backup
+    if (req.url === '/api/spawn-reinforcements' && req.method === 'POST') {
+        let body = '';
+        req.on('data', chunk => body += chunk);
+        req.on('end', async () => {
+            try {
+                const { count, type, heatLevel } = JSON.parse(body);
+                
+                // Validate input
+                const spawnCount = Math.min(Math.max(1, count || 4), 6); // Clamp 1-6
+                const validTypes = ['standard', 'interceptor', 'swat', 'military', 'mixed'];
+                const spawnType = validTypes.includes(type) ? type : 'mixed';
+                const currentHeatLevel = Math.min(Math.max(1, heatLevel || 1), 6);
+                
+                // Determine unit types to spawn
+                const unitTypes = getReinforcementTypes(spawnCount, spawnType, currentHeatLevel);
+                
+                console.log(`[Sheriff] Reinforcements requested: ${spawnCount} units of type "${spawnType}" at heat level ${currentHeatLevel}`);
+                console.log(`[Sheriff] Spawning: ${unitTypes.join(', ')}`);
+                
+                res.writeHead(200, { 
+                    'Content-Type': 'application/json', 
+                    'Access-Control-Allow-Origin': '*' 
+                });
+                res.end(JSON.stringify({ 
+                    success: true, 
+                    spawned: spawnCount,
+                    types: unitTypes,
+                    message: `${spawnCount} reinforcement units dispatched`
+                }));
+                
+            } catch (err) {
+                console.error('[Sheriff] Reinforcement error:', err);
+                sendErrorResponse(res, 500, 'Internal server error');
+            }
+        });
+        return;
+    }
+    
     // Discovery endpoint for LAN server scanning
     if (req.url === '/api/discover') {
         const room = rooms.get(DEFAULT_ROOM);
@@ -37,6 +415,7 @@ const httpServer = http.createServer((req, res) => {
     if (filePath === './') filePath = './index.html';
     if (filePath === './start' || filePath === './start/') filePath = './index.html';
     if (filePath === './config' || filePath === './config/') filePath = './config.html';
+    if (filePath === './editor' || filePath === './editor/') filePath = './index.html';
     
     const extname = path.extname(filePath);
     const contentTypes = {

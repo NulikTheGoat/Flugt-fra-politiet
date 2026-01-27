@@ -225,23 +225,30 @@ export function updateSpeedParticles(delta) {
 export function updateSpeedEffects(delta) {
     if(!playerCar) return;
 
+    const visualType = playerCar.userData.visualType || gameState.selectedCar;
+    const isOnFoot = visualType === 'onfoot' || gameState.selectedCar === 'onfoot';
+
     const speedRatio = Math.abs(gameState.speed) / gameState.maxSpeed;
     
-    // Dynamic FOV - increases with speed for sense of motion
-    const targetFOV = gameState.baseFOV + speedRatio * 20;
+    // On foot: keep camera stable (no speed FX spawning)
+    const targetFOV = isOnFoot ? gameState.baseFOV : (gameState.baseFOV + speedRatio * 20);
     gameState.currentFOV += (targetFOV - gameState.currentFOV) * 0.1;
     camera.fov = gameState.currentFOV;
     camera.updateProjectionMatrix();
     
-    // Screen shake at high speeds
-    if (speedRatio > 0.8) {
-        gameState.screenShake = (speedRatio - 0.8) * 5;
+    // Screen shake at high speeds (cars only)
+    if (!isOnFoot) {
+        if (speedRatio > 0.8) {
+            gameState.screenShake = (speedRatio - 0.8) * 5;
+        } else {
+            gameState.screenShake *= 0.9;
+        }
     } else {
-        gameState.screenShake *= 0.9;
+        gameState.screenShake *= 0.85;
     }
     
-    // Spawn sparks when going fast
-    if (speedRatio > 0.7 && Math.random() < speedRatio * 0.3) {
+    // Spawn sparks when going fast (cars only)
+    if (!isOnFoot && speedRatio > 0.7 && Math.random() < speedRatio * 0.3) {
         createSpark();
     }
     
@@ -251,8 +258,8 @@ export function updateSpeedEffects(delta) {
         scene.remove(oldSpark);
     }
     
-    // Spawn speed particles when moving
-    if (speedRatio > 0.2) {
+    // Spawn speed particles when moving (cars only)
+    if (!isOnFoot && speedRatio > 0.2) {
         const particleCount = Math.floor(speedRatio * 3);
         for (let i = 0; i < particleCount; i++) {
             if (Math.random() < 0.4) createSpeedParticle();
@@ -283,6 +290,152 @@ for (let i = 0; i < 20; i++) {
     }));
 }
 let tireMarkPoolIndex = 0;
+export function createMoneyExplosion(position) {
+    const count = 15;
+    for (let i = 0; i < count; i++) {
+        // Reuse spark geometry but use coin material for gold color
+        const particle = new THREE.Mesh(sharedGeometries.spark, sharedMaterials.coin);
+        particle.position.copy(position);
+        particle.position.y += 5; // Start slightly above
+
+        const angle = Math.random() * Math.PI * 2;
+        const speed = 5 + Math.random() * 10;
+        
+        particle.userData = {
+            velocity: new THREE.Vector3(
+                Math.sin(angle) * speed,
+                10 + Math.random() * 10, // Upward burst
+                Math.cos(angle) * speed
+            ),
+            lifetime: 60, // Short lifetime
+            type: 'money'
+        };
+        
+        scene.add(particle);
+        // Using sparks array for now as it handles simple physics
+        gameState.sparks.push(particle);
+    }
+}
+
+// Dust particle pool for drifting
+const dustGeometry = new THREE.SphereGeometry(1.5, 6, 4);
+const dustMaterials = [];
+for (let i = 0; i < 20; i++) {
+    dustMaterials.push(new THREE.MeshBasicMaterial({ 
+        color: 0xaa9977, 
+        transparent: true, 
+        opacity: 0.6,
+        depthWrite: false
+    }));
+}
+let dustMatIndex = 0;
+
+// Create dust cloud from wheels when drifting/high speed cornering
+export function createWheelDust(carPosition, carRotation, speed, driftIntensity = 0) {
+    if (!scene) return;
+    
+    // Only create dust at speed or when drifting
+    const speedRatio = Math.abs(speed) / (gameState.maxSpeed || 30);
+    if (speedRatio < 0.3 && driftIntensity < 0.1) return;
+    
+    // Limit particles
+    if (!gameState.dustParticles) gameState.dustParticles = [];
+    if (gameState.dustParticles.length > 80) return;
+    
+    // More particles when drifting
+    const particleCount = driftIntensity > 0.3 ? 3 : (speedRatio > 0.7 ? 2 : 1);
+    
+    const cosRot = Math.cos(carRotation);
+    const sinRot = Math.sin(carRotation);
+    
+    for (let p = 0; p < particleCount; p++) {
+        const mat = dustMaterials[dustMatIndex];
+        dustMatIndex = (dustMatIndex + 1) % dustMaterials.length;
+        mat.opacity = 0.4 + Math.random() * 0.3;
+        
+        // Color varies from tan to brown
+        const brownness = 0.6 + Math.random() * 0.3;
+        mat.color.setRGB(0.7 * brownness, 0.6 * brownness, 0.45 * brownness);
+        
+        const dust = new THREE.Mesh(dustGeometry, mat);
+        
+        // Spawn behind rear wheels
+        const wheelOffset = (Math.random() > 0.5 ? 1 : -1) * 12;
+        const backOffset = -20 - Math.random() * 5;
+        
+        dust.position.set(
+            carPosition.x + cosRot * wheelOffset + sinRot * backOffset,
+            0.5 + Math.random() * 2,
+            carPosition.z - sinRot * wheelOffset + cosRot * backOffset
+        );
+        
+        // Scale based on intensity
+        const baseScale = 1 + driftIntensity * 2 + speedRatio;
+        dust.scale.setScalar(baseScale * (0.8 + Math.random() * 0.4));
+        
+        // Velocity - spread outward and up
+        const spreadAngle = carRotation + Math.PI + (Math.random() - 0.5) * 1.5;
+        const spreadSpeed = 2 + driftIntensity * 5 + speedRatio * 3;
+        
+        dust.userData = {
+            velocity: new THREE.Vector3(
+                Math.sin(spreadAngle) * spreadSpeed + (Math.random() - 0.5) * 2,
+                1 + Math.random() * 3 + driftIntensity * 2,
+                Math.cos(spreadAngle) * spreadSpeed + (Math.random() - 0.5) * 2
+            ),
+            lifetime: 600 + driftIntensity * 400 + Math.random() * 300,
+            spawnTime: Date.now(),
+            initialScale: baseScale
+        };
+        
+        scene.add(dust);
+        gameState.dustParticles.push(dust);
+    }
+}
+
+// Update dust particles
+export function updateDustParticles(delta) {
+    if (!gameState.dustParticles) return;
+    
+    const now = Date.now();
+    const gravity = -0.5;
+    
+    for (let i = gameState.dustParticles.length - 1; i >= 0; i--) {
+        const dust = gameState.dustParticles[i];
+        const age = now - dust.userData.spawnTime;
+        
+        if (age > dust.userData.lifetime) {
+            scene.remove(dust);
+            gameState.dustParticles.splice(i, 1);
+            continue;
+        }
+        
+        const lifeRatio = age / dust.userData.lifetime;
+        
+        // Move
+        dust.position.x += dust.userData.velocity.x * delta * 0.05;
+        dust.position.y += dust.userData.velocity.y * delta * 0.05;
+        dust.position.z += dust.userData.velocity.z * delta * 0.05;
+        
+        // Slow down horizontally, apply gravity
+        dust.userData.velocity.x *= 0.98;
+        dust.userData.velocity.z *= 0.98;
+        dust.userData.velocity.y += gravity * delta * 0.05;
+        
+        // Don't go below ground
+        if (dust.position.y < 0.2) {
+            dust.position.y = 0.2;
+            dust.userData.velocity.y = 0;
+            dust.userData.velocity.x *= 0.9;
+            dust.userData.velocity.z *= 0.9;
+        }
+        
+        // Expand and fade
+        const scale = dust.userData.initialScale * (1 + lifeRatio * 1.5);
+        dust.scale.setScalar(scale);
+        dust.material.opacity = 0.5 * (1 - lifeRatio);
+    }
+}
 
 export function createTireMark(x, z, rotation) {
     // Limit tire marks for performance

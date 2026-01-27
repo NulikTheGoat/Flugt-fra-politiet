@@ -1,10 +1,233 @@
 import { gameState } from './state.js';
 import { gameConfig } from './config.js';
-import { scene } from './core.js';
+import { scene, camera } from './core.js';
 import { sharedGeometries, sharedMaterials } from './assets.js';
 import { playerCar, takeDamage } from './player.js';
 import { createSmoke, createSpark } from './particles.js';
-import { addMoney } from './ui.js';
+import { addMoney, showFloatingMoney } from './ui.js';
+import { logEvent, EVENTS } from './commentary.js';
+import { BUILDING_TYPES, cars } from './constants.js';
+
+export function createSky() {
+    // Gradient Sky
+    const vertexShader = `
+        varying vec3 vWorldPosition;
+        void main() {
+            vec4 worldPosition = modelMatrix * vec4( position, 1.0 );
+            vWorldPosition = worldPosition.xyz;
+            gl_Position = projectionMatrix * modelViewMatrix * vec4( position, 1.0 );
+        }
+    `;
+    const fragmentShader = `
+        uniform vec3 topColor;
+        uniform vec3 bottomColor;
+        uniform float offset;
+        uniform float exponent;
+        varying vec3 vWorldPosition;
+        void main() {
+            float h = normalize( vWorldPosition + offset ).y;
+            gl_FragColor = vec4( mix( bottomColor, topColor, max( pow( max( h, 0.0 ), exponent ), 0.0 ) ), 1.0 );
+        }
+    `;
+
+    const uniforms = {
+        topColor: { value: new THREE.Color(0x0077ff) },
+        bottomColor: { value: new THREE.Color(0xffffff) },
+        offset: { value: 33 },
+        exponent: { value: 0.6 }
+    };
+    uniforms.bottomColor.value.copy(scene.fog.color); // Blend horizon with fog
+
+    const skyGeo = new THREE.SphereGeometry(8000, 32, 15);
+    const skyMat = new THREE.ShaderMaterial({
+        uniforms: uniforms,
+        vertexShader: vertexShader,
+        fragmentShader: fragmentShader,
+        side: THREE.BackSide
+    });
+
+    const sky = new THREE.Mesh(skyGeo, skyMat);
+    scene.add(sky);
+}
+
+// Helper to create a procedural window texture for background buildings - Enhanced version
+function createWindowTexture() {
+    try {
+        const canvas = document.createElement('canvas');
+        canvas.width = 128; // Increased resolution
+        canvas.height = 128;
+        const ctx = canvas.getContext('2d');
+        
+        // Background (Dark building facade with subtle texture)
+        const gradient = ctx.createLinearGradient(0, 0, 128, 128);
+        gradient.addColorStop(0, '#1a1a1a');
+        gradient.addColorStop(1, '#0d0d0d');
+        ctx.fillStyle = gradient;
+        ctx.fillRect(0, 0, 128, 128);
+        
+        // Add subtle concrete texture
+        for (let i = 0; i < 200; i++) {
+            ctx.fillStyle = `rgba(${Math.random() * 40 + 10}, ${Math.random() * 40 + 10}, ${Math.random() * 40 + 10}, 0.3)`;
+            ctx.fillRect(Math.random() * 128, Math.random() * 128, 1, 1);
+        }
+        
+        // Windows with more variety and detail
+        for (let y = 0; y < 8; y++) {
+            for (let x = 0; x < 4; x++) {
+                const isLit = Math.random() > 0.35;
+                const hasBlind = Math.random() > 0.7;
+                
+                if (Math.random() > 0.3) { // Some windows missing for variety
+                    const wx = 8 + x * 32;
+                    const wy = 8 + y * 16;
+                    
+                    // Window frame
+                    ctx.fillStyle = '#2a2a2a';
+                    ctx.fillRect(wx, wy, 20, 10);
+                    
+                    // Window glass
+                    if (isLit) {
+                        const lightVariation = Math.random();
+                        if (lightVariation > 0.7) {
+                            ctx.fillStyle = '#FEF9E7'; // Warm white
+                        } else if (lightVariation > 0.4) {
+                            ctx.fillStyle = '#F4D03F'; // Yellow
+                        } else {
+                            ctx.fillStyle = '#F39C12'; // Orange
+                        }
+                    } else {
+                        ctx.fillStyle = '#1c2833'; // Dark/off
+                    }
+                    
+                    // Draw twin windows
+                    ctx.fillRect(wx + 2, wy + 2, 7, 6);
+                    ctx.fillRect(wx + 11, wy + 2, 7, 6);
+                    
+                    // Window divider
+                    ctx.fillStyle = '#1a1a1a';
+                    ctx.fillRect(wx + 9, wy + 2, 2, 6);
+                    
+                    // Blinds/curtains
+                    if (hasBlind && isLit) {
+                        ctx.fillStyle = 'rgba(200, 200, 180, 0.3)';
+                        ctx.fillRect(wx + 2, wy + 2, 16, 6);
+                    }
+                    
+                    // Window reflection (subtle)
+                    if (isLit) {
+                        ctx.fillStyle = 'rgba(255, 255, 255, 0.2)';
+                        ctx.fillRect(wx + 2, wy + 2, 7, 2);
+                        ctx.fillRect(wx + 11, wy + 2, 7, 2);
+                    }
+                }
+            }
+        }
+        
+        const texture = new THREE.CanvasTexture(canvas);
+        texture.wrapS = THREE.RepeatWrapping;
+        texture.wrapT = THREE.RepeatWrapping;
+        texture.magFilter = THREE.LinearFilter; // Smoother look
+        texture.minFilter = THREE.LinearMipMapLinearFilter;
+        texture.anisotropy = 4; // Better quality at angles
+        return texture;
+    } catch (e) {
+        console.error("Window texture creation failed", e);
+        return null;
+    }
+}
+
+export function createDistantCityscape() {
+    try {
+        // Generate a dense city ring at the EDGE of the map (Map radius is approx 5000)
+        // Moved further out as requested
+        const buildingCount = 450; 
+        const minRadius = 4200;
+        const maxRadius = 4900;
+        const windowTexture = createWindowTexture();
+        
+        const buildingGeo = new THREE.BoxGeometry(100, 300, 100);
+        // Enhanced material with better lighting and texture
+        const buildingMat = new THREE.MeshStandardMaterial({ 
+            map: windowTexture,
+            roughness: 0.8,
+            metalness: 0.1,
+            color: 0xcccccc // Slight tint
+        });
+        
+        // Instanced mesh for performance
+        const instancedMesh = new THREE.InstancedMesh(buildingGeo, buildingMat, buildingCount);
+        
+        // Explicitly create instanceColor buffer to avoid potential crash
+        if (!instancedMesh.instanceColor) {
+             // Let Three.js handle it or verify version compatibility
+        }
+
+        const dummy = new THREE.Object3D();
+        const color = new THREE.Color();
+        // Colorful palette for distant buildings (Neon/Cyberpunk-ish dark tones)
+        const palette = [
+            0x2C3E50, // Dark Blue
+            0x8E44AD, // Purple
+            0x2980B9, // Blue
+            0xC0392B, // Dark Red
+            0xD35400, // Pumpkin
+            0x27AE60, // Green
+            0x1A252F  // Dark Slate
+        ];
+        
+        for (let i = 0; i < buildingCount; i++) {
+            const angle = Math.random() * Math.PI * 2;
+            const r = minRadius + Math.random() * (maxRadius - minRadius);
+            
+            const x = Math.cos(angle) * r;
+            const z = Math.sin(angle) * r;
+            
+            const width = 120 + Math.random() * 200;
+            const depth = 120 + Math.random() * 200;
+            const height = 300 + Math.random() * 800; 
+            
+            dummy.position.set(x, height / 2, z);
+            dummy.rotation.y = Math.random() * Math.PI;
+            dummy.scale.set(width / 100, height / 300, depth / 100);
+            dummy.updateMatrix();
+            
+            instancedMesh.setMatrixAt(i, dummy.matrix);
+            
+            // Random dark color variation
+            color.setHex(palette[Math.floor(Math.random() * palette.length)]);
+            instancedMesh.setColorAt(i, color);
+        }
+        
+        instancedMesh.instanceMatrix.needsUpdate = true;
+        if (instancedMesh.instanceColor) instancedMesh.instanceColor.needsUpdate = true;
+        
+        scene.add(instancedMesh);
+        
+        // Add "Radio Towers"
+        for (let i = 0; i < 12; i++) {
+            const angle = Math.random() * Math.PI * 2;
+            const r = minRadius + Math.random() * (maxRadius - minRadius);
+            const x = Math.cos(angle) * r;
+            const z = Math.sin(angle) * r;
+            
+            const towerHeight = 1000 + Math.random() * 500;
+            
+            const towerGeo = new THREE.CylinderGeometry(5, 30, towerHeight, 4);
+            const towerMat = new THREE.MeshBasicMaterial({ color: 0x111111 });
+            const tower = new THREE.Mesh(towerGeo, towerMat);
+            tower.position.set(x, towerHeight / 2, z);
+            scene.add(tower);
+            
+            const lightGeo = new THREE.SphereGeometry(40, 4, 4);
+            const lightMat = new THREE.MeshBasicMaterial({ color: 0xff0000 });
+            const light = new THREE.Mesh(lightGeo, lightMat);
+            light.position.set(0, towerHeight / 2, 0);
+            tower.add(light);
+        }
+    } catch (err) {
+        console.error("Distant cityscape generation failed:", err);
+    }
+}
 
 export function createGround() {
     const groundGeometry = new THREE.PlaneGeometry(10000, 10000);
@@ -37,7 +260,7 @@ export function createGround() {
     for (let i = -2500; i < 2500; i += 300) {
         const marking = new THREE.Mesh(markingGeometry, markingMaterial);
         marking.rotation.x = -Math.PI / 2;
-        marking.position.set(0, 0.45, i);
+        marking.position.set(0, 0.55, i); // Raised to prevent z-fighting
         marking.receiveShadow = true;
         scene.add(marking);
     }
@@ -46,7 +269,7 @@ export function createGround() {
     for (let i = -2500; i < 2500; i += 300) {
         const marking = new THREE.Mesh(markingGeometry, markingMaterial);
         marking.rotation.x = -Math.PI / 2;
-        marking.position.set(i, 0.45, 0);
+        marking.position.set(i, 0.55, 0); // Raised to prevent z-fighting
         marking.receiveShadow = true;
         scene.add(marking);
     }
@@ -75,62 +298,30 @@ export function createTrees() {
     const foliageMaterial = new THREE.MeshLambertMaterial({ color: 0x2E7D32 });
 
     treePositions.forEach(pos => {
-        // Træstamme - destructible
-        const trunk = new THREE.Mesh(trunkGeometry, trunkMaterial.clone());
-        trunk.position.set(pos[0], 25, pos[1]);
-        trunk.castShadow = true;
-        trunk.userData = {
-            isTree: true,
-            isHit: false,
-            health: 2, // Kan modstå 2 hits
-            velocity: new THREE.Vector3(),
-            rotVelocity: new THREE.Vector3(),
-            width: 20,
-            height: 50,
-            depth: 20
-        };
-        scene.add(trunk);
-        gameState.chunks.push(trunk);
-        
-        // Grid registration for træstamme
-        const gridX = Math.floor(trunk.position.x / gameState.chunkGridSize);
-        const gridZ = Math.floor(trunk.position.z / gameState.chunkGridSize);
-        const key = `${gridX},${gridZ}`;
-        if (!gameState.chunkGrid[key]) gameState.chunkGrid[key] = [];
-        gameState.chunkGrid[key].push(trunk);
-
-        // Trækrone - destructible, falder med stammen
-        const foliage = new THREE.Mesh(foliageGeometry, foliageMaterial.clone());
-        foliage.position.set(pos[0], 80, pos[1]);
-        foliage.castShadow = true;
-        foliage.userData = {
-            isTreeFoliage: true,
-            linkedTrunk: trunk,
-            isHit: false,
-            velocity: new THREE.Vector3(),
-            rotVelocity: new THREE.Vector3(),
-            width: 35,
-            height: 70,
-            depth: 35
-        };
-        scene.add(foliage);
-        trunk.userData.linkedFoliage = foliage;
+        const group = createSingleTree(pos[0], pos[1]);
+        scene.add(group);
     });
 }
 
-// Bygnings typer med deres karakteristika
-const BUILDING_TYPES = {
-    GENERIC: { name: 'generic', colors: [0x8D6E63, 0x795548, 0x6D4C41, 0xA1887F] },
-    SHOP: { name: 'shop', colors: [0x1976D2, 0x2196F3, 0x42A5F5], hasAwning: true, signColor: 0xFFEB3B },
-    BANK: { name: 'bank', colors: [0x37474F, 0x455A64, 0x546E7A], hasColumns: true, signColor: 0xFFD700 },
-    PIZZERIA: { name: 'pizzeria', colors: [0xD32F2F, 0xC62828, 0xB71C1C], hasAwning: true, signColor: 0xFFC107 },
-    CHURCH: { name: 'church', colors: [0xECEFF1, 0xCFD8DC, 0xB0BEC5], hasTower: true, hasRoof: true },
-    POLICE_STATION: { name: 'police', colors: [0x1565C0, 0x0D47A1], hasFlagpole: true, signColor: 0xFFFFFF },
-    PARLIAMENT: { name: 'parliament', colors: [0xD7CCC8, 0xBCAAA4, 0xA1887F], hasDome: true, hasColumns: true, hasCow: true },
-    RESIDENTIAL: { name: 'residential', colors: [0xFFCCBC, 0xFFAB91, 0xFF8A65, 0xBDBDBD] },
-    OFFICE: { name: 'office', colors: [0x90CAF9, 0x64B5F6, 0x42A5F5], isGlass: true },
-    WAREHOUSE: { name: 'warehouse', colors: [0x757575, 0x616161, 0x424242], hasRollerDoor: true },
-};
+
+// Create "Pølsevogn" (Hotdog Stand) around the map - BIGGER and more visible!
+export function createHotdogStands() {
+    console.log("🌭 Creating Hotdog Stands...");
+    
+    // Positions around the map - away from roads but visible
+    const standPositions = [
+        // Near spawn - easy to find!
+        [80, 80],
+        [-80, -80]
+    ];
+
+    standPositions.forEach(pos => {
+        const stand = createSingleHotdogStand(pos[0], pos[1]);
+        scene.add(stand);
+    });
+    
+    console.log(`🌭 Created ${standPositions.length} Hotdog stands!`);
+}
 
 // Skab et vindue
 function createWindow(x, y, z, rotY, width, height, isLit) {
@@ -488,102 +679,8 @@ export function createBuildings() {
     const chunkSize = 30;
 
     buildingConfigs.forEach(([x, z, width, depth, height, type]) => {
-        const buildingGroup = new THREE.Group();
-        
-        // Vælg farve baseret på bygningstype
-        const colors = type.colors;
-        const buildingColor = colors[Math.floor(Math.random() * colors.length)];
-        
-        const nx = Math.ceil(width / chunkSize);
-        const ny = Math.ceil(height / chunkSize);
-        const nz = Math.ceil(depth / chunkSize);
-
-        const dx = width / nx;
-        const dy = height / ny;
-        const dz = depth / nz;
-
-        const chunkGeometry = new THREE.BoxGeometry(dx, dy, dz);
-        const buildingMaterial = new THREE.MeshLambertMaterial({ color: buildingColor });
-        
-        const startX = x - width / 2 + dx / 2;
-        const startY = dy / 2;
-        const startZ = z - depth / 2 + dz / 2;
-
-        for(let ix = 0; ix < nx; ix++) {
-            for(let iy = 0; iy < ny; iy++) {
-                for(let iz = 0; iz < nz; iz++) {
-                    const chunk = new THREE.Mesh(chunkGeometry, buildingMaterial.clone());
-                    
-                    chunk.position.set(
-                        startX + ix * dx,
-                        startY + iy * dy,
-                        startZ + iz * dz
-                    );
-                    
-                    chunk.userData = {
-                        isHit: false,
-                        buildingType: type.name,
-                        velocity: new THREE.Vector3(),
-                        rotVelocity: new THREE.Vector3(),
-                        width: dx,
-                        height: dy,
-                        depth: dz
-                    };
-                    
-                    scene.add(chunk);
-                    gameState.chunks.push(chunk);
-
-                    const gridX = Math.floor(chunk.position.x / gameState.chunkGridSize);
-                    const gridZ = Math.floor(chunk.position.z / gameState.chunkGridSize);
-                    const key = `${gridX},${gridZ}`;
-                    if (!gameState.chunkGrid[key]) gameState.chunkGrid[key] = [];
-                    gameState.chunkGrid[key].push(chunk);
-                }
-            }
-        }
-        
-        // Tilføj vinduer til bygningen
-        addWindowsToBuilding(buildingGroup, x, z, width, depth, height, type);
-        
-        // Tilføj specielle elementer baseret på type
-        if (type.hasAwning) {
-            const awningColor = type.name === 'pizzeria' ? 0x388E3C : 0x1565C0;
-            const awning = createAwning(x, z, width, depth, awningColor);
-            buildingGroup.add(awning);
-        }
-        
-        if (type.hasColumns) {
-            const numCols = type.name === 'parliament' ? 6 : 4;
-            const columns = createColumns(x, z, width, depth, height, numCols);
-            buildingGroup.add(columns);
-        }
-        
-        if (type.hasTower) {
-            const tower = createChurchTower(x, z - depth/4, height);
-            buildingGroup.add(tower);
-        }
-        
-        if (type.hasDome) {
-            const dome = createDome(x, z, height, 30);
-            buildingGroup.add(dome);
-        }
-        
-        if (type.hasCow) {
-            const cow = createCow(x, z, height + 45);
-            buildingGroup.add(cow);
-        }
-        
-        if (type.hasFlagpole) {
-            const flagpole = createFlagpole(x + width/2 + 15, z + depth/2 + 10, 0);
-            buildingGroup.add(flagpole);
-        }
-        
-        if (type.signColor) {
-            const sign = createSign(x, z + depth/2 + 2, width, height, type.name, type.signColor, 0x000000);
-            buildingGroup.add(sign);
-        }
-        
-        scene.add(buildingGroup);
+        const building = createSingleBuilding(x, z, width, depth, height, type);
+        scene.add(building);
     });
 }
 
@@ -631,6 +728,10 @@ export function updateBuildingChunks(delta) {
             chunk.position.y <= groundY + 0.1) {
              gameState.activeChunks.splice(i, 1);
              
+             // Optimization: Disable updates again as it's now static debris
+             chunk.matrixAutoUpdate = false;
+             chunk.updateMatrix(); // Ensure final position is locked
+
              // Mark as fallen debris - solid but no damage, can be shattered
              if (!chunk.userData.isSmallDebris) {
                  chunk.userData.isFallenDebris = true;
@@ -642,7 +743,9 @@ export function updateBuildingChunks(delta) {
 
     // Collisions with standing building chunks
     const carPos = playerCar.position;
-    const carRadius = 15; 
+    const isOnFoot = gameState.selectedCar === 'onfoot' || playerCar.userData?.visualType === 'onfoot';
+    const canDestroyWorld = !isOnFoot;
+    const carRadius = isOnFoot ? 10 : 15;
     
     const gridSize = gameState.chunkGridSize;
     const px = Math.floor(carPos.x / gridSize);
@@ -663,12 +766,37 @@ export function updateBuildingChunks(delta) {
                      const dz = chunk.position.z - carPos.z;
                      const distSq = dx*dx + dz*dz;
                      
-                     if (distSq < (carRadius + chunk.userData.width/2 + 5)**2) {
+                     const collisionDist = (carRadius + chunk.userData.width/2 + 5);
+                     if (distSq < collisionDist * collisionDist) {
                          if (Math.abs(chunk.position.y - carPos.y) < (chunk.userData.height/2 + 10)) {
+
+                             // Any non-ground chunk collision should count as a "hit" for police engagement.
+                             // This is especially important for on-foot (cannot destroy) but also applies to cars.
+                             if (!gameState.hasHitObject) gameState.hasHitObject = true;
                              
                              const carSpeed = Math.abs(gameState.speed);
                              const carAngle = playerCar.rotation.y;
                              const angleToChunk = Math.atan2(dx, dz);
+
+                             // On-foot: collide but never destroy the world
+                             if (!canDestroyWorld) {
+                                 const dist = Math.sqrt(distSq) || 1;
+                                 const overlap = collisionDist - dist;
+                                 if (overlap > 0) {
+                                     // Push player away from the chunk
+                                     playerCar.position.x -= (dx / dist) * overlap * 1.1;
+                                     playerCar.position.z -= (dz / dist) * overlap * 1.1;
+                                 }
+
+                                 // Stop/slow movement on impact
+                                 gameState.speed *= 0.3;
+                                 gameState.velocityX *= 0.3;
+                                 gameState.velocityZ *= 0.3;
+                                 gameState.screenShake = Math.max(gameState.screenShake || 0, 0.05);
+                                 // Tiny damage only (no smoke)
+                                 takeDamage(Math.min(2, Math.floor(carSpeed * 0.05)));
+                                 continue;
+                             }
                              
                              // Special handling for trees
                              if (chunk.userData.isTree) {
@@ -677,6 +805,7 @@ export function updateBuildingChunks(delta) {
                                  if (chunk.userData.health <= 0 || carSpeed > 25) {
                                      // Tree falls!
                                      chunk.userData.isHit = true;
+                                     chunk.matrixAutoUpdate = true; // Enable physics updates
                                      gameState.activeChunks.push(chunk);
                                      
                                      // Fell the tree in the direction of impact
@@ -696,6 +825,7 @@ export function updateBuildingChunks(delta) {
                                      if (chunk.userData.linkedFoliage) {
                                          const foliage = chunk.userData.linkedFoliage;
                                          foliage.userData.isHit = true;
+                                         foliage.matrixAutoUpdate = true;
                                          gameState.activeChunks.push(foliage);
                                          foliage.userData.velocity = chunk.userData.velocity.clone();
                                          foliage.userData.velocity.y += 3;
@@ -707,6 +837,10 @@ export function updateBuildingChunks(delta) {
                                      }
                                      
                                      createTreeDebris(chunk.position, carSpeed);
+                                     
+                                     // Log tree destruction for commentary
+                                     logEvent(EVENTS.TREE_DESTROYED, null, { speed: carSpeed });
+                                     gameState.destructionCount = (gameState.destructionCount || 0) + 1;
                                  } else {
                                      // Tree shakes but doesn't fall
                                      gameState.screenShake = 0.2;
@@ -716,9 +850,41 @@ export function updateBuildingChunks(delta) {
                                  takeDamage(Math.floor(carSpeed * 0.15) + 8);
                                  gameState.screenShake = 0.4;
                                  createSmoke(chunk.position);
+                             }
+                             // Special handling for Hotdog stands (Destructible)
+                             else if (chunk.userData.isHotdogStand) {
+                                 chunk.userData.isHit = true;
+                                 chunk.matrixAutoUpdate = true;
+                                 gameState.activeChunks.push(chunk);
+                                 
+                                 // Fly away!
+                                 chunk.userData.velocity.set(
+                                    Math.sin(carAngle) * (carSpeed * 0.3 + 5), // Reduced force
+                                    5 + Math.random() * 5, // Reduced height
+                                    Math.cos(carAngle) * (carSpeed * 0.3 + 5)
+                                 );
+                                 
+                                 chunk.userData.rotVelocity.set(
+                                    (Math.random() - 0.5) * 0.2, // Reduced rotation spin
+                                    (Math.random() - 0.5) * 0.2,
+                                    (Math.random() - 0.5) * 0.2
+                                 );
+                                 
+                                 // Add money for vandalism!
+                                 if(typeof addMoney === 'function') { 
+                                     addMoney(50);
+                                     logEvent(EVENTS.COLLISION, "SMADREDE PØLSEVOGN!!");
+                                     gameState.destructionCount = (gameState.destructionCount || 0) + 1;
+                                 }
+                                 
+                                 // Particles
+                                 for(let p=0; p<2; p++) { // Reduced particles
+                                     createTreeDebris(chunk.position, carSpeed); // Reuse generic debris for now
+                                 }
                              } else {
                                  // Normal building chunk
                                  chunk.userData.isHit = true;
+                                 chunk.matrixAutoUpdate = true;
                                  gameState.activeChunks.push(chunk);
                                  
                                  chunk.userData.velocity.set(
@@ -736,7 +902,20 @@ export function updateBuildingChunks(delta) {
                                  // Create building debris particles based on speed
                                  createBuildingDebris(chunk.position, chunk.material.color, carSpeed);
                                  
-                                 gameState.speed *= 0.95; 
+                                 // Log building destruction for commentary
+                                 logEvent(EVENTS.BUILDING_DESTROYED, null, { speed: carSpeed });
+                                 gameState.destructionCount = (gameState.destructionCount || 0) + 1;
+                                 
+                                 // Rigid Body Physics: Mass affects momentum conservation
+                                 const mass = cars[gameState.selectedCar]?.mass || 1.0;
+                                 
+                                 // Heavier cars lose less speed (Momentum = mv)
+                                 const speedRetention = Math.min(0.99, 0.9 + (mass * 0.02) - (0.05 / mass));
+                                 gameState.speed *= Math.max(0.5, speedRetention); 
+                                 
+                                 // Heavier cars impart more force to debris
+                                 chunk.userData.velocity.multiplyScalar(Math.sqrt(mass));
+
                                  takeDamage(Math.floor(carSpeed * 0.1) + 5);
                                  gameState.screenShake = 0.3;
                                  createSmoke(chunk.position);
@@ -768,6 +947,9 @@ export function updateBuildingChunks(delta) {
             if (distSq < collisionDist * collisionDist) {
                 const dist = Math.sqrt(distSq) || 1;
                 const carSpeed = Math.abs(gameState.speed);
+
+                // Debris collision counts as a "hit" for police engagement.
+                if (!gameState.hasHitObject) gameState.hasHitObject = true;
                 
                 // Calculate push direction (away from debris center)
                 const normX = -dx / dist;
@@ -780,8 +962,8 @@ export function updateBuildingChunks(delta) {
                     playerCar.position.z += normZ * overlap * 1.2;
                 }
                 
-                // Shatter into smaller pieces if going fast enough
-                if (carSpeed > 8) {
+                // Shatter into smaller pieces if going fast enough (not on foot)
+                if (!isOnFoot && carSpeed > 8) {
                     // Remove from fallen debris
                     gameState.fallenDebris.splice(i, 1);
                     scene.remove(debris);
@@ -951,7 +1133,7 @@ function createTreeDebris(position, carSpeed) {
 }
 
 // Create building debris (concrete chunks, glass shards, dust particles)
-function createBuildingDebris(position, buildingColor, carSpeed) {
+export function createBuildingDebris(position, buildingColor, carSpeed) {
     const impactX = Math.sin(playerCar?.rotation.y || 0);
     const impactZ = Math.cos(playerCar?.rotation.y || 0);
     
@@ -1251,12 +1433,26 @@ export function cleanupSmallDebris() {
 export function createMoney() {
     const coin = new THREE.Mesh(sharedGeometries.coin, sharedMaterials.coin);
     
-    const mapSize = 3500;
-    coin.position.set(
-        (Math.random() - 0.5) * mapSize * 2,
-        5,
-        (Math.random() - 0.5) * mapSize * 2
-    );
+    // 40% chance to spawn near player (within 200-500 units), rest random on map
+    const nearPlayer = Math.random() < 0.4 && playerCar;
+    
+    if (nearPlayer) {
+        // Spawn in a ring around the player (not too close, not too far)
+        const angle = Math.random() * Math.PI * 2;
+        const distance = 200 + Math.random() * 300; // 200-500 units away
+        coin.position.set(
+            playerCar.position.x + Math.cos(angle) * distance,
+            5,
+            playerCar.position.z + Math.sin(angle) * distance
+        );
+    } else {
+        const mapSize = 3500;
+        coin.position.set(
+            (Math.random() - 0.5) * mapSize * 2,
+            5,
+            (Math.random() - 0.5) * mapSize * 2
+        );
+    }
     coin.rotation.z = Math.PI / 2;
     coin.castShadow = true;
     
@@ -1267,9 +1463,13 @@ export function createMoney() {
 export function updateCollectibles() {
     if (gameState.arrested) return;
 
-    if (Math.random() < 0.02) { 
+    // Higher spawn rate for better early game (8% chance per frame)
+    // Also spawn more coins when player has less money (helps early progression)
+    const spawnChance = gameState.money < 200 ? 0.12 : 0.06;
+    
+    if (Math.random() < spawnChance) { 
          createMoney();
-         if (gameState.collectibles.length > 50) {
+         if (gameState.collectibles.length > 80) {
              const oldCoin = gameState.collectibles.shift();
              scene.remove(oldCoin);
          }
@@ -1290,6 +1490,9 @@ export function updateCollectibles() {
         const dx = playerX - coin.position.x;
         const dz = playerZ - coin.position.z;
         if (dx*dx + dz*dz < pickupRadiusSq) {
+            // Save position for visual effect before removing
+            const coinPos = coin.position.clone();
+            
             scene.remove(coin);
             gameState.collectibles.splice(i, 1);
             
@@ -1297,7 +1500,337 @@ export function updateCollectibles() {
             const baseValue = gameConfig.coinBaseValue;
             const timeBonus = Math.floor(time / 10) * 10; 
             const rebirthMult = (gameState.rebirthPoints || 0) + 1;
-            addMoney((baseValue + timeBonus) * rebirthMult);
+            
+            const totalAmount = (baseValue + timeBonus) * rebirthMult;
+            addMoney(totalAmount);
+            showFloatingMoney(totalAmount, coinPos, camera);
         }
     }
+}
+
+/**
+ * MODULARE SKABELSESFUNKTIONER 
+ * Bruges af både den indledende verden og Level Editoren
+ */
+
+export function removeObjectFromWorld(object) {
+    if (!object) return;
+    
+    // Recursive search for chunks to remove from grid
+    object.traverse(child => {
+        // If it's a chunk or physics object (has userData)
+        if (child.userData && (child.userData.buildingType || child.userData.isTree || child.userData.isHotdogStand || child.userData.isTreeFoliage)) {
+             // Remove from chunks array
+             if (gameState.chunks) {
+                 const chunkIndex = gameState.chunks.indexOf(child);
+                 if (chunkIndex > -1) {
+                      gameState.chunks.splice(chunkIndex, 1);
+                 }
+             }
+     
+             // Remove from chunkGrid
+             // We estimate key from current world position
+             const worldPos = new THREE.Vector3();
+             child.getWorldPosition(worldPos);
+             
+             const gridX = Math.floor(worldPos.x / gameState.chunkGridSize);
+             const gridZ = Math.floor(worldPos.z / gameState.chunkGridSize);
+             
+             // Check this key and neighbors (in case of boundary issues)
+             const keysToCheck = [
+                 `${gridX},${gridZ}`,
+                 `${gridX+1},${gridZ}`, `${gridX-1},${gridZ}`,
+                 `${gridX},${gridZ+1}`, `${gridX},${gridZ-1}`
+             ];
+             
+             keysToCheck.forEach(key => {
+                 if (gameState.chunkGrid[key]) {
+                      const idx = gameState.chunkGrid[key].indexOf(child);
+                      if (idx > -1) {
+                          gameState.chunkGrid[key].splice(idx, 1);
+                      }
+                 }
+             });
+        }
+    });
+    
+    scene.remove(object);
+}
+
+export function addObjectToWorld(object) {
+    if (!object) return;
+    
+    scene.add(object);
+    
+    // Recursive search for chunks to add to grid (restore physics)
+    object.traverse(child => {
+        if (child.userData && (child.userData.buildingType || child.userData.isTree || child.userData.isHotdogStand || child.userData.isTreeFoliage)) {
+             if (gameState.chunks && gameState.chunks.indexOf(child) === -1) {
+                 gameState.chunks.push(child);
+             }
+             
+             // Re-calculate key
+             const worldPos = new THREE.Vector3();
+             child.getWorldPosition(worldPos);
+             
+             const gridX = Math.floor(worldPos.x / gameState.chunkGridSize);
+             const gridZ = Math.floor(worldPos.z / gameState.chunkGridSize);
+             const key = `${gridX},${gridZ}`;
+             
+             if (!gameState.chunkGrid[key]) gameState.chunkGrid[key] = [];
+             if (gameState.chunkGrid[key].indexOf(child) === -1) {
+                 gameState.chunkGrid[key].push(child);
+             }
+        }
+    });
+}
+
+export function createSingleBuilding(x, z, width, depth, height, type) {
+    const buildingGroup = new THREE.Group();
+    
+    // Vælg farve baseret på bygningstype
+    const colors = type.colors;
+    const buildingColor = colors[Math.floor(Math.random() * colors.length)];
+    
+    const chunkSize = 30;
+    const nx = Math.ceil(width / chunkSize);
+    const ny = Math.ceil(height / chunkSize);
+    const nz = Math.ceil(depth / chunkSize);
+
+    const dx = width / nx;
+    const dy = height / ny;
+    const dz = depth / nz;
+
+    const chunkGeometry = new THREE.BoxGeometry(dx, dy, dz);
+    // Enhanced material with better lighting properties
+    const buildingMaterial = new THREE.MeshStandardMaterial({ 
+        color: buildingColor,
+        roughness: 0.7,
+        metalness: 0.1
+    });
+    
+    const startX = x - width / 2 + dx / 2;
+    const startY = dy / 2;
+    const startZ = z - depth / 2 + dz / 2;
+
+    for(let ix = 0; ix < nx; ix++) {
+        for(let iy = 0; iy < ny; iy++) {
+            for(let iz = 0; iz < nz; iz++) {
+                const chunk = new THREE.Mesh(chunkGeometry, buildingMaterial);
+                
+                chunk.position.set(
+                    startX + ix * dx,
+                    startY + iy * dy,
+                    startZ + iz * dz
+                );
+
+                chunk.matrixAutoUpdate = false;
+                chunk.updateMatrix();
+                
+                chunk.userData = {
+                    isHit: false,
+                    buildingType: type.name,
+                    velocity: new THREE.Vector3(),
+                    rotVelocity: new THREE.Vector3(),
+                    width: dx,
+                    height: dy,
+                    depth: dz
+                };
+                
+                // scene.add(chunk); // REMOVED: Managed by group
+                buildingGroup.add(chunk); // ADDED: Add to group
+                gameState.chunks.push(chunk);
+
+                const gridX = Math.floor(chunk.position.x / gameState.chunkGridSize);
+                const gridZ = Math.floor(chunk.position.z / gameState.chunkGridSize);
+                const key = `${gridX},${gridZ}`;
+                if (!gameState.chunkGrid[key]) gameState.chunkGrid[key] = [];
+                gameState.chunkGrid[key].push(chunk);
+            }
+        }
+    }
+    
+    // Tilføj vinduer til bygningen (vinduer er visuelle og ikke destruerbare)
+    addWindowsToBuilding(buildingGroup, x, z, width, depth, height, type);
+    
+    // Tilføj specielle elementer baseret på type
+    if (type.hasAwning) {
+        const awningColor = type.name === 'pizzeria' ? 0x388E3C : 0x1565C0;
+        const awning = createAwning(x, z, width, depth, awningColor);
+        buildingGroup.add(awning);
+    }
+    
+    if (type.hasColumns) {
+        const numCols = type.name === 'parliament' ? 6 : 4;
+        const columns = createColumns(x, z, width, depth, height, numCols);
+        buildingGroup.add(columns);
+    }
+    
+    if (type.hasTower) {
+        const tower = createChurchTower(x, z - depth/4, height);
+        buildingGroup.add(tower);
+    }
+    
+    if (type.hasDome) {
+        const dome = createDome(x, z, height, 30);
+        buildingGroup.add(dome);
+    }
+    
+    if (type.hasCow) {
+        const cow = createCow(x, z, height + 45);
+        buildingGroup.add(cow);
+    }
+    
+    if (type.hasFlagpole) {
+        const flagpole = createFlagpole(x + width/2 + 15, z + depth/2 + 10, 0);
+        buildingGroup.add(flagpole);
+    }
+    
+    if (type.signColor) {
+        const sign = createSign(x, z + depth/2 + 2, width, height, type.name, type.signColor, 0x000000);
+        buildingGroup.add(sign);
+    }
+    
+    scene.add(buildingGroup);
+    return buildingGroup;
+}
+
+export function createSingleTree(x, z) {
+    const trunkGeometry = new THREE.CylinderGeometry(8, 12, 50, 8);
+    const trunkMaterial = new THREE.MeshLambertMaterial({ color: 0x5D4037 });
+    const foliageGeometry = new THREE.ConeGeometry(35, 70, 8);
+    const foliageMaterial = new THREE.MeshLambertMaterial({ color: 0x2E7D32 });
+
+    const treeGroup = new THREE.Group();
+
+    const trunk = new THREE.Mesh(trunkGeometry, trunkMaterial);
+    trunk.position.set(x, 25, z);
+    trunk.matrixAutoUpdate = false;
+    trunk.updateMatrix();
+
+    trunk.castShadow = true;
+    trunk.userData = {
+        isTree: true,
+        isHit: false,
+        health: 2,
+        velocity: new THREE.Vector3(),
+        rotVelocity: new THREE.Vector3(),
+        width: 20,
+        height: 50,
+        depth: 20
+    };
+    // scene.add(trunk); // REMOVED
+    gameState.chunks.push(trunk);
+    
+    const gridX = Math.floor(trunk.position.x / gameState.chunkGridSize);
+    const gridZ = Math.floor(trunk.position.z / gameState.chunkGridSize);
+    const key = `${gridX},${gridZ}`;
+    if (!gameState.chunkGrid[key]) gameState.chunkGrid[key] = [];
+    gameState.chunkGrid[key].push(trunk);
+
+    const foliage = new THREE.Mesh(foliageGeometry, foliageMaterial);
+    foliage.position.set(x, 80, z);
+    foliage.matrixAutoUpdate = false;
+    foliage.updateMatrix();
+    foliage.castShadow = true;
+    
+    foliage.userData = {
+        isTreeFoliage: true,
+        linkedTrunk: trunk,
+        isHit: false,
+        velocity: new THREE.Vector3(),
+        rotVelocity: new THREE.Vector3(),
+        width: 35,
+        height: 70,
+        depth: 35
+    };
+    // scene.add(foliage); // REMOVED
+    // Note: for trees, we don't necessarily need the foliage in the grid if hitting the trunk is enough, 
+    // but building hits check everything in the grid.
+    // The physics loop for chunks iterates activeChunks.
+    // Collision loop iterates gameState.chunks via the grid.
+    
+    gameState.chunks.push(foliage);
+    const fGridX = Math.floor(foliage.position.x / gameState.chunkGridSize);
+    const fGridZ = Math.floor(foliage.position.z / gameState.chunkGridSize);
+    const fKey = `${fGridX},${fGridZ}`;
+    if (!gameState.chunkGrid[fKey]) gameState.chunkGrid[fKey] = [];
+    gameState.chunkGrid[fKey].push(foliage);
+
+    trunk.userData.linkedFoliage = foliage;
+    
+    treeGroup.add(trunk);
+    treeGroup.add(foliage);
+    return treeGroup;
+}
+
+export function createSingleHotdogStand(x, z) {
+    const standGroup = new THREE.Group();
+
+    // Body (destructible)
+    const bodyGeo = new THREE.BoxGeometry(30, 22, 18);
+    const bodyMat = new THREE.MeshLambertMaterial({ color: 0xFFFFFF });
+    const body = new THREE.Mesh(bodyGeo, bodyMat);
+    body.position.set(x, 17, z);
+    
+    body.userData = {
+        isHotdogStand: true,
+        isHit: false,
+        velocity: new THREE.Vector3(),
+        rotVelocity: new THREE.Vector3(),
+        width: 30,
+        height: 22,
+        depth: 18
+    };
+    
+    // scene.add(body); // REMOVED
+    gameState.chunks.push(body);
+    
+    const gridX = Math.floor(body.position.x / gameState.chunkGridSize);
+    const gridZ = Math.floor(body.position.z / gameState.chunkGridSize);
+    const key = `${gridX},${gridZ}`;
+    if (!gameState.chunkGrid[key]) gameState.chunkGrid[key] = [];
+    gameState.chunkGrid[key].push(body);
+
+    // Stripe (destructible/child)
+    const stripeGeo = new THREE.BoxGeometry(30.5, 5, 18.5);
+    const redMat = new THREE.MeshLambertMaterial({ color: 0xFF0000 });
+    const stripe = new THREE.Mesh(stripeGeo, redMat);
+    stripe.position.set(0, 3, 0); 
+    body.add(stripe);
+
+    // Umbrella (destructible/child)
+    const umbrellaGeo = new THREE.ConeGeometry(25, 10, 8);
+    const umbrella = new THREE.Mesh(umbrellaGeo, redMat);
+    umbrella.position.set(0, 40, 0);
+    body.add(umbrella);
+
+    // Pole (destructible/child)
+    const poleGeo = new THREE.CylinderGeometry(1, 1, 40);
+    const poleMat = new THREE.MeshLambertMaterial({ color: 0x888888 });
+    const pole = new THREE.Mesh(poleGeo, poleMat);
+    pole.position.set(0, 18, 0);
+    body.add(pole);
+
+    // Wheels (destructible/child)
+    const wheelGeo = new THREE.CylinderGeometry(4, 4, 2, 8);
+    const wheelMat = new THREE.MeshLambertMaterial({ color: 0x333333 });
+    const wheel1 = new THREE.Mesh(wheelGeo, wheelMat);
+    wheel1.rotation.z = Math.PI / 2;
+    wheel1.position.set(-10, -10, 9);
+    body.add(wheel1);
+    
+    const wheel2 = wheel1.clone();
+    wheel2.position.set(10, -10, 9);
+    body.add(wheel2);
+    
+    const wheel3 = wheel1.clone();
+    wheel3.position.set(-10, -10, -9);
+    body.add(wheel3);
+    
+    const wheel4 = wheel1.clone();
+    wheel4.position.set(10, -10, -9);
+    body.add(wheel4);
+    
+    return body;
 }

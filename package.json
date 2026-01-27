@@ -4,7 +4,25 @@
   "description": "A fast-paced 3D car chase game! Outrun the cops, collect coins, and upgrade your ride!",
   "main": "script_backup.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
+    "test": "npx playwright test",
+    "test:fast": "npx playwright test --workers=4",
+    "test:failed": "npx playwright test --last-failed",
+    "test:only": "npx playwright test --grep",
+    "test:quick": "npx playwright test tests/regression/quick.spec.js --workers=4",
+    "test:speed": "npx playwright test speed-limit.spec.js",
+    "test:values": "node tests/test-speed-values.cjs",
+    "test:debug": "npx playwright test --debug --headed",
+    "test:headed": "npx playwright test --headed --workers=1",
+    "test:regression": "npx playwright test tests/regression/",
+    "test:regression:fast": "npx playwright test tests/regression/ --workers=4",
+    "test:core": "npx playwright test tests/regression/core-gameplay.spec.js",
+    "test:ui": "npx playwright test tests/regression/ui-elements.spec.js",
+    "test:physics": "npx playwright test tests/regression/physics-collision.spec.js",
+    "test:shop": "npx playwright test tests/regression/shop-economy.spec.js",
+    "test:police": "npx playwright test tests/regression/police-ai.spec.js",
+    "test:mp": "npx playwright test tests/regression/multiplayer.spec.js",
+    "test:world": "npx playwright test tests/regression/world-rendering.spec.js",
+    "test:all": "npm run test:values && npx playwright test --workers=4",
     "start": "node server.js"
   },
   "repository": {
@@ -20,6 +38,11 @@
   },
   "homepage": "https://github.com/NulikTheGoat/Flugt-fra-politiet#readme",
   "dependencies": {
+    "three": "^0.160.0",
     "ws": "^8.19.0"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.58.0",
+    "playwright": "^1.58.0"
   }
 }

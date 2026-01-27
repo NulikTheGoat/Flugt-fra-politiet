@@ -4,6 +4,20 @@ A fast-paced 3D car chase game! Outrun the cops, collect coins, upgrade your rid
 
 ---
 
+## 📚 Documentation
+
+**For Players**: Continue reading below for how to play and setup instructions.
+
+**For Developers & LLMs**: Check out our comprehensive documentation:
+- **[PROJECT_CONTEXT.md](PROJECT_CONTEXT.md)** - Project overview, structure, and quick reference for LLMs
+- **[CODE_ARCHITECTURE.md](CODE_ARCHITECTURE.md)** - Technical deep dive into the codebase
+- **[DEVELOPER_GUIDE.md](DEVELOPER_GUIDE.md)** - Step-by-step guide for developers
+- **[CHANGELOG.md](CHANGELOG.md)** - Version history and release notes
+
+**Tech Stack**: Three.js r128 • JavaScript ES6 • WebSocket • Node.js
+
+---
+
 ## 🎮 How to Play
 
 ### Controls
@@ -183,16 +197,34 @@ Just do the Command Prompt steps again!
 
 ---
 
-## 🏎️ Cars You Can Buy
+## 🏎️ Vehicles & Progression
 
-| Car | Price | How Fast | Special Power |
-|-----|-------|----------|---------------|
-| Standard | Free | ⭐⭐ | Nothing special |
-| Compact | 1,500 kr | ⭐⭐⭐ | Easy to turn |
-| Sport | 8,000 kr | ⭐⭐⭐⭐ | Really fast |
-| Muscle | 15,000 kr | ⭐⭐⭐⭐ | Hard to break |
-| Tank | 75,000 kr | ⭐⭐ | Can shoot! Press F |
-| UFO | Special | ⭐⭐⭐⭐⭐ | Alien speed! |
+Start on foot and work your way up to exotic cars!
+
+### Starter Vehicles
+| Vehicle | Price | Speed | Health | Notes |
+|---------|-------|-------|--------|-------|
+| 🚶 Til Fods | 0 kr | ~15 km/h | 20 | Free start - very agile! |
+| 🚲 Cykel | 100 kr | ~30 km/h | 30 | First upgrade |
+| 🛴 El-løbehjul | 300 kr | ~45 km/h | 25 | Fast but fragile |
+| 🏍️ Knallert | 700 kr | ~60 km/h | 35 | Good balance |
+
+### Cars
+| Car | Price | Speed | Health | Special |
+|-----|-------|-------|--------|---------|
+| 🚗 Standard | 2.000 kr | ~90 km/h | 100 | First car |
+| 🏎️ Sport | 8.000 kr | ~130 km/h | 70 | Fast acceleration |
+| 💪 Muscle | 15.000 kr | ~115 km/h | 150 | Tough and powerful |
+| ⚡ Super | 50.000 kr | ~160 km/h | 100 | Very fast |
+| 🚀 Hyper | 100.000 kr | ~180 km/h | 120 | Top speed |
+| 🛡️ Tank | 75.000 kr | ~70 km/h | 300 | Can SHOOT! (Press F) |
+| 🛸 UFO | 200.000 kr | ~200 km/h | 100 | Alien technology |
+
+### Economy Tips
+- 💰 **Passive income** increases exponentially with heat level
+- 🚔 **Kill enemies** for rewards: 150-1000 kr depending on type
+- 📦 **Collect drops** from destroyed enemies: 300-2000 kr
+- 🔥 Higher heat = more money, but more danger!
 
 ---
 
@@ -204,8 +236,85 @@ The longer you survive, the harder it gets!
 |-------|--------------|
 | 🟢 Level 1 | Normal police cars |
 | 🟡 Level 2 | Fast interceptors join |
-| 🟠 Level 3 | Big SWAT trucks appear |
+| 🟠 Level 3 | Big SWAT trucks appear + **AI SHERIFF** can spawn! |
 | 🔴 Level 4+ | Military vehicles that SHOOT at you! |
+
+### ⭐ AI Sheriff (NEW!)
+At Heat Level 3+, the **Sheriff** may join the chase! This special unit:
+- Uses AI to command other police cars
+- Issues tactical orders in real-time
+- Coordinates police pursuit strategies
+- Shows as "⭐ SHERIFF AKTIV" in the HUD
+- Commands appear in gold text on the police scanner
+
+See [SHERIFF_SETUP.md](SHERIFF_SETUP.md) for setup instructions.
+
+---
+
+## 🛠️ For Developers
+
+Want to contribute or modify the game? Check out our developer resources:
+
+### Quick Start for Development
+```bash
+git clone https://github.com/NulikTheGoat/Flugt-fra-politiet.git
+cd Flugt-fra-politiet
+npm install
+npm start
+# Game runs on http://localhost:3000
+```
+
+### Documentation
+- **[DEVELOPER_GUIDE.md](DEVELOPER_GUIDE.md)** - Complete developer guide with examples
+- **[CODE_ARCHITECTURE.md](CODE_ARCHITECTURE.md)** - Technical architecture and patterns
+- **[PROJECT_CONTEXT.md](PROJECT_CONTEXT.md)** - Project overview for LLMs
+
+### Contributing
+1. Fork the repository
+2. Create a feature branch (`git checkout -b feature/amazing-feature`)
+3. Make your changes and test thoroughly
+4. Commit your changes (`git commit -m 'Add amazing feature'`)
+5. Push to the branch (`git push origin feature/amazing-feature`)
+6. Open a Pull Request
+
+See [DEVELOPER_GUIDE.md](DEVELOPER_GUIDE.md) for detailed contributing guidelines.
+
+---
+
+## 📝 Project Information
+
+- **Version**: 1.0.0
+- **License**: ISC
+- **Repository**: https://github.com/NulikTheGoat/Flugt-fra-politiet
+- **Issues**: https://github.com/NulikTheGoat/Flugt-fra-politiet/issues
+
+### Technologies Used
+- **Frontend**: Three.js r160 (bundled locally, XSS vulnerability patched), JavaScript ES6 Modules, HTML5, CSS3
+- **Rendering**: PBR materials (MeshStandardMaterial), enhanced lighting, antialiasing
+- **Backend**: Node.js, WebSocket (ws library)
+- **No Build Step**: Runs directly in browser!
+
+### Features
+- ✅ Single player and LAN multiplayer
+- ✅ 5 unique car types with different stats
+- ✅ 5 police types with escalating difficulty
+- ✅ Dynamic heat level system
+- ✅ Economy and shop system
+- ✅ Procedurally generated city
+- ✅ Real-time physics and AI
+- ✅ **Enhanced graphics with PBR materials and improved lighting** 🆕
+- ✅ Visual effects (tire marks, sparks, explosions)
+- ✅ Optional LLM-powered commentary
+
+### Documentation
+- [VISUAL_IMPROVEMENTS.md](VISUAL_IMPROVEMENTS.md) - Visual rendering enhancements 🆕
+
+### Roadmap
+See our planning documents:
+- [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md) - Current development status
+- [llm_commentary_plan.md](llm_commentary_plan.md) - AI commentary feature
+- [economy_gamification_plan.md](economy_gamification_plan.md) - Economy improvements
+- [police_improvement_plan.md](police_improvement_plan.md) - AI enhancements
 
 ---
 
@@ -216,6 +325,7 @@ The longer you survive, the harder it gets!
 - **Crash into police** - Going fast? Ram them to damage their cars!
 - **Collect coins** - More time = more money per coin
 - **Watch your health** - When it's low, your car gets slower and harder to control
+- **Beware the Sheriff** - When the AI Sheriff spawns, police become much more coordinated!
 
 ---
 

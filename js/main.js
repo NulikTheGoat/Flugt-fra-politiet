@@ -1,365 +1,128 @@
-import { gameState, keys } from './state.js';
+/**
+ * MAIN.JS - Game Entry Point
+ * 
+ * This is the main game file that orchestrates everything.
+ * 
+ * Key Responsibilities:
+ * - Initialize Three.js scene and attach to DOM
+ * - Set up event listeners (keyboard, buttons, etc.)
+ * - Manage game modes (solo vs multiplayer)
+ * - Run the main game loop (animate function)
+ * - Handle multiplayer lobby and room management
+ * 
+ * Game Loop Flow:
+ * 1. Calculate delta time
+ * 2. Update player physics
+ * 3. Update police AI
+ * 4. Update projectiles (if Tank is shooting)
+ * 5. Update visual effects (particles, sparks, tire marks)
+ * 6. Update HUD
+ * 7. Update commentary (if enabled)
+ * 8. Broadcast state to clients (if host)
+ * 9. Render scene
+ * 10. Request next frame
+ * 
+ * Module Imports:
+ * - state.js: Game state and input
+ * - player.js: Player car logic
+ * - police.js: Police AI
+ * - world.js: Environment generation
+ * - ui.js: HUD and menus
+ * - particles.js: Visual effects
+ * - network.js: Multiplayer
+ * - commentary.js: AI commentary
+ */
+
+import { gameState, keys, saveProgress } from './state.js';
 import { gameConfig } from './config.js';
 import { scene, camera, renderer } from './core.js';
 import { cars } from './constants.js';
 import { createPlayerCar, rebuildPlayerCar, updatePlayer, playerCar, setUICallbacks, createOtherPlayerCar, updateOtherPlayerCar, removeOtherPlayerCar } from './player.js';
-import { spawnPoliceCar, updatePoliceAI, updateProjectiles, firePlayerProjectile, syncPoliceFromNetwork, getPoliceStateForNetwork, resetPoliceNetworkIds } from './police.js';
-import { createGround, createTrees, createBuildings, updateBuildingChunks, updateCollectibles, cleanupSmallDebris } from './world.js';
+import { spawnPoliceCar, updatePoliceAI, updateProjectiles, firePlayerProjectile, syncPoliceFromNetwork, getPoliceStateForNetwork, resetPoliceNetworkIds, createPoliceCar } from './police.js';
+import { createGround, createTrees, createBuildings, updateBuildingChunks, updateCollectibles, cleanupSmallDebris, createSky, createDistantCityscape, createHotdogStands } from './world.js';
 import { updateHUD, updateHealthUI, DOM, goToShop, showGameOver, setStartGameCallback, triggerDamageEffect, setMultiplayerShopCallback } from './ui.js';
 import { updateSpeedEffects, updateSparks, updateTireMarks } from './particles.js';
 import * as Network from './network.js';
+import { updateCommentary, resetCommentary, logEvent, EVENTS } from './commentary.js';
+import { initLevelEditor, openLevelEditor } from './levelEditor.js';
+import { exposeDevtools } from './devtools.js';
+import { initMenu } from './menu.js';
+import { resetSheriffState } from './sheriff.js';
 
-// Initialize - attach renderer to gameContainer
+// Expose gameState globally for debugging and testing
+window.gameState = gameState;
+window.cars = cars;
+
+// Expose reinforcement spawning function for Sheriff AI
+window.spawnReinforcementUnits = function(count, types) {
+    if (!playerCar) return;
+    
+    console.log(`[Reinforcements] Spawning ${count} units: ${types.join(', ')}`);
+    
+    types.forEach((type, index) => {
+        // Stagger spawns slightly to avoid overlap
+        setTimeout(() => {
+            const policeCar = createPoliceCar(type);
+            
+            // Spawn from edges/behind player for dramatic effect
+            const angle = (Math.PI * 2 / count) * index + Math.random() * 0.5;
+            const distance = 800 + Math.random() * 400; // Spawn further away
+            
+            policeCar.position.x = playerCar.position.x + Math.sin(angle) * distance;
+            policeCar.position.z = playerCar.position.z + Math.cos(angle) * distance;
+            
+            gameState.policeCars.push(policeCar);
+            console.log(`[Reinforcements] Unit ${index + 1}/${count} (${type}) spawned at distance ${Math.round(distance)}`);
+        }, index * 200); // 200ms delay between spawns
+    });
+};
+
+
+// === Initialization ===
+// Attach renderer to gameContainer
 document.getElementById('gameContainer').appendChild(renderer.domElement);
 
 // Check if URL path is /start to auto-start the game
 const autoStart = window.location.pathname === '/start' || window.location.pathname === '/start/';
 
-// DOM elements for multiplayer
-const multiplayerLobby = document.getElementById('multiplayerLobby');
-const lobbyCloseBtn = document.getElementById('lobbyCloseBtn');
-const joinGameBtn = document.getElementById('joinGameBtn');
-const playerNameInput = document.getElementById('playerNameInput');
-const lobbyError = document.getElementById('lobbyError');
-const lobbyConnect = document.getElementById('lobbyConnect');
-const lobbyRoom = document.getElementById('lobbyRoom');
-const displayRoomCode = document.getElementById('displayRoomCode');
-const playersList = document.getElementById('playersList');
-const playerCount = document.getElementById('playerCount');
-const hostControls = document.getElementById('hostControls');
-const waitingMessage = document.getElementById('waitingMessage');
-const startMultiplayerBtn = document.getElementById('startMultiplayerBtn');
-const hostTouchArrest = document.getElementById('hostTouchArrest');
-const hostDropInEnabled = document.getElementById('hostDropInEnabled');
-const otherPlayersHUD = document.getElementById('otherPlayersHUD');
-const gameOverRejoinBtn = document.getElementById('gameOverRejoinBtn');
-const gameOverMpShopBtn = document.getElementById('gameOverMpShopBtn');
+// Check if URL path is /editor to auto-open level editor
+const autoEditor = window.location.pathname === '/editor' || window.location.pathname === '/editor/';
 
-// Game Mode Modal elements
-const gameModeModal = document.getElementById('gameModeModal');
-const soloModeBtn = document.getElementById('soloModeBtn');
-const multiplayerModeBtn = document.getElementById('multiplayerModeBtn');
+// === DOM Elements - Multiplayer Lobby ===
+const otherPlayersHUD = document.getElementById('otherPlayersHUD');
 
 // Player colors for multiplayer
 const playerColors = [0xff0000, 0x0066ff, 0x00ff00, 0xffaa00];
 
-// UI Event Listeners - Show game mode selection when clicking Play
-if (DOM.playBtn) {
-    DOM.playBtn.addEventListener('click', () => {
-        // If already in multiplayer, respawn with selected car
-        if (gameState.isMultiplayer && Network.isConnectedToServer()) {
-            DOM.shop.style.display = 'none';
-            Network.requestRespawnWithCar(gameState.selectedCar);
-            return;
-        }
-        
-        // Otherwise show game mode selection
-        gameModeModal.style.display = 'flex';
-    });
-}
-
-// Solo mode - just start the game
-if (soloModeBtn) {
-    soloModeBtn.addEventListener('click', () => {
-        gameModeModal.style.display = 'none';
-        startGame();
-    });
-}
-
-// Shop button from menu
-const menuShopBtn = document.getElementById('menuShopBtn');
-if (menuShopBtn) {
-    menuShopBtn.addEventListener('click', () => {
-        gameModeModal.style.display = 'none';
-        goToShop(false); // Not multiplayer respawn mode
-    });
-}
-
-// Multiplayer - scan for servers then show lobby
-if (multiplayerModeBtn) {
-    multiplayerModeBtn.addEventListener('click', async () => {
-        gameModeModal.style.display = 'none';
-        multiplayerLobby.style.display = 'flex';
-        lobbyError.textContent = '';
-        
-        // Reset to server discovery view
-        showServerDiscovery();
-    });
-}
-
-// Show server discovery step
-async function showServerDiscovery() {
-    const serverDiscovery = document.getElementById('serverDiscovery');
-    const lobbyConnect = document.getElementById('lobbyConnect');
-    const lobbyRoom = document.getElementById('lobbyRoom');
-    const scanningStatus = document.getElementById('scanningStatus');
-    const discoveredServers = document.getElementById('discoveredServers');
-    const noServersFound = document.getElementById('noServersFound');
-    const serverList = document.getElementById('serverList');
+function stopGame() {
+    // Stop the game
+    gameState.arrested = true;
     
-    // Show only server discovery
-    if (serverDiscovery) serverDiscovery.style.display = 'block';
-    if (lobbyConnect) lobbyConnect.style.display = 'none';
-    if (lobbyRoom) lobbyRoom.style.display = 'none';
-    if (scanningStatus) scanningStatus.style.display = 'block';
-    if (discoveredServers) discoveredServers.style.display = 'none';
-    if (noServersFound) noServersFound.style.display = 'none';
-    
-    // Scan for servers
-    const servers = await Network.scanForServers();
-    
-    if (scanningStatus) scanningStatus.style.display = 'none';
-    
-    if (servers.length > 0) {
-        if (discoveredServers) discoveredServers.style.display = 'block';
-        if (serverList) {
-            serverList.innerHTML = servers.map(server => `
-                <div class="server-card ${server.gameStarted ? 'in-game' : ''}" data-ip="${server.ip}" data-players="${server.players}">
-                    <div class="server-name">🖥️ ${server.ip === 'localhost' ? 'Lokal Server' : server.ip}</div>
-                    <span class="server-players">
-                        ${server.gameStarted ? '🎮 I gang - ' : '⏳ Venter - '}${server.players}/${server.maxPlayers} spillere
-                    </span>
-                </div>
-            `).join('');
-            
-            // Click handler for server cards
-            serverList.querySelectorAll('.server-card').forEach(card => {
-                card.addEventListener('click', () => {
-                    selectServer(card.dataset.ip, card.dataset.players);
-                });
-            });
-        }
-    } else {
-        if (noServersFound) noServersFound.style.display = 'block';
-    }
-}
-
-// Select a server and show name input
-function selectServer(ip, playerCount) {
-    Network.setServerHost(ip);
-    
-    const serverDiscovery = document.getElementById('serverDiscovery');
-    const lobbyConnect = document.getElementById('lobbyConnect');
-    const selectedServerInfo = document.getElementById('selectedServerInfo');
-    
-    // Hide discovery, show connect form
-    if (serverDiscovery) serverDiscovery.style.display = 'none';
-    if (lobbyConnect) lobbyConnect.style.display = 'block';
-    
-    // Show which server we're connecting to
-    if (selectedServerInfo) {
-        selectedServerInfo.textContent = `🖥️ Server: ${ip} (${playerCount} spillere online)`;
+    // Cleanup multiplayer if active
+    if (gameState.isMultiplayer) {
+         Network.disconnect();
+         gameState.isMultiplayer = false;
     }
     
-    // Focus name input
-    const nameInput = document.getElementById('playerNameInput');
-    if (nameInput) nameInput.focus();
+    // Remove police cars
+    gameState.policeCars.forEach(car => scene.remove(car));
+    gameState.policeCars = [];
+    
+    // Remove collectibles
+    gameState.collectibles.forEach(coin => scene.remove(coin));
+    gameState.collectibles = [];
+    
+    // Remove projectiles
+    gameState.projectiles.forEach(proj => scene.remove(proj));
+    gameState.projectiles = [];
 }
 
-// Connect to the selected server
-async function connectToSelectedServer() {
-    const joinBtn = document.getElementById('joinGameBtn');
-    if (joinBtn) joinBtn.disabled = true;
-    lobbyError.textContent = 'Forbinder...';
-    lobbyError.style.color = '#888';
-    
-    try {
-        await Network.connect();
-        lobbyError.textContent = '';
-        if (joinBtn) joinBtn.disabled = false;
-    } catch (e) {
-        lobbyError.textContent = 'Kunne ikke forbinde til server';
-        lobbyError.style.color = '#ff4444';
-        if (joinBtn) joinBtn.disabled = false;
-    }
-}
-
-// Back to server list button
-document.addEventListener('DOMContentLoaded', () => {
-    // Load saved player name from localStorage
-    const savedName = localStorage.getItem('playerName');
-    if (savedName && playerNameInput) {
-        playerNameInput.value = savedName;
-    }
-    
-    const backToServersBtn = document.getElementById('backToServersBtn');
-    const rescanBtn = document.getElementById('rescanBtn');
-    const rescanBtnEmpty = document.getElementById('rescanBtnEmpty');
-    const hostOwnServerBtn = document.getElementById('hostOwnServerBtn');
-    
-    if (backToServersBtn) {
-        backToServersBtn.addEventListener('click', () => {
-            Network.disconnect();
-            showServerDiscovery();
-        });
-    }
-    
-    if (rescanBtn) rescanBtn.addEventListener('click', showServerDiscovery);
-    if (rescanBtnEmpty) rescanBtnEmpty.addEventListener('click', showServerDiscovery);
-    
-    if (hostOwnServerBtn) {
-        hostOwnServerBtn.addEventListener('click', () => {
-            selectServer('localhost', '?');
-        });
-    }
+// Initialize Menu Logic
+initMenu({ 
+    startGame, 
+    cleanupGame: stopGame 
 });
 
-if (DOM.gameOverShopBtn) {
-    DOM.gameOverShopBtn.addEventListener('click', () => {
-        // If in multiplayer, disconnect first
-        if (gameState.isMultiplayer) {
-            Network.disconnect();
-            gameState.isMultiplayer = false;
-        }
-        goToShop();
-        // Show game mode selection after going to shop
-        gameModeModal.style.display = 'flex';
-    });
-}
-
-// Rejoin button for multiplayer
-if (gameOverRejoinBtn) {
-    gameOverRejoinBtn.addEventListener('click', () => {
-        Network.requestRespawn();
-    });
-}
-
-// Multiplayer shop button - buy car and drop back in
-if (gameOverMpShopBtn) {
-    gameOverMpShopBtn.addEventListener('click', () => {
-        DOM.gameOver.style.display = 'none';
-        goToShop(true); // true = multiplayer respawn mode
-    });
-}
-
-// Set up multiplayer shop callback - when a car is selected in MP shop mode
-setMultiplayerShopCallback((carKey) => {
-    console.log('Multiplayer shop: selected car', carKey);
-    
-    // Hide shop
-    DOM.shop.style.display = 'none';
-    
-    // Request respawn with new car
-    Network.requestRespawnWithCar(carKey);
-});
-
-// Close game mode modal when clicking outside
-if (gameModeModal) {
-    gameModeModal.addEventListener('click', (e) => {
-        if (e.target === gameModeModal) {
-            gameModeModal.style.display = 'none';
-        }
-    });
-}
-
-// Escape key - return to menu
-document.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape') {
-        // If game mode modal is open, close it
-        if (gameModeModal && gameModeModal.style.display === 'flex') {
-            gameModeModal.style.display = 'none';
-            return;
-        }
-        
-        // If multiplayer lobby is open, close it
-        if (multiplayerLobby && multiplayerLobby.style.display === 'flex') {
-            multiplayerLobby.style.display = 'none';
-            Network.disconnect();
-            return;
-        }
-        
-        // If shop is open, close it and show menu
-        if (DOM.shop && DOM.shop.style.display === 'flex') {
-            DOM.shop.style.display = 'none';
-            gameModeModal.style.display = 'flex';
-            return;
-        }
-        
-        // If game over screen is showing, go to menu
-        if (DOM.gameOver && DOM.gameOver.style.display === 'block') {
-            DOM.gameOver.style.display = 'none';
-            if (gameState.isMultiplayer) {
-                Network.disconnect();
-                gameState.isMultiplayer = false;
-            }
-            gameModeModal.style.display = 'flex';
-            return;
-        }
-        
-        // If actively playing, return to menu
-        if (!gameState.arrested && gameState.startTime > 0) {
-            // Stop the game
-            gameState.arrested = true;
-            
-            // Cleanup multiplayer if active
-            if (gameState.isMultiplayer) {
-                Network.disconnect();
-                gameState.isMultiplayer = false;
-            }
-            
-            // Remove police cars
-            gameState.policeCars.forEach(car => scene.remove(car));
-            gameState.policeCars = [];
-            
-            // Remove collectibles
-            gameState.collectibles.forEach(coin => scene.remove(coin));
-            gameState.collectibles = [];
-            
-            // Remove projectiles
-            gameState.projectiles.forEach(proj => scene.remove(proj));
-            gameState.projectiles = [];
-            
-            // Hide game over and show menu
-            DOM.gameOver.style.display = 'none';
-            gameModeModal.style.display = 'flex';
-        }
-    }
-});
-
-// Multiplayer UI Listeners
-if (lobbyCloseBtn) {
-    lobbyCloseBtn.addEventListener('click', () => {
-        multiplayerLobby.style.display = 'none';
-        Network.disconnect();
-    });
-}
-
-// Single JOIN button - connect then join
-if (joinGameBtn) {
-    joinGameBtn.addEventListener('click', async () => {
-        const name = playerNameInput.value.trim() || 'Spiller';
-        const car = gameState.selectedCar || 'standard';
-        
-        // Save player name for next time
-        localStorage.setItem('playerName', name);
-        
-        joinGameBtn.disabled = true;
-        lobbyError.textContent = 'Forbinder...';
-        lobbyError.style.color = '#888';
-        
-        try {
-            await Network.connect();
-            lobbyError.textContent = 'Joiner spil...';
-            Network.joinGame(name, car);
-        } catch (e) {
-            lobbyError.textContent = 'Kunne ikke forbinde til server';
-            lobbyError.style.color = '#ff4444';
-            joinGameBtn.disabled = false;
-        }
-    });
-}
-
-if (startMultiplayerBtn) {
-    startMultiplayerBtn.addEventListener('click', () => {
-        // Get host config settings
-        const hostConfig = {
-            ...gameConfig,
-            touchArrest: hostTouchArrest?.checked || false,
-            dropInEnabled: hostDropInEnabled?.checked !== false
-        };
-        Network.startGame(hostConfig);
-    });
-}
 
 // Network callbacks - unified join (no more host vs join distinction)
 Network.setOnJoined((roomCode, playerId, players, isHost) => {
@@ -627,100 +390,32 @@ window.addEventListener('keyup', (e) => {
 });
 
 // Create World
+createSky();
+createDistantCityscape();
 createGround();
 createBuildings();
+createHotdogStands();
 createTrees();
-createPlayerCar();
+// Spawn the correct starter model immediately
+const starterCar = cars[gameState.selectedCar] || cars.standard;
+createPlayerCar(starterCar.color, starterCar.type || gameState.selectedCar);
+
+// Initialize Level Editor (Press F2 to open)
+initLevelEditor();
 
 export function startGame() {
     DOM.shop.style.display = 'none';
     DOM.gameOver.style.display = 'none';
-    gameState.speed = 0;
-    gameState.money = 0;
-    gameState.heatLevel = 1;
-    
-    // Set health based on selected car
-    const carData = cars[gameState.selectedCar];
-    gameState.health = carData.health || 100;
-    
-    updateHealthUI();
-    gameState.arrested = false;
-    gameState.startTime = Date.now();
-    gameState.lastMoneyCheckTime = Date.now();
-    gameState.lastPoliceSpawnTime = Date.now();
-    
-    gameState.policeCars.forEach(car => scene.remove(car));
-    gameState.policeCars = [];
-    
-    gameState.collectibles.forEach(coin => scene.remove(coin));
-    gameState.collectibles = [];
-    
-    gameState.projectiles.forEach(proj => scene.remove(proj));
-    gameState.projectiles = [];
-    
-    gameState.slowEffect = 0;
-    gameState.slowDuration = 0;
-    
-    // Reset arrest countdown
-    gameState.arrestCountdown = 0;
-    gameState.arrestStartTime = 0;
-    
-    // Reset stats
-    gameState.policeKilled = 0;
-    
-    gameState.sparks.forEach(s => scene.remove(s));
-    gameState.sparks = [];
-    gameState.currentFOV = gameState.baseFOV;
-    camera.fov = gameState.baseFOV;
-    camera.updateProjectionMatrix();
-    
-    // Update car model and color
-    rebuildPlayerCar();
-    
-    // Spawn first police car
-    spawnPoliceCar();
+
+    resetRunState();
 }
 
 // Multiplayer game start (with spawn position)
 export function startMultiplayerGame(spawnPos) {
     DOM.shop.style.display = 'none';
     DOM.gameOver.style.display = 'none';
-    gameState.speed = 0;
-    gameState.money = 0;
-    gameState.heatLevel = 1;
-    
-    const carData = cars[gameState.selectedCar];
-    gameState.health = carData.health || 100;
-    
-    updateHealthUI();
-    gameState.arrested = false;
-    gameState.startTime = Date.now();
-    gameState.lastMoneyCheckTime = Date.now();
-    gameState.lastPoliceSpawnTime = Date.now();
-    
-    gameState.policeCars.forEach(car => scene.remove(car));
-    gameState.policeCars = [];
-    
-    gameState.collectibles.forEach(coin => scene.remove(coin));
-    gameState.collectibles = [];
-    
-    gameState.projectiles.forEach(proj => scene.remove(proj));
-    gameState.projectiles = [];
-    
-    gameState.slowEffect = 0;
-    gameState.slowDuration = 0;
-    gameState.arrestCountdown = 0;
-    gameState.arrestStartTime = 0;
-    gameState.policeKilled = 0;
-    
-    gameState.sparks.forEach(s => scene.remove(s));
-    gameState.sparks = [];
-    gameState.currentFOV = gameState.baseFOV;
-    camera.fov = gameState.baseFOV;
-    camera.updateProjectionMatrix();
-    
-    // Rebuild car with multiplayer color
-    rebuildPlayerCar(gameState.playerColor);
+
+    resetRunState({ multiplayerColor: gameState.playerColor });
     
     // Move to spawn position
     if (playerCar && spawnPos) {
@@ -737,16 +432,141 @@ export function startMultiplayerGame(spawnPos) {
     }
 }
 
+/**
+ * Apply the currently selected car's stats into `gameState`.
+ * This is the canonical place for mapping `cars[selectedCar]` → state fields.
+ */
+function applySelectedCarStats() {
+    const carData = cars[gameState.selectedCar];
+    gameState.health = carData.health || 100;
+    gameState.maxSpeed = carData.maxSpeed;
+    gameState.acceleration = carData.acceleration;
+    gameState.handling = carData.handling || 0.05;
+    console.log(`[START] Car: ${gameState.selectedCar}, maxSpeed: ${gameState.maxSpeed} (${Math.round(gameState.maxSpeed * 3.6)} km/h)`);
+}
+
+function clearSceneList(list) {
+    list.forEach(obj => scene.remove(obj));
+    list.length = 0;
+}
+
+/**
+ * Reset state for a new run (solo or multiplayer).
+ * Keep this small and deterministic because tests depend on it.
+ */
+function resetRunState(opts = {}) {
+    // Bank accumulated money to totalMoney before resetting run
+    if (gameState.money > 0) {
+        gameState.totalMoney = (gameState.totalMoney || 0) + gameState.money;
+        // Save the updated total immediately
+        saveProgress();
+    }
+
+    gameState.speed = 0;
+    gameState.money = 0;
+    gameState.heatLevel = 1;
+
+    applySelectedCarStats();
+
+    updateHealthUI();
+    gameState.arrested = false;
+    gameState.hasStartedMoving = false;
+    gameState.startTime = Date.now();
+    gameState.timerStartTime = 0;
+    gameState.lastMoneyCheckTime = Date.now();
+    gameState.lastPoliceSpawnTime = Date.now();
+
+    clearSceneList(gameState.policeCars);
+    clearSceneList(gameState.collectibles);
+    clearSceneList(gameState.projectiles);
+
+    gameState.slowEffect = 0;
+    gameState.slowDuration = 0;
+
+    // Police engagement gating (no cops until player earns money or vandalizes)
+    gameState.policeEngaged = false;
+    gameState.destructionCount = 0;
+    gameState.hasHitObject = false;
+
+    gameState.arrestCountdown = 0;
+    gameState.arrestStartTime = 0;
+    gameState.policeKilled = 0;
+
+    // Reset Sheriff state for new chase
+    resetSheriffState();
+
+    clearSceneList(gameState.sparks);
+    gameState.currentFOV = gameState.baseFOV;
+    camera.fov = gameState.baseFOV;
+    camera.updateProjectionMatrix();
+
+    // Rebuild vehicle model
+    if (opts.multiplayerColor) {
+        rebuildPlayerCar(opts.multiplayerColor);
+    } else {
+        rebuildPlayerCar();
+    }
+
+    resetCommentary();
+}
+
+// Single stable entrypoint for tests/debug/LLM tooling
+exposeDevtools({ startGame, startMultiplayerGame });
+
 let lastTime = performance.now();
 
+/**
+ * MAIN GAME LOOP - animate()
+ * 
+ * This is the heart of the game, called ~60 times per second.
+ * 
+ * Execution Order:
+ * 1. Calculate delta time (frame-rate independence)
+ * 2. Update player physics and input
+ * 3. Spawn police based on intervals (host only)
+ * 4. Update heat level over time
+ * 5. Update world chunks (loading/unloading)
+ * 6. Update police AI
+ * 7. Update collectibles (coins)
+ * 8. Update projectiles (Tank shots)
+ * 9. Update visual effects (particles, sparks, tire marks)
+ * 10. Update HUD
+ * 11. Broadcast state to multiplayer clients (host only)
+ * 12. Update commentary (if enabled)
+ * 13. Render Three.js scene
+ * 14. Request next animation frame
+ * 
+ * Delta Time:
+ * - Normalized to 60 FPS (1.0 = one frame at 60fps)
+ * - Capped at 2 frames to prevent physics explosions
+ * - Used in all physics calculations for consistency
+ */
 function animate() {
     requestAnimationFrame(animate);
     
     const now = performance.now();
+    // Delta as ratio: 1.0 = one frame at 60fps, capped at 2 frames
     const delta = Math.min((now - lastTime) / 16.67, 2); 
     lastTime = now;
 
-    if (!gameState.arrested) {
+    // Only update game logic if game has started (startTime set)
+    const gameStarted = gameState.startTime > 0;
+    
+    if (!gameState.arrested && gameStarted) {
+        // Engage police once player has earned money OR hit something non-ground OR destroyed something
+        if (!gameState.policeEngaged && ((gameState.money || 0) > 0 || (gameState.hasHitObject === true) || (gameState.destructionCount || 0) > 0)) {
+            gameState.policeEngaged = true;
+            if (!gameState.timerStartTime) {
+                gameState.timerStartTime = Date.now();
+            }
+
+            // Spawn first police immediately on engagement (host only in multiplayer)
+            if (!gameState.isMultiplayer || gameState.isHost) {
+                spawnPoliceCar();
+                gameState.lastPoliceSpawnTime = Date.now();
+            }
+        }
+
         // Player Physics
         updatePlayer(delta, now);
         
@@ -765,7 +585,7 @@ function animate() {
 
         // Spawn Police based on config interval (host only in multiplayer)
         const elapsedSeconds = Math.floor((Date.now() - gameState.startTime) / 1000);
-        const shouldSpawn = (!gameState.isMultiplayer || gameState.isHost) && 
+        const shouldSpawn = gameState.policeEngaged && (!gameState.isMultiplayer || gameState.isHost) && 
             elapsedSeconds > 0 && 
             elapsedSeconds % gameConfig.policeSpawnInterval === 0 && 
             (Date.now() - gameState.lastPoliceSpawnTime) > 500;
@@ -813,6 +633,9 @@ function animate() {
         if (gameState.isMultiplayer) {
             updateOtherPlayersHUD();
         }
+        
+        // Update commentary system
+        updateCommentary();
     }
     
     // Visual FX
@@ -826,7 +649,9 @@ function animate() {
     }
 
     if (gameState.is2DMode) {
-        camera.up.set(0, 0, -1);
+        // Rotated UP vector (0, 0, 1) aligns screen UP with World +Z (Forward)
+        // This ensures Arrow Keys match visual direction (Up arrow = Up on screen)
+        camera.up.set(0, 0, 1);
         camera.position.x = playerCar.position.x;
         camera.position.z = playerCar.position.z;
         camera.position.y = 800;
@@ -883,6 +708,11 @@ setUICallbacks({ triggerDamageEffect, updateHealthUI });
 // Auto-start game if /start path is accessed
 if (autoStart) {
     startGame();
+} else if (autoEditor) {
+    // Auto-open level editor if /editor path is accessed
+    setTimeout(() => {
+        openLevelEditor();
+    }, 500);
 } else {
     // Show game mode selection on page load
     setTimeout(() => {
