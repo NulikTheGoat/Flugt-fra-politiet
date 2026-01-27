@@ -812,10 +812,7 @@ export function updatePlayer(delta, now) {
         // Keep grounded
         playerCar.position.y = 0;
 
-        // Boundaries
-        const boundary = 4000;
-        playerCar.position.x = Math.max(-boundary, Math.min(boundary, playerCar.position.x));
-        playerCar.position.z = Math.max(-boundary, Math.min(boundary, playerCar.position.z));
+        // No boundaries - endless world!
         return;
     }
 
@@ -1176,10 +1173,7 @@ export function updatePlayer(delta, now) {
         });
     }
 
-    // Boundaries
-    const boundary = 4000;
-    playerCar.position.x = Math.max(-boundary, Math.min(boundary, playerCar.position.x));
-    playerCar.position.z = Math.max(-boundary, Math.min(boundary, playerCar.position.z));
+    // No boundaries - endless world!
 }
 
 // ============================================

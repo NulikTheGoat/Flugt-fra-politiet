@@ -230,46 +230,50 @@ export function createDistantCityscape() {
 }
 
 export function createGround() {
-    const groundGeometry = new THREE.PlaneGeometry(10000, 10000);
+    // Larger initial ground - endless system extends it further
+    const groundGeometry = new THREE.PlaneGeometry(15000, 15000);
     const groundMaterial = new THREE.MeshLambertMaterial({ color: 0x444444 });
     const ground = new THREE.Mesh(groundGeometry, groundMaterial);
     ground.rotation.x = -Math.PI / 2;
     ground.receiveShadow = true;
     scene.add(ground);
 
-    // Main Road - Horizontal
-    const roadGeometry = new THREE.BoxGeometry(300, 0.4, 10000);
+    // Main Road - North/South (along Z axis) - LONGER for endless feel
+    const roadGeometry = new THREE.BoxGeometry(300, 0.4, 15000);
     const roadMaterial = new THREE.MeshLambertMaterial({ color: 0x222222 });
     const road = new THREE.Mesh(roadGeometry, roadMaterial);
     road.position.set(0, 0.2, 0);
     road.receiveShadow = true;
     scene.add(road);
 
-    // Main Road - Vertical
-    const roadVertical = new THREE.Mesh(roadGeometry, roadMaterial);
-    roadVertical.rotation.y = Math.PI / 2;
-    roadVertical.position.set(0, 0.2, 0);
-    roadVertical.receiveShadow = true;
-    scene.add(roadVertical);
+    // Main Road - East/West (along X axis)
+    const roadHorizontal = new THREE.Mesh(
+        new THREE.BoxGeometry(15000, 0.4, 300),
+        roadMaterial
+    );
+    roadHorizontal.position.set(0, 0.2, 0);
+    roadHorizontal.receiveShadow = true;
+    scene.add(roadHorizontal);
 
-    // Road markings
+    // Road markings - extend further
     const markingGeometry = new THREE.PlaneGeometry(5, 150);
     const markingMaterial = new THREE.MeshLambertMaterial({ color: 0xffff00 });
     
-    // Horizontal markings
-    for (let i = -2500; i < 2500; i += 300) {
+    // Z-axis markings (along the road)
+    for (let i = -5000; i < 5000; i += 300) {
         const marking = new THREE.Mesh(markingGeometry, markingMaterial);
         marking.rotation.x = -Math.PI / 2;
-        marking.position.set(0, 0.55, i); // Raised to prevent z-fighting
+        marking.position.set(0, 0.55, i);
         marking.receiveShadow = true;
         scene.add(marking);
     }
 
-    // Vertical markings
-    for (let i = -2500; i < 2500; i += 300) {
+    // X-axis markings
+    for (let i = -5000; i < 5000; i += 300) {
         const marking = new THREE.Mesh(markingGeometry, markingMaterial);
         marking.rotation.x = -Math.PI / 2;
-        marking.position.set(i, 0.55, 0); // Raised to prevent z-fighting
+        marking.rotation.z = Math.PI / 2;
+        marking.position.set(i, 0.55, 0);
         marking.receiveShadow = true;
         scene.add(marking);
     }
@@ -1833,4 +1837,212 @@ export function createSingleHotdogStand(x, z) {
     body.add(wheel4);
     
     return body;
+}
+
+// ============================================
+// ENDLESS WORLD SYSTEM - Procedural Generation
+// ============================================
+
+// Track which world regions have been generated
+const generatedRegions = new Set();
+const REGION_SIZE = 1500; // Size of each procedurally generated region
+const RENDER_DISTANCE = 2; // How many regions to keep loaded around player (reduced for better performance)
+const regionObjects = {}; // Store objects per region for cleanup
+
+// Seeded random number generator for consistent world generation
+function seededRandom(seed) {
+    const x = Math.sin(seed) * 10000;
+    return x - Math.floor(x);
+}
+
+// Generate a deterministic seed from region coordinates
+function regionSeed(rx, rz) {
+    return rx * 73856093 + rz * 19349663;
+}
+
+// Generate content for a specific region
+function generateRegion(rx, rz) {
+    const regionKey = `${rx},${rz}`;
+    if (generatedRegions.has(regionKey)) return;
+    
+    generatedRegions.add(regionKey);
+    regionObjects[regionKey] = [];
+    
+    const seed = regionSeed(rx, rz);
+    const baseX = rx * REGION_SIZE;
+    const baseZ = rz * REGION_SIZE;
+    
+    // Don't generate buildings in the spawn region (0,0) - that has static buildings
+    const isSpawnRegion = rx >= -1 && rx <= 1 && rz >= -1 && rz <= 1;
+    
+    // Check if this region is on a main road axis (roads go infinitely along x=0 and z=0)
+    const isOnMainRoadX = Math.abs(baseX) < 200; // Road along Z axis
+    const isOnMainRoadZ = Math.abs(baseZ) < 200; // Road along X axis
+    
+    // Generate buildings for this region - avoid road areas
+    const numBuildings = isSpawnRegion ? 0 : 4 + Math.floor(seededRandom(seed) * 6);
+    for (let i = 0; i < numBuildings; i++) {
+        const bSeed = seed + i * 1000;
+        let bx = baseX + seededRandom(bSeed) * REGION_SIZE - REGION_SIZE/2;
+        let bz = baseZ + seededRandom(bSeed + 1) * REGION_SIZE - REGION_SIZE/2;
+        
+        // Avoid main roads - push buildings away from road center
+        if (Math.abs(bx) < 250) {
+            bx = bx < 0 ? bx - 250 : bx + 250;
+        }
+        if (Math.abs(bz) < 250) {
+            bz = bz < 0 ? bz - 250 : bz + 250;
+        }
+        
+        const width = 80 + seededRandom(bSeed + 2) * 60;
+        const depth = 60 + seededRandom(bSeed + 3) * 50;
+        const height = 100 + seededRandom(bSeed + 4) * 150;
+        const typeIndex = Math.floor(seededRandom(bSeed + 5) * Object.keys(BUILDING_TYPES).length);
+        const type = Object.values(BUILDING_TYPES)[typeIndex];
+        
+        try {
+            const building = createSingleBuilding(bx, bz, width, depth, height, type);
+            scene.add(building);
+            regionObjects[regionKey].push(building);
+        } catch(e) { /* skip failed buildings */ }
+    }
+    
+    // Generate trees for this region
+    const numTrees = 3 + Math.floor(seededRandom(seed + 500) * 5);
+    for (let i = 0; i < numTrees; i++) {
+        const tSeed = seed + 500 + i * 100;
+        let tx = baseX + seededRandom(tSeed) * REGION_SIZE - REGION_SIZE/2;
+        let tz = baseZ + seededRandom(tSeed + 1) * REGION_SIZE - REGION_SIZE/2;
+        
+        // Avoid main roads - push trees away
+        if (Math.abs(tx) < 200) {
+            tx = tx < 0 ? tx - 200 : tx + 200;
+        }
+        if (Math.abs(tz) < 200) {
+            tz = tz < 0 ? tz - 200 : tz + 200;
+        }
+        
+        try {
+            const tree = createSingleTree(tx, tz);
+            scene.add(tree);
+            regionObjects[regionKey].push(tree);
+        } catch(e) { /* skip failed trees */ }
+    }
+    
+    // Generate ground for ALL regions beyond spawn
+    if (Math.abs(rx) > 1 || Math.abs(rz) > 1) {
+        const groundPatch = new THREE.Mesh(
+            new THREE.PlaneGeometry(REGION_SIZE, REGION_SIZE),
+            new THREE.MeshLambertMaterial({ color: 0x3a5a3a }) // Grassy color
+        );
+        groundPatch.rotation.x = -Math.PI / 2;
+        groundPatch.position.set(baseX, -0.1, baseZ);
+        groundPatch.receiveShadow = true;
+        scene.add(groundPatch);
+        regionObjects[regionKey].push(groundPatch);
+    }
+    
+    // ALWAYS generate roads along main axes - infinite roads!
+    // Road along Z-axis (at x=0) - continues infinitely north/south
+    if (Math.abs(rx) === 0) {
+        const roadPatchZ = new THREE.Mesh(
+            new THREE.BoxGeometry(300, 0.5, REGION_SIZE + 10),
+            new THREE.MeshLambertMaterial({ color: 0x222222 })
+        );
+        roadPatchZ.position.set(0, 0.2, baseZ);
+        roadPatchZ.receiveShadow = true;
+        scene.add(roadPatchZ);
+        regionObjects[regionKey].push(roadPatchZ);
+        
+        // Road markings (center line)
+        const markingsZ = new THREE.Mesh(
+            new THREE.BoxGeometry(4, 0.6, REGION_SIZE),
+            new THREE.MeshBasicMaterial({ color: 0xffff00 })
+        );
+        markingsZ.position.set(0, 0.3, baseZ);
+        scene.add(markingsZ);
+        regionObjects[regionKey].push(markingsZ);
+    }
+    
+    // Road along X-axis (at z=0) - continues infinitely east/west
+    if (Math.abs(rz) === 0) {
+        const roadPatchX = new THREE.Mesh(
+            new THREE.BoxGeometry(REGION_SIZE + 10, 0.5, 300),
+            new THREE.MeshLambertMaterial({ color: 0x222222 })
+        );
+        roadPatchX.position.set(baseX, 0.2, 0);
+        roadPatchX.receiveShadow = true;
+        scene.add(roadPatchX);
+        regionObjects[regionKey].push(roadPatchX);
+        
+        // Road markings (center line)
+        const markingsX = new THREE.Mesh(
+            new THREE.BoxGeometry(REGION_SIZE, 0.6, 4),
+            new THREE.MeshBasicMaterial({ color: 0xffff00 })
+        );
+        markingsX.position.set(baseX, 0.3, 0);
+        scene.add(markingsX);
+        regionObjects[regionKey].push(markingsX);
+    }
+}
+
+// Remove a region's objects from the scene
+function unloadRegion(rx, rz) {
+    const regionKey = `${rx},${rz}`;
+    if (!regionObjects[regionKey]) return;
+    
+    regionObjects[regionKey].forEach(obj => {
+        scene.remove(obj);
+        // Clean up geometries and materials
+        if (obj.geometry) obj.geometry.dispose();
+        if (obj.material) {
+            if (Array.isArray(obj.material)) {
+                obj.material.forEach(m => m.dispose());
+            } else {
+                obj.material.dispose();
+            }
+        }
+        // Recursively clean children
+        obj.traverse(child => {
+            if (child.geometry) child.geometry.dispose();
+            if (child.material) {
+                if (Array.isArray(child.material)) {
+                    child.material.forEach(m => m.dispose());
+                } else {
+                    child.material.dispose();
+                }
+            }
+        });
+    });
+    
+    delete regionObjects[regionKey];
+    generatedRegions.delete(regionKey);
+}
+
+// Update endless world based on player position
+export function updateEndlessWorld(playerPosition) {
+    if (!playerPosition) return;
+    
+    const playerRX = Math.floor(playerPosition.x / REGION_SIZE);
+    const playerRZ = Math.floor(playerPosition.z / REGION_SIZE);
+    
+    // Generate regions around player
+    for (let dx = -RENDER_DISTANCE; dx <= RENDER_DISTANCE; dx++) {
+        for (let dz = -RENDER_DISTANCE; dz <= RENDER_DISTANCE; dz++) {
+            generateRegion(playerRX + dx, playerRZ + dz);
+        }
+    }
+    
+    // Unload distant regions more aggressively
+    const regionsToUnload = [];
+    for (const key of generatedRegions) {
+        const [rx, rz] = key.split(',').map(Number);
+        // Unload if more than RENDER_DISTANCE away (was +1, now exact)
+        if (Math.abs(rx - playerRX) > RENDER_DISTANCE || 
+            Math.abs(rz - playerRZ) > RENDER_DISTANCE) {
+            regionsToUnload.push([rx, rz]);
+        }
+    }
+    
+    regionsToUnload.forEach(([rx, rz]) => unloadRegion(rx, rz));
 }
