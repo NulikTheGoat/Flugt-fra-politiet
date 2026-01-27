@@ -3,6 +3,7 @@ import { scene, camera } from './core.js';
 import { cars } from './constants.js';
 import { sharedGeometries, sharedMaterials } from './assets.js';
 import { createSmoke, createSpark, createTireMark, updateTireMarks, createWheelDust, updateDustParticles } from './particles.js';
+import { playSfx } from './sfx.js';
 
 let uiCallbacks = {
     triggerDamageEffect: () => {},
@@ -664,6 +665,7 @@ export function takeDamage(amount) {
     
     uiCallbacks.triggerDamageEffect();
     uiCallbacks.updateHealthUI();
+    playSfx('damage');
 
     if (gameState.health <= 0) {
         gameState.health = 0;
@@ -1142,8 +1144,38 @@ export function updatePlayer(delta, now) {
         playerCar.position.y = 3 + Math.sin(t) * 1.5;
         playerCar.rotation.y += delta * 0.001;
     } else {
-        // Keep grounded for others
-        playerCar.position.y = 0;
+        // === AIRBORNE PHYSICS ===
+        // Handle jumping from ramps
+        if (gameState.airborne && gameState.verticalVelocity !== undefined) {
+            // Apply gravity
+            const gravity = 50; // Gravity strength
+            gameState.verticalVelocity -= gravity * delta;
+            
+            // Update Y position
+            playerCar.position.y += gameState.verticalVelocity * delta;
+            
+            // Tilt car based on vertical velocity (nose up when rising, down when falling)
+            const tiltAmount = Math.min(Math.max(gameState.verticalVelocity * 0.01, -0.3), 0.3);
+            playerCar.rotation.x = -tiltAmount;
+            
+            // Check if landed
+            if (playerCar.position.y <= 0) {
+                playerCar.position.y = 0;
+                playerCar.rotation.x = 0;
+                gameState.airborne = false;
+                gameState.verticalVelocity = 0;
+                
+                // Landing impact - small speed reduction and screen shake effect
+                const landingSpeed = Math.abs(gameState.verticalVelocity);
+                if (landingSpeed > 15) {
+                    gameState.speed *= 0.9; // Slight slowdown on hard landing
+                }
+            }
+        } else {
+            // Keep grounded for others
+            playerCar.position.y = 0;
+            playerCar.rotation.x = 0;
+        }
     }
 
     // === IMPROVED SUSPENSION SIMULATION ===

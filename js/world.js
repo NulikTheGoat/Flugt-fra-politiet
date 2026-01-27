@@ -7,6 +7,11 @@ import { createSmoke, createSpark } from './particles.js';
 import { addMoney, showFloatingMoney } from './ui.js';
 import { logEvent, EVENTS } from './commentary.js';
 import { BUILDING_TYPES, cars } from './constants.js';
+import { 
+    generateBuildingDebrisPlan, 
+    generateTreeDebrisPlan,
+    DEBRIS_MATERIALS 
+} from './debrisLogic.js';
 
 export function createSky() {
     // Gradient Sky
@@ -930,6 +935,131 @@ export function updateBuildingChunks(delta) {
             }
         }
     }
+
+    // Collisions with standing building chunks (Police cars)
+    if (gameState.policeCars && gameState.policeCars.length > 0) {
+        gameState.policeCars.forEach(policeCar => {
+            if (!policeCar || policeCar.userData?.dead) return;
+
+            const pPos = policeCar.position;
+            const pSpeed = Math.abs(policeCar.userData?.speed || 0);
+            const pAngle = policeCar.rotation.y || 0;
+            const pRadius = 15;
+
+            const pX = Math.floor(pPos.x / gridSize);
+            const pZ = Math.floor(pPos.z / gridSize);
+
+            for (let x = pX - 1; x <= pX + 1; x++) {
+                for (let z = pZ - 1; z <= pZ + 1; z++) {
+                    const key = `${x},${z}`;
+                    const chunks = gameState.chunkGrid[key];
+                    if (!chunks) continue;
+
+                    for (let i = 0; i < chunks.length; i++) {
+                        const chunk = chunks[i];
+                        if (chunk.userData.isHit) continue;
+
+                        if (Math.abs(chunk.position.x - pPos.x) < 40 && Math.abs(chunk.position.z - pPos.z) < 40) {
+                            const dx = chunk.position.x - pPos.x;
+                            const dz = chunk.position.z - pPos.z;
+                            const distSq = dx * dx + dz * dz;
+                            const collisionDist = (pRadius + chunk.userData.width / 2 + 5);
+
+                            if (distSq < collisionDist * collisionDist) {
+                                if (Math.abs(chunk.position.y - pPos.y) < (chunk.userData.height / 2 + 10)) {
+                                    const dist = Math.sqrt(distSq) || 1;
+                                    const overlap = collisionDist - dist;
+                                    if (overlap > 0) {
+                                        pPos.x -= (dx / dist) * overlap * 1.05;
+                                        pPos.z -= (dz / dist) * overlap * 1.05;
+                                    }
+
+                                    const angleToChunk = Math.atan2(dx, dz);
+
+                                    if (chunk.userData.isTree) {
+                                        chunk.userData.health--;
+
+                                        if (chunk.userData.health <= 0 || pSpeed > 25) {
+                                            chunk.userData.isHit = true;
+                                            chunk.matrixAutoUpdate = true;
+                                            gameState.activeChunks.push(chunk);
+
+                                            chunk.userData.velocity.set(
+                                                Math.sin(pAngle) * pSpeed * 0.3,
+                                                2 + Math.random() * 3,
+                                                Math.cos(pAngle) * pSpeed * 0.3
+                                            );
+
+                                            chunk.userData.rotVelocity.set(
+                                                (Math.random() - 0.5) * 0.3,
+                                                0,
+                                                (Math.random() - 0.5) * 0.3
+                                            );
+
+                                            if (chunk.userData.linkedFoliage) {
+                                                const foliage = chunk.userData.linkedFoliage;
+                                                foliage.userData.isHit = true;
+                                                foliage.matrixAutoUpdate = true;
+                                                gameState.activeChunks.push(foliage);
+                                                foliage.userData.velocity = chunk.userData.velocity.clone();
+                                                foliage.userData.velocity.y += 3;
+                                                foliage.userData.rotVelocity = new THREE.Vector3(
+                                                    (Math.random() - 0.5) * 0.5,
+                                                    (Math.random() - 0.5) * 0.3,
+                                                    (Math.random() - 0.5) * 0.5
+                                                );
+                                            }
+
+                                            createTreeDebris(chunk.position, pSpeed, { isPolice: true, impactAngle: pAngle });
+                                            policeCar.userData.speed *= 0.7;
+                                        }
+                                    } else if (chunk.userData.isHotdogStand) {
+                                        chunk.userData.isHit = true;
+                                        chunk.matrixAutoUpdate = true;
+                                        gameState.activeChunks.push(chunk);
+
+                                        chunk.userData.velocity.set(
+                                            Math.sin(pAngle) * (pSpeed * 0.3 + 5),
+                                            5 + Math.random() * 5,
+                                            Math.cos(pAngle) * (pSpeed * 0.3 + 5)
+                                        );
+
+                                        chunk.userData.rotVelocity.set(
+                                            (Math.random() - 0.5) * 0.2,
+                                            (Math.random() - 0.5) * 0.2,
+                                            (Math.random() - 0.5) * 0.2
+                                        );
+
+                                        createTreeDebris(chunk.position, pSpeed, { isPolice: true, impactAngle: pAngle });
+                                        policeCar.userData.speed *= 0.7;
+                                    } else {
+                                        chunk.userData.isHit = true;
+                                        chunk.matrixAutoUpdate = true;
+                                        gameState.activeChunks.push(chunk);
+
+                                        chunk.userData.velocity.set(
+                                            Math.sin(pAngle) * pSpeed * 0.2 + (Math.sin(angleToChunk) * 5),
+                                            Math.abs(pSpeed) * 0.1 + 5 + Math.random() * 5,
+                                            Math.cos(pAngle) * pSpeed * 0.2 + (Math.cos(angleToChunk) * 5)
+                                        );
+
+                                        chunk.userData.rotVelocity.set(
+                                            (Math.random() - 0.5) * 0.5,
+                                            (Math.random() - 0.5) * 0.5,
+                                            (Math.random() - 0.5) * 0.5
+                                        );
+
+                                        createBuildingDebris(chunk.position, chunk.material.color, pSpeed, { isPolice: true, impactAngle: pAngle });
+                                        policeCar.userData.speed *= 0.6;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        });
+    }
     
     // Collision with fallen debris (no damage, solid push, shatter once)
     if (gameState.fallenDebris && gameState.fallenDebris.length > 0) {
@@ -1044,25 +1174,50 @@ export function updateBuildingChunks(delta) {
     }
 }
 
-// Create tree debris (wood chunks and leaves)
-function createTreeDebris(position, carSpeed) {
-    const impactX = Math.sin(playerCar?.rotation.y || 0);
-    const impactZ = Math.cos(playerCar?.rotation.y || 0);
+/**
+ * Create tree debris (wood chunks and leaves)
+ * Uses unified debris physics for consistency
+ * 
+ * @param {THREE.Vector3|Object} position - Impact position
+ * @param {number} carSpeed - Speed at impact
+ * @param {Object} options - Optional settings
+ * @param {boolean} options.isPolice - Whether this is a police collision
+ * @param {number} options.impactAngle - Override impact angle (defaults to playerCar rotation)
+ * @param {number} options.vehicleMass - Vehicle mass multiplier
+ */
+function createTreeDebris(position, carSpeed, options = {}) {
+    const {
+        isPolice = false,
+        impactAngle = playerCar?.rotation.y || 0,
+        vehicleMass = 1.0
+    } = options;
     
-    // Wood splinters
-    const woodMaterial = new THREE.MeshLambertMaterial({ color: 0x5D4037 });
-    for (let i = 0; i < 6; i++) {
+    // Generate debris plan using unified physics
+    const plan = generateTreeDebrisPlan({
+        speed: carSpeed,
+        impactAngle,
+        vehicleMass,
+        isPolice,
+        position: { x: position.x, y: position.y, z: position.z }
+    });
+    
+    // Create wood splinters
+    for (const splinterData of plan.wood) {
         const splinterGeometry = new THREE.BoxGeometry(
-            2 + Math.random() * 3,
-            8 + Math.random() * 15,
-            2 + Math.random() * 3
+            splinterData.size.width,
+            splinterData.size.height,
+            splinterData.size.depth
         );
-        const splinter = new THREE.Mesh(splinterGeometry, woodMaterial.clone());
+        const splinterMaterial = new THREE.MeshLambertMaterial({ 
+            color: splinterData.color 
+        });
+        const splinter = new THREE.Mesh(splinterGeometry, splinterMaterial);
         
-        splinter.position.copy(position);
-        splinter.position.y += Math.random() * 30;
-        splinter.position.x += (Math.random() - 0.5) * 10;
-        splinter.position.z += (Math.random() - 0.5) * 10;
+        splinter.position.set(
+            splinterData.position.x,
+            splinterData.position.y,
+            splinterData.position.z
+        );
         
         splinter.rotation.set(
             Math.random() * Math.PI,
@@ -1073,20 +1228,20 @@ function createTreeDebris(position, carSpeed) {
         splinter.userData = {
             isSmallDebris: true,
             velocity: new THREE.Vector3(
-                impactX * carSpeed * 0.3 + (Math.random() - 0.5) * 10,
-                5 + Math.random() * 8,
-                impactZ * carSpeed * 0.3 + (Math.random() - 0.5) * 10
+                splinterData.velocity.x,
+                splinterData.velocity.y,
+                splinterData.velocity.z
             ),
             rotVelocity: new THREE.Vector3(
-                (Math.random() - 0.5) * 0.6,
-                (Math.random() - 0.5) * 0.6,
-                (Math.random() - 0.5) * 0.6
+                splinterData.rotation.x,
+                splinterData.rotation.y,
+                splinterData.rotation.z
             ),
-            width: 3,
-            height: 10,
-            depth: 3,
-            lifetime: 300,
-            gravity: 0.3
+            width: splinterData.size.width,
+            height: splinterData.size.height,
+            depth: splinterData.size.depth,
+            lifetime: splinterData.lifetime,
+            gravity: splinterData.gravity
         };
         
         scene.add(splinter);
@@ -1095,38 +1250,41 @@ function createTreeDebris(position, carSpeed) {
         gameState.smallDebris.push(splinter);
     }
     
-    // Leaves
-    const leafMaterial = new THREE.MeshLambertMaterial({ color: 0x2E7D32 });
-    for (let i = 0; i < 12; i++) {
+    // Create leaves
+    for (const leafData of plan.leaves) {
         const leafGeometry = new THREE.BoxGeometry(
-            3 + Math.random() * 4,
-            1,
-            3 + Math.random() * 4
+            leafData.size.width,
+            leafData.size.height,
+            leafData.size.depth
         );
-        const leaf = new THREE.Mesh(leafGeometry, leafMaterial.clone());
+        const leafMaterial = new THREE.MeshLambertMaterial({ 
+            color: leafData.color 
+        });
+        const leaf = new THREE.Mesh(leafGeometry, leafMaterial);
         
-        leaf.position.copy(position);
-        leaf.position.y += 40 + Math.random() * 40;
-        leaf.position.x += (Math.random() - 0.5) * 30;
-        leaf.position.z += (Math.random() - 0.5) * 30;
+        leaf.position.set(
+            leafData.position.x,
+            leafData.position.y,
+            leafData.position.z
+        );
         
         leaf.userData = {
             isSmallDebris: true,
             velocity: new THREE.Vector3(
-                (Math.random() - 0.5) * 8,
-                2 + Math.random() * 4,
-                (Math.random() - 0.5) * 8
+                leafData.velocity.x,
+                leafData.velocity.y,
+                leafData.velocity.z
             ),
             rotVelocity: new THREE.Vector3(
-                (Math.random() - 0.5) * 0.4,
-                (Math.random() - 0.5) * 0.4,
-                (Math.random() - 0.5) * 0.4
+                leafData.rotation.x,
+                leafData.rotation.y,
+                leafData.rotation.z
             ),
-            width: 4,
-            height: 1,
-            depth: 4,
-            lifetime: 400,
-            gravity: 0.08 // Leaves float down slowly
+            width: leafData.size.width,
+            height: leafData.size.height,
+            depth: leafData.size.depth,
+            lifetime: leafData.lifetime,
+            gravity: leafData.gravity
         };
         
         scene.add(leaf);
@@ -1136,33 +1294,66 @@ function createTreeDebris(position, carSpeed) {
     }
 }
 
-// Create building debris (concrete chunks, glass shards, dust particles)
-export function createBuildingDebris(position, buildingColor, carSpeed) {
-    const impactX = Math.sin(playerCar?.rotation.y || 0);
-    const impactZ = Math.cos(playerCar?.rotation.y || 0);
+/**
+ * Create building debris (concrete chunks, glass shards, dust particles)
+ * Uses unified debris physics for consistency between player and police
+ * 
+ * @param {THREE.Vector3|Object} position - Impact position
+ * @param {THREE.Color|number} buildingColor - Color of the building material
+ * @param {number} carSpeed - Speed at impact
+ * @param {Object} options - Optional settings
+ * @param {boolean} options.isPolice - Whether this is a police collision
+ * @param {number} options.impactAngle - Override impact angle (defaults to playerCar rotation)
+ * @param {number} options.vehicleMass - Vehicle mass multiplier
+ * @param {boolean} options.hasWindows - Whether building has windows (default true)
+ */
+export function createBuildingDebris(position, buildingColor, carSpeed, options = {}) {
+    const {
+        isPolice = false,
+        impactAngle = playerCar?.rotation.y || 0,
+        vehicleMass = 1.0,
+        hasWindows = true
+    } = options;
     
-    // Number of debris based on speed
-    const numChunks = Math.min(15, 4 + Math.floor(carSpeed / 5));
+    // Convert color to hex if it's a THREE.Color
+    let colorHex = buildingColor;
+    if (buildingColor && buildingColor.getHex) {
+        colorHex = buildingColor.getHex();
+    } else if (!buildingColor) {
+        colorHex = DEBRIS_MATERIALS.concrete.color;
+    }
     
-    // Concrete/brick chunks
-    const chunkColor = buildingColor || new THREE.Color(0x8D6E63);
-    for (let i = 0; i < numChunks; i++) {
-        const size = 1 + Math.random() * 4;
+    // Generate debris plan using unified physics
+    const plan = generateBuildingDebrisPlan({
+        speed: carSpeed,
+        impactAngle,
+        vehicleMass,
+        isPolice,
+        position: { x: position.x, y: position.y, z: position.z },
+        buildingColor: colorHex,
+        hasWindows
+    });
+    
+    // Create concrete chunks
+    const baseColor = new THREE.Color(colorHex);
+    for (const chunkData of plan.concrete) {
         const chunkGeometry = new THREE.BoxGeometry(
-            size * (0.5 + Math.random()),
-            size * (0.5 + Math.random()),
-            size * (0.5 + Math.random())
+            chunkData.size.width,
+            chunkData.size.height,
+            chunkData.size.depth
         );
-        // Slightly vary the color for each chunk
-        const variedColor = chunkColor.clone();
+        
+        // Vary color slightly for realism
+        const variedColor = baseColor.clone();
         variedColor.offsetHSL(0, (Math.random() - 0.5) * 0.1, (Math.random() - 0.5) * 0.2);
         const chunkMaterial = new THREE.MeshLambertMaterial({ color: variedColor });
         const chunk = new THREE.Mesh(chunkGeometry, chunkMaterial);
         
-        chunk.position.copy(position);
-        chunk.position.y += Math.random() * 20;
-        chunk.position.x += (Math.random() - 0.5) * 15;
-        chunk.position.z += (Math.random() - 0.5) * 15;
+        chunk.position.set(
+            chunkData.position.x,
+            chunkData.position.y,
+            chunkData.position.z
+        );
         
         chunk.rotation.set(
             Math.random() * Math.PI,
@@ -1170,27 +1361,23 @@ export function createBuildingDebris(position, buildingColor, carSpeed) {
             Math.random() * Math.PI
         );
         
-        // Spread pattern based on impact
-        const spreadAngle = Math.random() * Math.PI * 2;
-        const spreadForce = 3 + Math.random() * carSpeed * 0.4;
-        
         chunk.userData = {
             isSmallDebris: true,
             velocity: new THREE.Vector3(
-                impactX * carSpeed * 0.25 + Math.sin(spreadAngle) * spreadForce,
-                3 + Math.random() * (carSpeed * 0.3),
-                impactZ * carSpeed * 0.25 + Math.cos(spreadAngle) * spreadForce
+                chunkData.velocity.x,
+                chunkData.velocity.y,
+                chunkData.velocity.z
             ),
             rotVelocity: new THREE.Vector3(
-                (Math.random() - 0.5) * 0.8,
-                (Math.random() - 0.5) * 0.8,
-                (Math.random() - 0.5) * 0.8
+                chunkData.rotation.x,
+                chunkData.rotation.y,
+                chunkData.rotation.z
             ),
-            width: size,
-            height: size,
-            depth: size,
-            lifetime: 250 + Math.floor(Math.random() * 150),
-            gravity: 0.35
+            width: chunkData.size.width,
+            height: chunkData.size.height,
+            depth: chunkData.size.depth,
+            lifetime: chunkData.lifetime,
+            gravity: chunkData.gravity
         };
         
         scene.add(chunk);
@@ -1199,25 +1386,25 @@ export function createBuildingDebris(position, buildingColor, carSpeed) {
         gameState.smallDebris.push(chunk);
     }
     
-    // Glass shards (if building has windows)
-    const numShards = Math.min(8, 2 + Math.floor(carSpeed / 8));
-    for (let i = 0; i < numShards; i++) {
+    // Create glass shards
+    for (const shardData of plan.glass) {
         const shardGeometry = new THREE.BoxGeometry(
-            0.5 + Math.random() * 2,
-            0.2,
-            0.5 + Math.random() * 2
+            shardData.size.width,
+            shardData.size.height,
+            shardData.size.depth
         );
         const shardMaterial = new THREE.MeshBasicMaterial({ 
-            color: Math.random() > 0.3 ? 0x90CAF9 : 0xE3F2FD,
-            transparent: true,
-            opacity: 0.7
+            color: shardData.color,
+            transparent: shardData.transparent,
+            opacity: shardData.opacity
         });
         const shard = new THREE.Mesh(shardGeometry, shardMaterial);
         
-        shard.position.copy(position);
-        shard.position.y += 10 + Math.random() * 30;
-        shard.position.x += (Math.random() - 0.5) * 20;
-        shard.position.z += (Math.random() - 0.5) * 20;
+        shard.position.set(
+            shardData.position.x,
+            shardData.position.y,
+            shardData.position.z
+        );
         
         shard.rotation.set(
             Math.random() * Math.PI,
@@ -1228,20 +1415,20 @@ export function createBuildingDebris(position, buildingColor, carSpeed) {
         shard.userData = {
             isSmallDebris: true,
             velocity: new THREE.Vector3(
-                (Math.random() - 0.5) * 12,
-                2 + Math.random() * 6,
-                (Math.random() - 0.5) * 12
+                shardData.velocity.x,
+                shardData.velocity.y,
+                shardData.velocity.z
             ),
             rotVelocity: new THREE.Vector3(
-                (Math.random() - 0.5) * 1.2,
-                (Math.random() - 0.5) * 1.2,
-                (Math.random() - 0.5) * 1.2
+                shardData.rotation.x,
+                shardData.rotation.y,
+                shardData.rotation.z
             ),
-            width: 1.5,
-            height: 0.2,
-            depth: 1.5,
-            lifetime: 180 + Math.floor(Math.random() * 100),
-            gravity: 0.25
+            width: shardData.size.width,
+            height: shardData.size.height,
+            depth: shardData.size.depth,
+            lifetime: shardData.lifetime,
+            gravity: shardData.gravity
         };
         
         scene.add(shard);
@@ -1250,36 +1437,38 @@ export function createBuildingDebris(position, buildingColor, carSpeed) {
         gameState.smallDebris.push(shard);
     }
     
-    // Dust particles
-    const numDust = Math.min(10, 3 + Math.floor(carSpeed / 6));
-    for (let i = 0; i < numDust; i++) {
-        const dustGeometry = new THREE.SphereGeometry(1 + Math.random() * 2, 6, 6);
+    // Create dust particles
+    for (const dustData of plan.dust) {
+        const dustGeometry = new THREE.SphereGeometry(
+            dustData.size.width / 2, 6, 6
+        );
         const dustMaterial = new THREE.MeshBasicMaterial({ 
-            color: 0x9E9E9E,
-            transparent: true,
-            opacity: 0.4 + Math.random() * 0.3
+            color: dustData.color,
+            transparent: dustData.transparent,
+            opacity: dustData.opacity
         });
         const dust = new THREE.Mesh(dustGeometry, dustMaterial);
         
-        dust.position.copy(position);
-        dust.position.y += Math.random() * 15;
-        dust.position.x += (Math.random() - 0.5) * 10;
-        dust.position.z += (Math.random() - 0.5) * 10;
+        dust.position.set(
+            dustData.position.x,
+            dustData.position.y,
+            dustData.position.z
+        );
         
         dust.userData = {
             isSmallDebris: true,
             isDust: true,
             velocity: new THREE.Vector3(
-                impactX * carSpeed * 0.15 + (Math.random() - 0.5) * 5,
-                1 + Math.random() * 3,
-                impactZ * carSpeed * 0.15 + (Math.random() - 0.5) * 5
+                dustData.velocity.x,
+                dustData.velocity.y,
+                dustData.velocity.z
             ),
             rotVelocity: new THREE.Vector3(0, 0, 0),
-            width: 2,
-            height: 2,
-            depth: 2,
-            lifetime: 120 + Math.floor(Math.random() * 80),
-            gravity: -0.02 // Dust rises slightly then dissipates
+            width: dustData.size.width,
+            height: dustData.size.height,
+            depth: dustData.size.depth,
+            lifetime: dustData.lifetime,
+            gravity: dustData.gravity
         };
         
         scene.add(dust);
@@ -1289,7 +1478,7 @@ export function createBuildingDebris(position, buildingColor, carSpeed) {
     }
     
     // Create sparks on impact
-    createDebrisSparks(position, Math.min(6, Math.floor(carSpeed / 5)));
+    createDebrisSparks(position, plan.sparkCount);
 }
 
 // Shatter fallen debris into smaller pieces
@@ -1942,30 +2131,85 @@ function generateRegion(rx, rz) {
         regionObjects[regionKey].push(groundPatch);
     }
     
-    // ALWAYS generate roads along main axes - infinite roads!
-    // Road along Z-axis (at x=0) - continues infinitely north/south
-    if (Math.abs(rx) === 0) {
-        const roadPatchZ = new THREE.Mesh(
-            new THREE.BoxGeometry(300, 0.5, REGION_SIZE + 10),
-            new THREE.MeshLambertMaterial({ color: 0x222222 })
-        );
-        roadPatchZ.position.set(0, 0.2, baseZ);
-        roadPatchZ.receiveShadow = true;
-        scene.add(roadPatchZ);
-        regionObjects[regionKey].push(roadPatchZ);
+    // === CURVING ROAD SYSTEM ===
+    // Roads curve based on region seed for variety
+    const roadCurveSeed = regionSeed(rx, rz);
+    const curveDirection = (seededRandom(roadCurveSeed) - 0.5) * 2; // -1 to 1
+    const curveAmount = seededRandom(roadCurveSeed + 1) * 150; // How much it curves
+    const hasCurve = Math.abs(rz) > 2 && seededRandom(roadCurveSeed + 2) > 0.4; // 60% chance of curve after region 2
+    
+    // Generate curving road segments along Z-axis
+    if (Math.abs(rx) === 0 || (Math.abs(rx) === 1 && hasCurve)) {
+        const segmentCount = 10;
+        const segmentLength = REGION_SIZE / segmentCount;
         
-        // Road markings (center line)
-        const markingsZ = new THREE.Mesh(
-            new THREE.BoxGeometry(4, 0.6, REGION_SIZE),
-            new THREE.MeshBasicMaterial({ color: 0xffff00 })
-        );
-        markingsZ.position.set(0, 0.3, baseZ);
-        scene.add(markingsZ);
-        regionObjects[regionKey].push(markingsZ);
+        for (let i = 0; i < segmentCount; i++) {
+            // Calculate curve offset using sine wave
+            const t = i / segmentCount;
+            let curveOffset = 0;
+            
+            if (hasCurve && Math.abs(rx) === 0) {
+                // Smooth S-curve or single curve
+                curveOffset = Math.sin(t * Math.PI) * curveAmount * curveDirection;
+            }
+            
+            const segmentZ = baseZ - REGION_SIZE/2 + i * segmentLength + segmentLength/2;
+            const segmentX = curveOffset;
+            
+            // Road segment
+            const roadSegment = new THREE.Mesh(
+                new THREE.BoxGeometry(300, 0.5, segmentLength + 5),
+                new THREE.MeshLambertMaterial({ color: 0x222222 })
+            );
+            roadSegment.position.set(segmentX, 0.2, segmentZ);
+            
+            // Rotate segment to follow curve
+            if (i > 0 && hasCurve) {
+                const prevT = (i - 1) / segmentCount;
+                const prevOffset = Math.sin(prevT * Math.PI) * curveAmount * curveDirection;
+                const angle = Math.atan2(curveOffset - prevOffset, segmentLength);
+                roadSegment.rotation.y = angle;
+            }
+            
+            roadSegment.receiveShadow = true;
+            scene.add(roadSegment);
+            regionObjects[regionKey].push(roadSegment);
+            
+            // Center line marking (dashed effect)
+            if (i % 2 === 0) {
+                const marking = new THREE.Mesh(
+                    new THREE.BoxGeometry(4, 0.6, segmentLength * 0.6),
+                    new THREE.MeshBasicMaterial({ color: 0xffff00 })
+                );
+                marking.position.set(segmentX, 0.35, segmentZ);
+                marking.rotation.y = roadSegment.rotation.y;
+                scene.add(marking);
+                regionObjects[regionKey].push(marking);
+            }
+            
+            // Edge lines (white)
+            const leftEdge = new THREE.Mesh(
+                new THREE.BoxGeometry(3, 0.55, segmentLength),
+                new THREE.MeshBasicMaterial({ color: 0xffffff })
+            );
+            leftEdge.position.set(segmentX - 140, 0.32, segmentZ);
+            leftEdge.rotation.y = roadSegment.rotation.y;
+            scene.add(leftEdge);
+            regionObjects[regionKey].push(leftEdge);
+            
+            const rightEdge = new THREE.Mesh(
+                new THREE.BoxGeometry(3, 0.55, segmentLength),
+                new THREE.MeshBasicMaterial({ color: 0xffffff })
+            );
+            rightEdge.position.set(segmentX + 140, 0.32, segmentZ);
+            rightEdge.rotation.y = roadSegment.rotation.y;
+            scene.add(rightEdge);
+            regionObjects[regionKey].push(rightEdge);
+        }
     }
     
     // Road along X-axis (at z=0) - continues infinitely east/west
-    if (Math.abs(rz) === 0) {
+    if (Math.abs(rz) === 0 && Math.abs(rx) > 0) {
         const roadPatchX = new THREE.Mesh(
             new THREE.BoxGeometry(REGION_SIZE + 10, 0.5, 300),
             new THREE.MeshLambertMaterial({ color: 0x222222 })
@@ -1975,14 +2219,33 @@ function generateRegion(rx, rz) {
         scene.add(roadPatchX);
         regionObjects[regionKey].push(roadPatchX);
         
-        // Road markings (center line)
-        const markingsX = new THREE.Mesh(
-            new THREE.BoxGeometry(REGION_SIZE, 0.6, 4),
-            new THREE.MeshBasicMaterial({ color: 0xffff00 })
+        // Road markings (center line - dashed)
+        for (let i = 0; i < 5; i++) {
+            const markingsX = new THREE.Mesh(
+                new THREE.BoxGeometry(REGION_SIZE / 6, 0.6, 4),
+                new THREE.MeshBasicMaterial({ color: 0xffff00 })
+            );
+            markingsX.position.set(baseX - REGION_SIZE/2 + (i + 0.5) * REGION_SIZE/5, 0.35, 0);
+            scene.add(markingsX);
+            regionObjects[regionKey].push(markingsX);
+        }
+        
+        // Edge lines
+        const edgeLeft = new THREE.Mesh(
+            new THREE.BoxGeometry(REGION_SIZE, 0.55, 3),
+            new THREE.MeshBasicMaterial({ color: 0xffffff })
         );
-        markingsX.position.set(baseX, 0.3, 0);
-        scene.add(markingsX);
-        regionObjects[regionKey].push(markingsX);
+        edgeLeft.position.set(baseX, 0.32, -140);
+        scene.add(edgeLeft);
+        regionObjects[regionKey].push(edgeLeft);
+        
+        const edgeRight = new THREE.Mesh(
+            new THREE.BoxGeometry(REGION_SIZE, 0.55, 3),
+            new THREE.MeshBasicMaterial({ color: 0xffffff })
+        );
+        edgeRight.position.set(baseX, 0.32, 140);
+        scene.add(edgeRight);
+        regionObjects[regionKey].push(edgeRight);
     }
 }
 

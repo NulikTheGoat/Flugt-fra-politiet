@@ -79,6 +79,74 @@ const COMMENTARY_COOLDOWN = 5000; // 5 seconds
 let lastSheriffRequest = 0;
 const SHERIFF_COOLDOWN = 8000; // 8 seconds between commands
 
+// World Director rate limiting
+let lastWorldDirectorRequest = 0;
+const WORLD_DIRECTOR_COOLDOWN = 6000; // 6 seconds - faster updates for more dynamic gameplay
+let directorMemory = []; // Remember recent spawns for continuity
+
+// World Director system prompt - LLM decides what to spawn AND creates scenarios
+const WORLD_DIRECTOR_PROMPT = `Du er en kreativ GAME DIRECTOR for et actionspil. Du skaber dynamiske situationer på vejen.
+
+SVAR KUN MED JSON - ingen anden tekst!
+
+FORMAT:
+{
+  "scenario": "kort beskrivelse af situationen",
+  "objects": [{"type":"TYPE","count":N,"side":"SIDE","moving":BOOL,"speed":N}],
+  "event": "EVENT_TYPE eller null",
+  "mood": "MOOD_TYPE",
+  "director_comment": "kort kommentar til spilleren"
+}
+
+OBJEKTTYPER:
+- roadblock: Politibarrikade
+- cones: Kegler  
+- barrier: Betonbarriere
+- ramp: Hoppelrampe (sjov!)
+- money: Pengesæk (500kr)
+- health: Sundhedspakke
+- oil: Olieplet (glat!)
+- spike: Sømmåtte
+- boost: Speed boost
+- ambulance: Kørende ambulance (moving:true, speed:80-120)
+- truck: Langsom lastbil (moving:true, speed:40-60)
+- sports_car: Hurtig sportsvogn (moving:true, speed:150-200)
+- explosion: Eksplosion på vejen (farlig!)
+- fire: Ild på vejen
+- jackpot: Stor pengepræmie (2000kr)
+- nitro: Super boost (3x fart i 3 sek)
+- shield: Midlertidig usynlighed (5 sek)
+- chaos: Spawner tilfældige objekter
+
+EVENTS (valgfri):
+- convoy: Række af lastbiler
+- race: Sportsvogne kører forbi
+- accident: Ulykke på vejen
+- money_rain: Mange penge falder
+- police_ambush: Ekstra politibiler
+- challenge: Særlig udfordring
+- boss: Stor forhindring
+
+MOODS:
+- intense: Farligt, mange forhindringer
+- rewarding: Mange bonusser
+- chaotic: Blandet og uforudsigeligt
+- calm: Roligt, få objekter
+- dramatic: Store events
+
+REGLER:
+- Vær KREATIV og overraskende
+- Skab SITUATIONER, ikke bare tilfældige objekter
+- Tilpas til spillerens tilstand
+- Ved lav health: giv håb (health, shield)
+- Ved høj fart: skab udfordringer
+- Ved lang overlevelse: belønning eller boss
+- Brug "moving":true for køretøjer med "speed"
+- director_comment skal være sjov/dramatisk på dansk
+
+EKSEMPEL:
+{"scenario":"Lastbilkonvoj blokerer vejen","objects":[{"type":"truck","count":3,"side":"center","moving":true,"speed":50},{"type":"ramp","count":1,"side":"left"}],"event":"convoy","mood":"dramatic","director_comment":"Kan du slippe forbi konvojen?!"}`;
+
 // Sheriff system prompt
 const SHERIFF_SYSTEM_PROMPT = `Du er Sheriff, en erfaren politichef der koordinerer en biljagt.
 Du styrer andre politibiler gennem taktiske kommandoer.
@@ -385,6 +453,169 @@ ${gameState.recentEvents ? `- Seneste events: ${gameState.recentEvents}` : ''}`;
                 
             } catch (err) {
                 console.error('[Sheriff] Reinforcement error:', err);
+                sendErrorResponse(res, 500, 'Internal server error');
+            }
+        });
+        return;
+    }
+    
+    // World Director API endpoint - LLM decides what objects to spawn
+    if (req.url === '/api/world-director' && req.method === 'POST') {
+        if (MPS_DISABLED) {
+            // Return random fallback during tests
+            const fallbackObjects = [
+                { type: 'money', count: 2, side: 'random' },
+                { type: 'ramp', count: 1, side: 'center' },
+                { type: 'cones', count: 3, side: 'random' }
+            ];
+            const randomObj = fallbackObjects[Math.floor(Math.random() * fallbackObjects.length)];
+            res.writeHead(200, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' });
+            res.end(JSON.stringify({ objects: [randomObj] }));
+            return;
+        }
+
+        // Rate limiting
+        const now = Date.now();
+        if (now - lastWorldDirectorRequest < WORLD_DIRECTOR_COOLDOWN) {
+            sendErrorResponse(res, 429, 'Rate limited', {
+                retryAfter: WORLD_DIRECTOR_COOLDOWN - (now - lastWorldDirectorRequest)
+            });
+            return;
+        }
+        
+        // Check if API key is configured
+        if (!MPS_CONFIG.apiKey) {
+            sendErrorResponse(res, 503, 'API not configured');
+            return;
+        }
+        
+        let body = '';
+        req.on('data', chunk => body += chunk);
+        req.on('end', async () => {
+            try {
+                const gameContext = JSON.parse(body);
+                
+                lastWorldDirectorRequest = now;
+
+                // Build richer context with history
+                const recentHistory = directorMemory.slice(-3).map(m => m.scenario).join(', ');
+                
+                // Build context about current game state
+                const context = `SPILLER STATUS:
+- Fart: ${gameContext.speed} km/t ${gameContext.speed > 150 ? '(HURTIG!)' : gameContext.speed < 50 ? '(langsom)' : ''}
+- Sundhed: ${gameContext.health}% ${gameContext.health < 30 ? '(KRITISK!)' : gameContext.health < 50 ? '(lav)' : ''}
+- Heat level: ${gameContext.heatLevel}/6 ${gameContext.heatLevel >= 4 ? '(INTENS JAGT!)' : ''}
+- Penge samlet: ${gameContext.money} kr
+- Politibiler efter: ${gameContext.policeCount} ${gameContext.policeCount > 5 ? '(MANGE!)' : ''}
+- Tid overlevt: ${gameContext.survivalTime}s ${gameContext.survivalTime > 120 ? '(IMPONERENDE!)' : ''}
+- Kørselsretning: ${gameContext.direction}
+${gameContext.recentEvents ? `- Seneste events: ${gameContext.recentEvents}` : ''}
+${gameContext.playerBehavior ? `- Spillestil: ${gameContext.playerBehavior}` : ''}
+
+SENESTE SCENARIER: ${recentHistory || 'Ingen endnu'}
+
+Skab et DYNAMISK SCENARIE! Vær kreativ og overraskende. Svar KUN med JSON.`;
+                
+                // Build MPS request payload
+                const payload = {
+                    model: MPS_CONFIG.deployment,
+                    system: WORLD_DIRECTOR_PROMPT,
+                    messages: [{ role: 'user', content: context }],
+                    max_tokens: 400
+                };
+                
+                if (!MPS_CONFIG.endpoint) {
+                    throw new Error('MPS_ENDPOINT is not configured');
+                }
+
+                const endpoint = MPS_CONFIG.endpoint;
+                const headers = {
+                    'Authorization': `Bearer ${MPS_CONFIG.apiKey}`,
+                    'api-key': MPS_CONFIG.apiKey,
+                    'anthropic-version': MPS_CONFIG.anthropicVersion
+                };
+                
+                console.log('[WorldDirector] Requesting spawn decision from LLM...');
+                const mpsResponse = await httpsPost(endpoint, headers, JSON.stringify(payload));
+                
+                if (mpsResponse.status !== 200) {
+                    console.error('[WorldDirector] MPS error:', mpsResponse.status, mpsResponse.data);
+                    sendErrorResponse(res, 502, 'LLM request failed', { status: mpsResponse.status });
+                    return;
+                }
+                
+                const mpsData = JSON.parse(mpsResponse.data);
+                let responseText = '';
+                
+                // Extract text from Anthropic response format
+                if (mpsData.content && Array.isArray(mpsData.content) && mpsData.content[0]?.text) {
+                    responseText = mpsData.content[0].text;
+                }
+                
+                console.log('[WorldDirector] LLM Response:', responseText);
+                
+                // Parse the JSON response
+                let spawnData = { objects: [], scenario: '', event: null, mood: 'calm', director_comment: '' };
+                try {
+                    // Try to extract JSON from the response
+                    const jsonMatch = responseText.match(/\{[\s\S]*\}/);
+                    if (jsonMatch) {
+                        spawnData = JSON.parse(jsonMatch[0]);
+                    }
+                } catch (parseErr) {
+                    console.warn('[WorldDirector] Failed to parse LLM response, using fallback');
+                    spawnData = { 
+                        objects: [{ type: 'money', count: 2, side: 'random' }],
+                        scenario: 'Bonus penge på vejen!',
+                        mood: 'rewarding',
+                        director_comment: 'Tag dem!'
+                    };
+                }
+                
+                // Store in memory for continuity
+                if (spawnData.scenario) {
+                    directorMemory.push({ 
+                        scenario: spawnData.scenario, 
+                        time: Date.now(),
+                        mood: spawnData.mood 
+                    });
+                    // Keep only last 10 scenarios
+                    if (directorMemory.length > 10) directorMemory.shift();
+                }
+                
+                // Validate and sanitize the spawn data
+                const validTypes = ['roadblock', 'cones', 'barrier', 'ramp', 'money', 'health', 'oil', 'spike', 'boost',
+                                   'ambulance', 'truck', 'sports_car', 'explosion', 'fire', 'jackpot', 'nitro', 'shield', 'chaos'];
+                const validSides = ['left', 'right', 'center', 'random'];
+                const validEvents = ['convoy', 'race', 'accident', 'money_rain', 'police_ambush', 'challenge', 'boss', null];
+                const validMoods = ['intense', 'rewarding', 'chaotic', 'calm', 'dramatic'];
+                
+                if (spawnData.objects && Array.isArray(spawnData.objects)) {
+                    spawnData.objects = spawnData.objects
+                        .filter(obj => validTypes.includes(obj.type))
+                        .map(obj => ({
+                            type: obj.type,
+                            count: Math.min(Math.max(1, obj.count || 1), 8),
+                            side: validSides.includes(obj.side) ? obj.side : 'random',
+                            moving: obj.moving || false,
+                            speed: obj.speed ? Math.min(Math.max(20, obj.speed), 250) : 0
+                        }))
+                        .slice(0, 8); // Max 8 object groups for scenarios
+                }
+                
+                // Validate event and mood
+                spawnData.event = validEvents.includes(spawnData.event) ? spawnData.event : null;
+                spawnData.mood = validMoods.includes(spawnData.mood) ? spawnData.mood : 'calm';
+                
+                console.log('[WorldDirector] Scenario:', spawnData.scenario);
+                console.log('[WorldDirector] Director says:', spawnData.director_comment);
+                console.log('[WorldDirector] Spawning:', JSON.stringify(spawnData.objects));
+                
+                res.writeHead(200, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' });
+                res.end(JSON.stringify(spawnData));
+                
+            } catch (err) {
+                console.error('[WorldDirector] Error:', err);
                 sendErrorResponse(res, 500, 'Internal server error');
             }
         });

@@ -48,6 +48,7 @@ import { initLevelEditor, openLevelEditor } from './levelEditor.js';
 import { exposeDevtools } from './devtools.js';
 import { initMenu } from './menu.js';
 import { resetSheriffState } from './sheriff.js';
+import { updateWorldDirector, clearSpawnedObjects } from './worldDirector.js';
 
 // Expose gameState globally for debugging and testing
 window.gameState = gameState;
@@ -508,6 +509,7 @@ function resetRunState(opts = {}) {
     }
 
     resetCommentary();
+    clearSpawnedObjects(); // Clear world director objects
 }
 
 // Single stable entrypoint for tests/debug/LLM tooling
@@ -614,6 +616,9 @@ function animate() {
         // Endless World - generate new regions as player moves
         if (playerCar) {
             updateEndlessWorld(playerCar.position);
+            
+            // World Director - LLM decides what to spawn on the road
+            updateWorldDirector(delta);
         }
 
         // Collectibles & Heat
