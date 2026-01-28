@@ -1115,36 +1115,34 @@
             box-shadow: 0 4px 20px rgba(0,0,0,0.3);
         }
 
-        /* Compact catalog card elements (less details, cleaner layout) */
+        /* Compact catalog card elements (LEGO B2B Style) */
         .carCard-status {
             position: absolute;
-            top: 10px;
-            left: 10px;
-            font-size: 12px;
-            font-weight: 800;
-            padding: 6px 10px;
-            border-radius: 999px;
-            letter-spacing: 0.2px;
-            border: 1px solid rgba(255,255,255,0.15);
-            background: rgba(20,20,28,0.85);
-            color: #fff;
-            backdrop-filter: blur(8px);
+            top: 12px;
+            left: 12px;
+            font-size: 11px;
+            font-weight: 700;
+            padding: 4px 10px;
+            border-radius: 4px; /* More rectangular/pill */
+            letter-spacing: 0.3px;
             z-index: 2;
+            text-transform: uppercase;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
         }
         .carCard-status.status-owned {
-            background: rgba(0, 200, 80, 0.18);
-            border-color: rgba(0, 200, 80, 0.35);
-            color: #a6ffbf;
+            background: #E6F4EA; /* Google/LEGO Green Light */
+            color: #137333;      /* Dark Green Text */
+            border: 1px solid #137333;
         }
         .carCard-status.status-available {
-            background: rgba(0, 201, 255, 0.15);
-            border-color: rgba(0, 201, 255, 0.35);
-            color: #b9f4ff;
+            background: #E6F4EA;
+            color: #137333;
+            border: 1px solid rgba(19, 115, 51, 0.2);
         }
         .carCard-status.status-locked {
-            background: rgba(255, 90, 90, 0.12);
-            border-color: rgba(255, 90, 90, 0.35);
-            color: #ffb3b3;
+            background: #FCE8E6; /* Light Red */
+            color: #C5221F;      /* Dark Red */
+            border: 1px solid rgba(197, 34, 31, 0.2);
         }
 
         .carCard-titleRow {
@@ -1152,76 +1150,71 @@
             align-items: flex-start;
             justify-content: space-between;
             gap: 12px;
+            border-bottom: 1px solid rgba(255,255,255,0.1); /* Separator */
+            padding-bottom: 12px;
+            margin-bottom: 12px;
         }
 
         .carCard-titleBlock {
             display: flex;
             flex-direction: column;
-            gap: 4px;
+            gap: 2px;
             min-width: 0;
         }
 
         .carCard-sku {
-            font-size: 12px;
+            font-size: 11px;
             font-weight: 800;
-            color: rgba(255,255,255,0.7);
-            letter-spacing: 0.6px;
+            color: #fff;
+            opacity: 0.9;
         }
 
         .carCard-name {
-            margin: 0;
-            font-size: 18px;
+            margin: 4px 0 0 0;
+            font-size: 16px;
+            line-height: 1.3;
             color: #fff;
-            text-shadow: 0 2px 4px rgba(0,0,0,0.5);
-            display: block;
+            text-shadow: none;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
             overflow: hidden;
-            text-overflow: ellipsis;
-            white-space: nowrap;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; /* Clean font */
         }
 
         .carCard-subtitle {
-            font-size: 12px;
-            color: rgba(255,255,255,0.6);
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-        }
-
-        .carCard-badges {
-            display: flex;
-            align-items: center;
-            gap: 8px;
+            font-size: 11px;
+            color: #aaa;
+            margin-top: 4px;
         }
 
         .carCard-meta {
             display: grid;
             grid-template-columns: 1fr 1fr;
-            gap: 10px 14px;
+            gap: 12px 20px;
         }
 
         .carCard-metaItem {
             display: flex;
             flex-direction: column;
-            gap: 2px;
-            background: rgba(0,0,0,0.15);
-            border: 1px solid rgba(255,255,255,0.06);
-            border-radius: 10px;
-            padding: 10px 10px;
+            gap: 0;
+            background: transparent; /* Remove box bg for cleaner text look */
+            border: none;
+            padding: 0;
         }
 
         .carCard-metaLabel {
-            font-size: 11px;
-            color: rgba(255,255,255,0.55);
-            font-weight: 700;
-            text-transform: uppercase;
-            letter-spacing: 0.3px;
+            font-size: 10px;
+            color: #888;
+            font-weight: 600;
+            text-transform: capitalize;
         }
 
         .carCard-metaValue {
-            font-size: 14px;
-            color: #fff;
-            font-weight: 800;
-            font-family: 'Courier New', monospace;
+            font-size: 13px;
+            color: #ddd;
+            font-weight: 600;
+            font-family: inherit; /* Use main font, not mono */
         }
 
         .carCard-footerCompact {
@@ -1229,9 +1222,9 @@
             align-items: center;
             justify-content: space-between;
             gap: 12px;
-            padding: 14px 15px;
-            border-top: 1px solid rgba(255,255,255,0.06);
-            background: rgba(0,0,0,0.12);
+            padding: 15px;
+            border-top: 1px solid rgba(255,255,255,0.1);
+            background: rgba(0,0,0,0.2);
         }
 
         .carCard-priceBlock {

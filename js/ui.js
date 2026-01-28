@@ -861,7 +861,7 @@ export function renderShop() {
         carCard.innerHTML = `
             ${previewHTML}
             <div class="carCard-status ${owned ? 'status-owned' : (canAfford ? 'status-available' : 'status-locked')}">
-                ${owned ? 'EJET' : (canAfford ? 'KAN KØBES' : 'LÅST')}
+                ${owned ? 'Owned' : (canAfford ? 'Available' : 'Locked')}
             </div>
 
             <div class="card-content">
@@ -869,26 +869,26 @@ export function renderShop() {
                     <div class="carCard-titleBlock">
                         <div class="carCard-sku">${key.toUpperCase()}</div>
                         <h3 class="carCard-name">${car.name}</h3>
-                        <div class="carCard-subtitle">${car.type || 'car'} • ${carCategory}</div>
+                        <div class="carCard-subtitle">${car.type || 'Vehicle'} • ${carCategory}</div>
                     </div>
                     <div class="carCard-badges">${categoryBadge}</div>
                 </div>
 
                 <div class="carCard-meta">
                     <div class="carCard-metaItem">
-                        <div class="carCard-metaLabel">Topfart</div>
-                        <div class="carCard-metaValue">${Math.round(car.maxSpeed * 3.6)} km/t</div>
+                        <div class="carCard-metaLabel">Speed</div>
+                        <div class="carCard-metaValue">${Math.round(car.maxSpeed * 3.6)} km/h</div>
                     </div>
                     <div class="carCard-metaItem">
-                        <div class="carCard-metaLabel">0-100</div>
+                        <div class="carCard-metaLabel">Accel</div>
                         <div class="carCard-metaValue">${(car.acceleration * 10).toFixed(1)}s</div>
                     </div>
                     <div class="carCard-metaItem">
-                        <div class="carCard-metaLabel">Styring</div>
+                        <div class="carCard-metaLabel">Handling</div>
                         <div class="carCard-metaValue">${(car.handling * 100).toFixed(0)}%</div>
                     </div>
                     <div class="carCard-metaItem">
-                        <div class="carCard-metaLabel">HP</div>
+                        <div class="carCard-metaLabel">Health</div>
                         <div class="carCard-metaValue">${car.health || 100}</div>
                     </div>
                 </div>
@@ -896,10 +896,10 @@ export function renderShop() {
 
             <div class="card-footer carCard-footerCompact">
                 <div class="carCard-priceBlock">
-                    <div class="carCard-priceLabel">Pris</div>
+                    <div class="carCard-priceLabel">Total Price</div>
                     <div class="price-tag" style="color: ${owned ? '#88ff88' : (canAfford ? '#fff' : '#ff5555')};">${priceDisplay}</div>
                 </div>
-                <button class="carCard-cta" type="button">${actionIcon} ${actionText}</button>
+                <button class="carCard-cta" type="button">${owned ? 'Select' : (canAfford ? 'Add' : 'Locked')}</button>
             </div>
         `;
 
