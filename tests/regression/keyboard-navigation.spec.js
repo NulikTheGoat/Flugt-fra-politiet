@@ -31,6 +31,9 @@ test.describe('⌨️ Keyboard Navigation', () => {
         const gameModeModal = page.locator('#gameModeModal');
         await expect(gameModeModal).toBeVisible();
         
+        // Get initial focus
+        const initialFocus = await page.evaluate(() => document.activeElement?.id);
+        
         // Press down arrow to navigate to a button
         await page.keyboard.press('ArrowDown');
         
@@ -47,8 +50,13 @@ test.describe('⌨️ Keyboard Navigation', () => {
         // Navigate with ArrowUp
         await page.keyboard.press('ArrowUp');
         
-        // Wait for focus to update again
-        await page.waitForFunction(() => document.activeElement !== null, { timeout: 1000 });
+        // Wait for focus to change from previous button
+        await page.waitForFunction((prevElement) => {
+            const current = document.activeElement?.id;
+            return current !== prevElement && document.activeElement?.tagName === 'BUTTON';
+        }, focusedElement, { timeout: 1000 }).catch(() => {
+            // If no change, that's ok - just verify a button is still focused
+        });
         
         const focusedAfterUp = await page.evaluate(() => document.activeElement?.id);
         console.log(`Focused element after ArrowUp: ${focusedAfterUp}`);

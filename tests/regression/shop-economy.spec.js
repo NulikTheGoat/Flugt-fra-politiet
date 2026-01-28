@@ -64,7 +64,16 @@ test.describe('💰 Economy System', () => {
         // Play for a few seconds - wait for player to actually move
         await page.keyboard.down('w');
         await page.waitForFunction(() => window.gameState?.speed > 0, { timeout: 3000 });
-        await page.waitForTimeout(4000); // Continue playing
+        
+        // Wait for money to increase (or elapsed time) instead of arbitrary timeout
+        const startTime = Date.now();
+        await page.waitForFunction((startMoney) => {
+            const currentMoney = window.gameState?.money || 0;
+            const elapsed = (Date.now() - window.gameState?.startTime) / 1000;
+            // Money earned OR 4 seconds elapsed
+            return currentMoney > startMoney || elapsed > 4;
+        }, startMoney, { timeout: 5000 });
+        
         await page.keyboard.up('w');
         
         const endMoney = await page.evaluate(() => window.gameState?.money);
