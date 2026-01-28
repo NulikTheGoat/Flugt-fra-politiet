@@ -6,7 +6,7 @@ import { playerCar, takeDamage } from './player.js';
 import { createSmoke, createSpark } from './particles.js';
 import { addMoney, showFloatingMoney } from './ui.js';
 import { logEvent, EVENTS } from './commentary.js';
-import { BUILDING_TYPES, cars } from './constants.js';
+import { BUILDING_TYPES, cars, GAME_CONFIG } from './constants.js';
 import { 
     generateBuildingDebrisPlan, 
     generateTreeDebrisPlan,
@@ -1064,13 +1064,25 @@ export function updateBuildingChunks(delta) {
                                  const mass = cars[gameState.selectedCar]?.mass || 1.0;
                                  
                                  // Heavier cars lose less speed (Momentum = mv)
-                                 const speedRetention = Math.min(0.99, 0.9 + (mass * 0.02) - (0.05 / mass));
+                                 const baseRetention = GAME_CONFIG.PLAYER_BUILDING_SPEED_RETENTION || 0.85;
+                                 const speedRetention = Math.min(0.99, baseRetention + (mass * 0.02) - (0.05 / mass));
                                  gameState.speed *= Math.max(0.5, speedRetention); 
                                  
                                  // Heavier cars impart more force to debris
                                  chunk.userData.velocity.multiplyScalar(Math.sqrt(mass));
 
-                                 takeDamage(Math.floor(carSpeed * 0.1) + 5);
+                                 // Calculate damage using centralized config
+                                 const baseDamage = GAME_CONFIG.PLAYER_BUILDING_COLLISION_DAMAGE_BASE || 5;
+                                 const speedMult = GAME_CONFIG.PLAYER_BUILDING_COLLISION_DAMAGE_SPEED_MULT || 0.1;
+                                 const damage = Math.floor(carSpeed * speedMult) + baseDamage;
+                                 takeDamage(damage);
+                                 
+                                 // Log collision for dev tools
+                                 if (window.__game?.logCollision) {
+                                     window.__game.logCollision('PLAYER→BLDG', 
+                                         `Speed: ${Math.round(carSpeed * 3.6)} km/h, Dmg: ${damage}`);
+                                 }
+                                 
                                  gameState.screenShake = 0.3;
                                  createSmoke(chunk.position);
                              }

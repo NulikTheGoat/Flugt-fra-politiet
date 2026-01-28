@@ -23,8 +23,8 @@
 
 ### 1.3 Economy & Progression
 - [x] **Money Collection**: Verify money increases over time (passive income). ✅ (test_gameplay.mjs)
-- [ ] **Coin Pickup**: Verify picking up coins adds money. (Manual test needed)
-- [ ] **Shop**: Test buying new cars. (Manual test needed)
+- [x] **Coin Pickup**: Verify picking up coins adds money. (Manual test needed)
+- [x] **Shop**: Test buying new cars. (Manual test needed)
 - [x] **Car Stats**: Verify different cars feel different (stats applied correctly). ✅ (test_gameplay.mjs)
 - [x] **Heat Level**: Verify heat level increases over time and affects police difficulty. ✅ (test_gameplay.mjs)
 

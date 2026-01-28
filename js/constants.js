@@ -187,11 +187,11 @@ export const cars = {
         maxSpeed: 20,       // ~72 km/h display
         acceleration: 0.08,
         handling: 0.07,
-        health: 250,
+        health: 200,        // Still tanky but less immortal
         color: 0x32CD32,    // Lime green (monster truck style)
-        mass: 3.5,
+        mass: 2.4,          // Heavy, but not unstoppable
         type: 'monstertruck',
-        canRam: true,       // Can destroy police cars on impact
+        canRam: true,       // Requires speed threshold (see police AI)
         grip: 0.80,         // Big tires = good grip
         scale: 1.4          // Bigger visual size
     },
@@ -214,12 +214,12 @@ export const cars = {
         maxSpeed: 17,       // ~60 km/h display
         acceleration: 0.05,
         handling: 0.08,
-        health: 300,        // Nerfed from 500 - stadig tanky!
+        health: 260,        // Further nerfed for balance
         color: 0x2f4f4f,
         type: 'tank',
         canRam: true,       // Can destroy police cars on impact
         reqRebirth: 0,
-        mass: 5.0,
+        mass: 4.0,
         grip: 0.6           // Tank treads = moderate grip
     },
     ufo: {
@@ -249,4 +249,21 @@ export const BUILDING_TYPES = {
     RESIDENTIAL: { name: 'residential', colors: [0xF8C291, 0xE77F67, 0xFDA7DF, 0xD980FA, 0xB53471] }, // Pastel warmth and pinks
     OFFICE: { name: 'office', colors: [0x7EFFF5, 0x7158E2, 0x17C0EB], isGlass: true }, // Cyan/Neon Blue
     WAREHOUSE: { name: 'warehouse', colors: [0x95A5A6, 0x7F8C8D, 0xA4B0BE], hasRollerDoor: true }, // Grey (Standard concrete)
+};
+
+// Gameplay tuning constants - centralized for easy balancing
+export const GAME_CONFIG = {
+    // Collision damage values
+    POLICE_BUILDING_COLLISION_DAMAGE: 25,      // Police take meaningful damage but survive light taps
+    PLAYER_BUILDING_COLLISION_DAMAGE_BASE: 8,  // Base damage player takes hitting buildings
+    PLAYER_BUILDING_COLLISION_DAMAGE_SPEED_MULT: 0.06, // Additional damage per speed unit (so 100 km/h ≈ +6)
+    
+    // Physics multipliers
+    BUILDING_DEBRIS_VELOCITY_MULT: 0.18,       // Slightly calmer debris throw
+    BUILDING_DEBRIS_HEIGHT_BASE: 4,            // Lower base upward velocity
+    BUILDING_DEBRIS_HEIGHT_RANDOM: 3,          // Less random vertical impulse
+    
+    // Speed retention on impact (1.0 = no loss, 0.0 = full stop)
+    PLAYER_BUILDING_SPEED_RETENTION: 0.7,      // Player loses more speed on impact for realism
+    POLICE_BUILDING_SPEED_RETENTION: 0.6       // Police lose more speed when they slam into buildings
 };

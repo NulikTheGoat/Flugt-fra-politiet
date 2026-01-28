@@ -4,6 +4,7 @@ import { cars } from './constants.js';
 import { sharedGeometries, sharedMaterials } from './assets.js';
 import { createSmoke, createSpark, createTireMark, updateTireMarks, createWheelDust, updateDustParticles } from './particles.js';
 import { playSfx } from './sfx.js';
+import { CarBuilders, makeCarLights } from './carModels.js';
 
 let uiCallbacks = {
     triggerDamageEffect: () => {},
@@ -22,42 +23,6 @@ function clamp01(v) {
 
 function isCarLikeType(type) {
     return !type || ['standard', 'sport', 'muscle', 'super', 'hyper'].includes(type);
-}
-
-function makeCarLights(carGroup, opts = {}) {
-    const {
-        headlightColor = 0xfff6d5,
-        taillightColor = 0xff2a2a,
-        y = 10,
-        zFront = 23,
-        zRear = -23,
-        x = 8
-    } = opts;
-
-    const headMat = new THREE.MeshBasicMaterial({ color: headlightColor });
-    const tailMat = new THREE.MeshBasicMaterial({ color: taillightColor });
-    const headGeo = new THREE.BoxGeometry(3, 2, 1);
-    const tailGeo = new THREE.BoxGeometry(3, 2, 1);
-
-    const headlights = [];
-    const taillights = [];
-
-    [-x, x].forEach((lx) => {
-        const h = new THREE.Mesh(headGeo, headMat);
-        h.position.set(lx, y, zFront);
-        h.name = 'headlight';
-        carGroup.add(h);
-        headlights.push(h);
-
-        const t = new THREE.Mesh(tailGeo, tailMat);
-        t.position.set(lx, y, zRear);
-        t.name = 'taillight';
-        carGroup.add(t);
-        taillights.push(t);
-    });
-
-    carGroup.userData.headlights = headlights;
-    carGroup.userData.taillights = taillights;
 }
 
 function createOnFootModel(color) {
@@ -507,6 +472,10 @@ export function createPlayerCar(color = 0xff0000, type = 'standard') {
              carGroup.add(light);
         }
 
+    } else if (CarBuilders[resolvedType]) {
+        // Use the specialized builder for this car type
+        CarBuilders[resolvedType](chassis, carGroup, color);
+    
     } else {
         // Standard Car body (with enhanced PBR materials)
         const bodyMat = new THREE.MeshStandardMaterial({

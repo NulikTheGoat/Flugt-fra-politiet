@@ -1,7 +1,7 @@
 import { gameState } from './state.js';
 import { gameConfig } from './config.js';
 import { scene, camera } from './core.js';
-import { enemies, cars } from './constants.js';
+import { enemies, cars, GAME_CONFIG } from './constants.js';
 import { sharedGeometries, sharedMaterials } from './assets.js';
 import { createSmoke, createSpeedParticle, createFire, createMoneyExplosion, createWheelDust } from './particles.js';
 import { playerCar, takeDamage, repairCar } from './player.js';
@@ -452,21 +452,25 @@ export function updatePoliceAI(delta) {
         const dz = targetPosZ - policeCar.position.z;
         const distance = Math.sqrt(dx * dx + dz * dz);
 
-        // Vehicle Ramming Logic (e.g. Tank)
-        const currentCar = cars[gameState.selectedCar];
-        // Only allow ramming if target is local player (simplified)
-        if (currentCar && currentCar.canRam && distance < 50 && targetPosX === playerCar.position.x) {
-             policeCar.userData.dead = true;
-             policeCar.userData.deathTime = Date.now();
-             const enemyType = policeCar.userData.type || 'standard';
-             const enemyConfig = enemies[enemyType] || enemies.standard;
-             addMoney(enemyConfig.killReward || 150);
-             gameState.policeKilled = (gameState.policeKilled || 0) + 1;
-             logEvent(EVENTS.POLICE_KILLED, policeCar.userData.type);
-             createSmoke(policeCar.position);
-             gameState.screenShake = 0.5;
-             return; 
-        }
+           // Vehicle Ramming Logic (e.g. Tank/Monster) with speed threshold
+           const currentCar = cars[gameState.selectedCar];
+           const playerSpeedKmhForRam = Math.abs(gameState.speed || 0) * 3.6;
+           // Only allow ramming if target is local player (simplified) and player is moving fast enough
+           if (currentCar && currentCar.canRam && distance < 50 && targetPosX === playerCar.position.x && playerSpeedKmhForRam > 40) {
+               policeCar.userData.dead = true;
+               policeCar.userData.deathTime = Date.now();
+               const enemyType = policeCar.userData.type || 'standard';
+               const enemyConfig = enemies[enemyType] || enemies.standard;
+               addMoney(enemyConfig.killReward || 150);
+               gameState.policeKilled = (gameState.policeKilled || 0) + 1;
+               logEvent(EVENTS.POLICE_KILLED, policeCar.userData.type);
+               createSmoke(policeCar.position);
+               gameState.screenShake = 0.5;
+
+               // Ramming should still hurt the player a bit
+               takeDamage(Math.max(gameConfig.minCrashDamage, playerSpeedKmhForRam * 0.15));
+               return; 
+           }
 
         // SHERIFF COMMAND SYSTEM - Apply commands to non-Sheriff police
         let commandModifiers = {};
@@ -571,6 +575,37 @@ export function updatePoliceAI(delta) {
 
         const hasObstacle = policeCar.userData.hasObstacle;
         
+        // === TEST MODE OVERRIDE ===
+        if (policeCar.userData.aiDisabled) {
+             // Dumb drive mode for physics testing
+             if (policeCar.userData.currentSpeed === undefined && policeCar.userData.testSpeed) {
+                 policeCar.userData.currentSpeed = policeCar.userData.testSpeed;
+             }
+             // Maintain speed if set, or just drift
+             if (policeCar.userData.testSpeed) {
+                 // Force speed to stay constant for impact testing
+                 policeCar.userData.currentSpeed = policeCar.userData.testSpeed;
+             }
+             
+             // No steering, just move forward
+             const policeSpeed = policeCar.userData.currentSpeed || 0;
+             const policeMove = policeSpeed * 0.016 * (delta || 1);
+             
+             // Initialize velocity if needed
+             if (policeCar.userData.velocityX === undefined) {
+                 policeCar.userData.velocityX = 0;
+                 policeCar.userData.velocityZ = 0;
+             }
+             
+             // Simple movement
+             const angle = policeCar.rotation.y;
+             policeCar.position.x += Math.sin(angle) * policeMove;
+             policeCar.position.z += Math.cos(angle) * policeMove;
+             
+             // Skip complex cornering physics
+        } else {
+             // === NORMAL AI BEHAVIOR ===
+             
         // If obstacle detected, turn to avoid it
         // Only avoid if NOT under strict directional command (like U-Turn)
         let avoidanceAngle = 0;
@@ -682,6 +717,8 @@ export function updatePoliceAI(delta) {
             createWheelDust(policeCar.position, policeCar.rotation.y, policeSpeed * 0.01, glideIntensity);
         }
 
+        } // End of AI behavior switch
+
         // Police vs Building Collision
         const px = Math.floor(policeCar.position.x / gridSize);
         const pz = Math.floor(policeCar.position.z / gridSize);
@@ -726,9 +763,20 @@ export function updatePoliceAI(delta) {
                             (Math.random() - 0.5) * 0.3
                         );
                         
-                        // Damage police car
-                        policeCar.userData.health -= 15;
+                        // Damage police car (using centralized config)
+                        const buildingDamage = GAME_CONFIG.POLICE_BUILDING_COLLISION_DAMAGE;
+                        policeCar.userData.health -= buildingDamage;
+                        
+                        // Apply speed loss on impact
+                        policeCar.userData.currentSpeed *= GAME_CONFIG.POLICE_BUILDING_SPEED_RETENTION || 0.7;
+                        
                         createSmoke(chunk.position);
+                        
+                        // Log collision for dev tools
+                        if (window.__game?.logCollision) {
+                            window.__game.logCollision('POLICE→BLDG', 
+                                `Dmg: ${buildingDamage}, HP: ${Math.round(policeCar.userData.health)}`);
+                        }
                         
                         if (policeCar.userData.health <= 0) {
                             policeCar.userData.dead = true;
@@ -830,14 +878,19 @@ export function updatePoliceAI(delta) {
                 // Damage based on collision speed (relative velocity)
                 const collisionSpeed = Math.abs(relVelNormal) * 60; // Convert to km/h-ish
                 
-                // Damage to player
-                const playerDamage = Math.max(gameConfig.minCrashDamage, collisionSpeed * gameConfig.playerCrashDamageMultiplier * 0.5);
+                // Damage to player (floor ensures heavy cars still take a hit)
+                const playerMassFactor = Math.max(0.8, Math.min(1.5, playerMass));
+                const rawPlayerDamage = collisionSpeed * gameConfig.playerCrashDamageMultiplier * 0.5 * playerMassFactor;
+                const minPlayerDamage = collisionSpeed * gameConfig.playerCrashDamageMultiplier * 0.25;
+                const playerDamage = Math.max(gameConfig.minCrashDamage, minPlayerDamage, rawPlayerDamage);
                 takeDamage(playerDamage);
                 logEvent(EVENTS.CRASH, 'police car');
                 
-                // Damage to police (heavier vehicles take less damage)
-                const policeDamageMultiplier = 1.0 / policeMass;
-                const policeDamage = Math.max(gameConfig.minCrashDamage, collisionSpeed * gameConfig.policeCrashDamageMultiplier * policeDamageMultiplier);
+                // Damage to police (heavier vehicles take less, but not zero)
+                const policeDamageMultiplier = Math.max(0.35, Math.min(1.0, playerMass / Math.max(1, policeMass)));
+                const rawPoliceDamage = collisionSpeed * gameConfig.policeCrashDamageMultiplier * policeDamageMultiplier;
+                const minPoliceDamage = collisionSpeed * gameConfig.policeCrashDamageMultiplier * 0.3;
+                const policeDamage = Math.max(gameConfig.minCrashDamage, minPoliceDamage, rawPoliceDamage);
                 policeCar.userData.health -= policeDamage;
                 
                 if (policeCar.userData.health <= 0) {

@@ -528,11 +528,15 @@ function resetRunState(opts = {}) {
 }
 
 // Single stable entrypoint for tests/debug/LLM tooling
+// Pass game context for collision testing scenarios
 exposeDevtools({ 
     startGame, 
     startMultiplayerGame,
-    renderer,  // Expose renderer for perf metrics
-    scene      // Expose scene for object counting
+    renderer,       // Expose renderer for perf metrics
+    scene,          // Expose scene for object counting
+    createPoliceCar, // Expose for dev test scenarios
+    get playerCar() { return playerCar; }, // Dynamic getter for player car
+    rebuildPlayerCar // Expose for rebuilding player car in tests
 });
 
 let lastTime = performance.now();
@@ -570,6 +574,7 @@ function animate() {
     // Delta as ratio: 1.0 = one frame at 60fps, capped at 2 frames
     const delta = Math.min((now - lastTime) / 16.67, 2); 
     lastTime = now;
+    window.__lastDelta = delta; // Expose for debugging
 
     // Only update game logic if game has started (startTime set)
     const gameStarted = gameState.startTime > 0;
