@@ -113,12 +113,14 @@ class PhysicsWorld {
      * Call this from main game loop
      * @param {THREE.Vector3} playerPos Player position
      * @param {Array} policeCars Array of police car meshes
-     * @param {Array} buildingChunks Array of building chunks (optional)
+     * @param {Object} chunkGrid Chunk grid map (optional)
+     * @param {number} chunkGridSize Grid size (optional)
      */
-    checkDebrisCollisions(playerPos, policeCars, buildingChunks) {
+    checkDebrisCollisions(playerPos, policeCars, chunkGrid, chunkGridSize = 200) {
         const PLAYER_RADIUS = 8;  // Collision radius for player
         const POLICE_RADIUS = 6;  // Collision radius for police
         const BUILDING_RADIUS = 10; // Collision radius for buildings
+        const SEARCH_RADIUS = 1;
         
         for (let i = 0; i < this.bodies.length; i++) {
             const body = this.bodies[i];
@@ -166,7 +168,8 @@ class PhysicsWorld {
             }
             
             // Check building chunk collisions
-            if (buildingChunks && this.onDebrisHitBuilding) {
+            if (chunkGrid && this.onDebrisHitBuilding) {
+                const buildingChunks = this.getNearbyBuildingChunks(pos, chunkGrid, chunkGridSize, SEARCH_RADIUS);
                 for (const chunk of buildingChunks) {
                     if (!chunk || !chunk.position || chunk.userData?.isHit) continue;
                     
@@ -194,6 +197,36 @@ class PhysicsWorld {
                 }
             }
         }
+    }
+
+    /**
+     * Get nearby building chunks from the chunk grid
+     * @param {CANNON.Vec3} position
+     * @param {Object} chunkGrid
+     * @param {number} gridSize
+     * @param {number} searchRadius
+     * @returns {Array}
+     */
+    getNearbyBuildingChunks(position, chunkGrid, gridSize, searchRadius) {
+        const chunks = [];
+        const centerGx = Math.floor(position.x / gridSize);
+        const centerGz = Math.floor(position.z / gridSize);
+
+        for (let dx = -searchRadius; dx <= searchRadius; dx++) {
+            for (let dz = -searchRadius; dz <= searchRadius; dz++) {
+                const key = `${centerGx + dx},${centerGz + dz}`;
+                const gridChunks = chunkGrid[key];
+                if (gridChunks) {
+                    for (const chunk of gridChunks) {
+                        if (chunk && !chunk.userData?.isHit) {
+                            chunks.push(chunk);
+                        }
+                    }
+                }
+            }
+        }
+
+        return chunks;
     }
 
     init() {

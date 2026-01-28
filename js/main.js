@@ -49,7 +49,7 @@ import { exposeDevtools } from './devtools.js';
 import { initMenu } from './menu.js';
 import { resetSheriffState } from './sheriff.js';
 import { updateWorldDirector, clearSpawnedObjects } from './worldDirector.js';
-import { physicsWorld, DEBRIS_DAMAGE } from './physicsWorld.js';
+import { physicsWorld } from './physicsWorld.js';
 
 // Expose gameState globally for debugging and testing
 window.gameState = gameState;
@@ -639,45 +639,13 @@ function animate() {
     
     // Check debris collisions against player, police, buildings
     if (playerCar && !gameState.arrested) {
-        // Get nearby building chunks from grid for debris collision
-        const nearbyBuildingChunks = getNearbyBuildingChunks(playerCar.position);
-        
         physicsWorld.checkDebrisCollisions(
             playerCar.position,
             gameState.policeCars,
-            nearbyBuildingChunks
+            gameState.chunkGrid,
+            gameState.chunkGridSize
         );
     }
-
-/**
- * Get building chunks near a position from the chunk grid
- * @param {THREE.Vector3} position 
- * @returns {Array} Array of building chunks
- */
-function getNearbyBuildingChunks(position) {
-    const chunks = [];
-    const gridSize = gameState.chunkGridSize || 200;
-    const searchRadius = 2; // Check surrounding grid cells
-    
-    const centerGx = Math.floor(position.x / gridSize);
-    const centerGz = Math.floor(position.z / gridSize);
-    
-    for (let dx = -searchRadius; dx <= searchRadius; dx++) {
-        for (let dz = -searchRadius; dz <= searchRadius; dz++) {
-            const key = `${centerGx + dx},${centerGz + dz}`;
-            const gridChunks = gameState.chunkGrid?.[key];
-            if (gridChunks) {
-                for (const chunk of gridChunks) {
-                    if (chunk && !chunk.userData?.isHit) {
-                        chunks.push(chunk);
-                    }
-                }
-            }
-        }
-    }
-    
-    return chunks;
-}
 
     // Only update game logic if game has started (startTime set)
     const gameStarted = gameState.startTime > 0;
