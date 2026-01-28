@@ -1,3 +1,6 @@
+// Physics constants
+export const GRAVITY = -9.82; // Earth gravity (m/s²)
+
 export const enemies = {
     standard: { color: 0x0000ff, speed: 250, scale: 1, name: 'Politibil', health: 50, killReward: 150, pickupReward: 300, mass: 1.0 },
     interceptor: { color: 0x111111, speed: 300, scale: 1, name: 'Interceptor', health: 40, killReward: 200, pickupReward: 400, mass: 1.1 },

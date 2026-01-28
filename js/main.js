@@ -37,7 +37,7 @@ import { gameState, keys, saveProgress } from './state.js';
 import { gameConfig } from './config.js';
 import { scene, camera, renderer } from './core.js';
 import { cars } from './constants.js';
-import { createPlayerCar, rebuildPlayerCar, updatePlayer, playerCar, setUICallbacks, createOtherPlayerCar, updateOtherPlayerCar, removeOtherPlayerCar } from './player.js';
+import { createPlayerCar, rebuildPlayerCar, updatePlayer, playerCar, setUICallbacks, createOtherPlayerCar, updateOtherPlayerCar, removeOtherPlayerCar, takeDamage } from './player.js';
 import { spawnPoliceCar, updatePoliceAI, updateProjectiles, firePlayerProjectile, syncPoliceFromNetwork, getPoliceStateForNetwork, resetPoliceNetworkIds, createPoliceCar } from './police.js';
 import { createGround, createTrees, createBuildings, updateBuildingChunks, updateCollectibles, cleanupSmallDebris, createSky, createDistantCityscape, createHotdogStands, updateEndlessWorld } from './world.js';
 import { updateHUD, updateHealthUI, DOM, goToShop, showGameOver, setStartGameCallback, triggerDamageEffect, setMultiplayerShopCallback } from './ui.js';
@@ -49,6 +49,7 @@ import { exposeDevtools } from './devtools.js';
 import { initMenu } from './menu.js';
 import { resetSheriffState } from './sheriff.js';
 import { updateWorldDirector, clearSpawnedObjects } from './worldDirector.js';
+import { physicsWorld, DEBRIS_DAMAGE } from './physicsWorld.js';
 
 // Expose gameState globally for debugging and testing
 window.gameState = gameState;
@@ -420,6 +421,63 @@ createPlayerCar(starterCar.color, starterCar.type || gameState.selectedCar);
 initLevelEditor();
 
 export function startGame() {
+    if (!window.physicsInitialized) {
+        physicsWorld.init();
+        
+        // Setup debris collision callbacks
+        physicsWorld.onDebrisHitPlayer = (damage, body, mesh) => {
+            console.log(`[DEBRIS] Player hit by debris! Damage: ${damage}`);
+            takeDamage(damage);
+            gameState.screenShake = Math.max(gameState.screenShake || 0, 0.3);
+        };
+        
+        physicsWorld.onDebrisHitPolice = (damage, policeCar, body, mesh) => {
+            if (policeCar && policeCar.userData && typeof policeCar.userData.health === 'number') {
+                console.log(`[DEBRIS] Police hit by debris! Damage: ${damage}, HP: ${policeCar.userData.health}`);
+                policeCar.userData.health -= damage;
+                
+                // Check if killed by debris
+                if (policeCar.userData.health <= 0 && !policeCar.userData.isDead) {
+                    policeCar.userData.isDead = true;
+                    policeCar.userData.isDestroyed = true;
+                    console.log(`[DEBRIS] Police destroyed by falling debris!`);
+                }
+            }
+        };
+        
+        physicsWorld.onDebrisHitBuilding = (damage, chunk, body, mesh) => {
+            if (chunk && chunk.userData && !chunk.userData.isHit) {
+                console.log(`[DEBRIS] Building hit by debris! Damage: ${damage}`);
+                chunk.userData.health = (chunk.userData.health || 3) - 1;
+                
+                // Destroy chunk if health depleted
+                if (chunk.userData.health <= 0) {
+                    chunk.userData.isHit = true;
+                    chunk.matrixAutoUpdate = true;
+                    
+                    // Give initial velocity from debris impact
+                    if (body && chunk.userData.velocity) {
+                        const impactDir = body.velocity.clone();
+                        impactDir.normalize();
+                        chunk.userData.velocity.set(
+                            impactDir.x * 5,
+                            2 + Math.random() * 3,
+                            impactDir.z * 5
+                        );
+                    }
+                    
+                    if (!gameState.activeChunks.includes(chunk)) {
+                        gameState.activeChunks.push(chunk);
+                    }
+                    console.log(`[DEBRIS] Building chunk destroyed by debris cascade!`);
+                }
+            }
+        };
+        
+        window.physicsInitialized = true;
+    }
+    physicsWorld.reset();
+
     DOM.shop.style.display = 'none';
     DOM.gameOver.style.display = 'none';
 
@@ -575,6 +633,51 @@ function animate() {
     const delta = Math.min((now - lastTime) / 16.67, 2); 
     lastTime = now;
     window.__lastDelta = delta; // Expose for debugging
+
+    // Update Physics World (delta is frame-ratio, convert to seconds)
+    physicsWorld.update(delta / 60);
+    
+    // Check debris collisions against player, police, buildings
+    if (playerCar && !gameState.arrested) {
+        // Get nearby building chunks from grid for debris collision
+        const nearbyBuildingChunks = getNearbyBuildingChunks(playerCar.position);
+        
+        physicsWorld.checkDebrisCollisions(
+            playerCar.position,
+            gameState.policeCars,
+            nearbyBuildingChunks
+        );
+    }
+
+/**
+ * Get building chunks near a position from the chunk grid
+ * @param {THREE.Vector3} position 
+ * @returns {Array} Array of building chunks
+ */
+function getNearbyBuildingChunks(position) {
+    const chunks = [];
+    const gridSize = gameState.chunkGridSize || 200;
+    const searchRadius = 2; // Check surrounding grid cells
+    
+    const centerGx = Math.floor(position.x / gridSize);
+    const centerGz = Math.floor(position.z / gridSize);
+    
+    for (let dx = -searchRadius; dx <= searchRadius; dx++) {
+        for (let dz = -searchRadius; dz <= searchRadius; dz++) {
+            const key = `${centerGx + dx},${centerGz + dz}`;
+            const gridChunks = gameState.chunkGrid?.[key];
+            if (gridChunks) {
+                for (const chunk of gridChunks) {
+                    if (chunk && !chunk.userData?.isHit) {
+                        chunks.push(chunk);
+                    }
+                }
+            }
+        }
+    }
+    
+    return chunks;
+}
 
     // Only update game logic if game has started (startTime set)
     const gameStarted = gameState.startTime > 0;

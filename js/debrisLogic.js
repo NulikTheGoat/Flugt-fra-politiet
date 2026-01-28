@@ -3,6 +3,9 @@
  * Pure logic for building debris physics
  */
 
+import * as CANNON from 'cannon-es';
+import { physicsWorld } from './physicsWorld.js';
+
 // Material properties for realistic debris behavior
 export const DEBRIS_MATERIALS = {
     concrete: {
@@ -595,5 +598,66 @@ export function calculateVehicleDebrisCollision(carSpeed, debrisSize, debrisMass
         screenShake,
         canDestroyBuildings: props.canDestroyBuildings
     };
+}
+
+/**
+ * Create a Cannon.js rigid body for a debris piece
+ */
+export function createDebrisBody(params) {
+    const { 
+        width, height, depth, 
+        material = 'concrete', 
+        position, 
+        velocity, 
+        rotation 
+    } = params;
+    
+    // Realistic physics constants
+    const DENSITY_SCALE = 1.0; // Real density for realistic mass
+    const LINEAR_DAMPING = 0.01; // Minimal air resistance
+    const ANGULAR_DAMPING = 0.05; // Slight rotational damping
+
+    const matProps = DEBRIS_MATERIALS[material] || DEBRIS_MATERIALS.concrete;
+    
+    // Create Shape
+    const shape = new CANNON.Box(new CANNON.Vec3(width/2, height/2, depth/2));
+    
+    // Create Body with realistic mass (volume * density)
+    const volume = width * height * depth;
+    const mass = volume * matProps.density * DENSITY_SCALE; 
+    
+    const body = new CANNON.Body({
+        mass: mass,
+        position: new CANNON.Vec3(position.x, position.y, position.z),
+        linearDamping: LINEAR_DAMPING,
+        angularDamping: ANGULAR_DAMPING,
+        material: physicsWorld.defaultMaterial
+    });
+    
+    body.addShape(shape);
+    
+    if (velocity) {
+        body.velocity.set(velocity.x, velocity.y, velocity.z);
+    }
+    
+    if (rotation) {
+        body.angularVelocity.set(rotation.x, rotation.y, rotation.z);
+    } else {
+        // Realistic initial spin based on impact
+        body.angularVelocity.set(
+            (Math.random() - 0.5) * 5,
+            (Math.random() - 0.5) * 5,
+            (Math.random() - 0.5) * 5
+        );
+    }
+    
+    // Random orientation
+    body.quaternion.setFromEuler(
+        Math.random() * Math.PI * 2,
+        Math.random() * Math.PI * 2,
+        Math.random() * Math.PI * 2
+    );
+
+    return body;
 }
 

@@ -7,6 +7,7 @@ import { createSmoke, createSpark } from './particles.js';
 import { addMoney, showFloatingMoney } from './ui.js';
 import { logEvent, EVENTS } from './commentary.js';
 import { BUILDING_TYPES, cars, GAME_CONFIG } from './constants.js';
+import { physicsWorld } from './physicsWorld.js';
 import { 
     generateBuildingDebrisPlan, 
     generateTreeDebrisPlan,
@@ -14,7 +15,8 @@ import {
     classifyDebrisSize,
     getDebrisCollisionProps,
     calculateShatterPieces,
-    calculateVehicleDebrisCollision
+    calculateVehicleDebrisCollision,
+    createDebrisBody
 } from './debrisLogic.js';
 
 let skyMesh = null;
@@ -752,9 +754,15 @@ export function updateBuildingChunks(delta) {
     if(!playerCar) return;
     const d = delta || 1;
 
-    // Active Chunks (falling/moving)
+    // Active Chunks (falling/moving) - only process non-physics chunks
     for (let i = gameState.activeChunks.length - 1; i >= 0; i--) {
         const chunk = gameState.activeChunks[i];
+        
+        // Skip physics-managed chunks (they're updated by physicsWorld.update())
+        if (chunk.userData.physicsBody) continue;
+        
+        // Skip chunks without velocity (shouldn't happen but safety check)
+        if (!chunk.userData.velocity) continue;
         
         chunk.position.x += chunk.userData.velocity.x * d;
         chunk.position.y += chunk.userData.velocity.y * d;
@@ -1481,33 +1489,24 @@ function createTreeDebris(position, carSpeed, options = {}) {
             splinterData.position.z
         );
         
-        splinter.rotation.set(
-            Math.random() * Math.PI,
-            Math.random() * Math.PI,
-            Math.random() * Math.PI
-        );
-        
         splinter.userData = {
             isSmallDebris: true,
-            velocity: new THREE.Vector3(
-                splinterData.velocity.x,
-                splinterData.velocity.y,
-                splinterData.velocity.z
-            ),
-            rotVelocity: new THREE.Vector3(
-                splinterData.rotation.x,
-                splinterData.rotation.y,
-                splinterData.rotation.z
-            ),
+            lifetime: splinterData.lifetime
+        };
+
+        const body = createDebrisBody({
             width: splinterData.size.width,
             height: splinterData.size.height,
             depth: splinterData.size.depth,
-            lifetime: splinterData.lifetime,
-            gravity: splinterData.gravity
-        };
+            material: 'wood',
+            position: splinterData.position,
+            velocity: splinterData.velocity,
+            rotation: splinterData.rotation
+        });
         
         scene.add(splinter);
-        gameState.activeChunks.push(splinter);
+        physicsWorld.add(splinter, body);
+
         if (!gameState.smallDebris) gameState.smallDebris = [];
         gameState.smallDebris.push(splinter);
     }
@@ -1531,26 +1530,22 @@ function createTreeDebris(position, carSpeed, options = {}) {
         );
         
         leaf.userData = {
-            isSmallDebris: true,
-            velocity: new THREE.Vector3(
-                leafData.velocity.x,
-                leafData.velocity.y,
-                leafData.velocity.z
-            ),
-            rotVelocity: new THREE.Vector3(
-                leafData.rotation.x,
-                leafData.rotation.y,
-                leafData.rotation.z
-            ),
+            isSmallDebris: true
+        };
+
+        const body = createDebrisBody({
             width: leafData.size.width,
             height: leafData.size.height,
             depth: leafData.size.depth,
-            lifetime: leafData.lifetime,
-            gravity: leafData.gravity
-        };
+            material: 'leaf',
+            position: leafData.position,
+            velocity: leafData.velocity,
+            rotation: leafData.rotation
+        });
         
         scene.add(leaf);
-        gameState.activeChunks.push(leaf);
+        physicsWorld.add(leaf, body);
+
         if (!gameState.smallDebris) gameState.smallDebris = [];
         gameState.smallDebris.push(leaf);
     }
@@ -1617,33 +1612,28 @@ export function createBuildingDebris(position, buildingColor, carSpeed, options 
             chunkData.position.z
         );
         
-        chunk.rotation.set(
-            Math.random() * Math.PI,
-            Math.random() * Math.PI,
-            Math.random() * Math.PI
-        );
+        // Initial rotation handled by physics body sync
         
         chunk.userData = {
             isSmallDebris: true,
-            velocity: new THREE.Vector3(
-                chunkData.velocity.x,
-                chunkData.velocity.y,
-                chunkData.velocity.z
-            ),
-            rotVelocity: new THREE.Vector3(
-                chunkData.rotation.x,
-                chunkData.rotation.y,
-                chunkData.rotation.z
-            ),
+            lifetime: chunkData.lifetime
+        };
+
+        // Create Physics Body
+        const body = createDebrisBody({
             width: chunkData.size.width,
             height: chunkData.size.height,
             depth: chunkData.size.depth,
-            lifetime: chunkData.lifetime,
-            gravity: chunkData.gravity
-        };
+            material: 'concrete',
+            position: chunkData.position,
+            velocity: chunkData.velocity,
+            rotation: chunkData.rotation
+        });
         
         scene.add(chunk);
-        gameState.activeChunks.push(chunk);
+        physicsWorld.add(chunk, body);
+        
+        // gameState.activeChunks.push(chunk); // REMOVED: Managed by PhysicsWorld
         if (!gameState.smallDebris) gameState.smallDebris = [];
         gameState.smallDebris.push(chunk);
     }
@@ -1668,38 +1658,30 @@ export function createBuildingDebris(position, buildingColor, carSpeed, options 
             shardData.position.z
         );
         
-        shard.rotation.set(
-            Math.random() * Math.PI,
-            Math.random() * Math.PI,
-            Math.random() * Math.PI
-        );
-        
         shard.userData = {
             isSmallDebris: true,
-            velocity: new THREE.Vector3(
-                shardData.velocity.x,
-                shardData.velocity.y,
-                shardData.velocity.z
-            ),
-            rotVelocity: new THREE.Vector3(
-                shardData.rotation.x,
-                shardData.rotation.y,
-                shardData.rotation.z
-            ),
+            lifetime: shardData.lifetime
+        };
+
+        const body = createDebrisBody({
             width: shardData.size.width,
             height: shardData.size.height,
             depth: shardData.size.depth,
-            lifetime: shardData.lifetime,
-            gravity: shardData.gravity
-        };
+            material: 'glass',
+            position: shardData.position,
+            velocity: shardData.velocity,
+            rotation: shardData.rotation
+        });
         
         scene.add(shard);
-        gameState.activeChunks.push(shard);
+        physicsWorld.add(shard, body);
+
+        // gameState.activeChunks.push(shard); // REMOVED
         if (!gameState.smallDebris) gameState.smallDebris = [];
         gameState.smallDebris.push(shard);
     }
     
-    // Create dust particles
+    // Create dust particles as small solid debris
     for (const dustData of plan.dust) {
         const dustGeometry = new THREE.SphereGeometry(
             dustData.size.width / 2, 6, 6
@@ -1719,22 +1701,21 @@ export function createBuildingDebris(position, buildingColor, carSpeed, options 
         
         dust.userData = {
             isSmallDebris: true,
-            isDust: true,
-            velocity: new THREE.Vector3(
-                dustData.velocity.x,
-                dustData.velocity.y,
-                dustData.velocity.z
-            ),
-            rotVelocity: new THREE.Vector3(0, 0, 0),
+            isDust: true
+        };
+
+        const body = createDebrisBody({
             width: dustData.size.width,
             height: dustData.size.height,
             depth: dustData.size.depth,
-            lifetime: dustData.lifetime,
-            gravity: dustData.gravity
-        };
+            material: 'dust',
+            position: dustData.position,
+            velocity: dustData.velocity
+        });
         
         scene.add(dust);
-        gameState.activeChunks.push(dust);
+        physicsWorld.add(dust, body);
+
         if (!gameState.smallDebris) gameState.smallDebris = [];
         gameState.smallDebris.push(dust);
     }
@@ -1809,20 +1790,29 @@ function checkFloatingChunks(delta) {
                         chunk.userData.isHit = true;
                         chunk.userData.isFloating = true;
                         chunk.matrixAutoUpdate = true;
-                        gameState.activeChunks.push(chunk);
                         
-                        // Small initial velocity (mostly just gravity takes over)
-                        chunk.userData.velocity = new THREE.Vector3(
-                            (Math.random() - 0.5) * 2,
-                            -1,  // Start moving down
-                            (Math.random() - 0.5) * 2
-                        );
+                        // Start Physics
+                        const w = chunk.userData.width || 40; // Default building width approx
+                        const h = chunk.userData.height || 35;
+                        const d = chunk.userData.depth || 40;
+
+                        const body = createDebrisBody({
+                             width: w, height: h, depth: d,
+                             material: 'concrete',
+                             position: chunk.position,
+                             velocity: { x: (Math.random()-0.5)*2, y: -1, z: (Math.random()-0.5)*2 },
+                             rotation: { 
+                                 x: (Math.random() - 0.5) * 0.2,
+                                 y: (Math.random() - 0.5) * 0.1,
+                                 z: (Math.random() - 0.5) * 0.2
+                             }
+                        });
                         
-                        chunk.userData.rotVelocity = new THREE.Vector3(
-                            (Math.random() - 0.5) * 0.2,
-                            (Math.random() - 0.5) * 0.1,
-                            (Math.random() - 0.5) * 0.2
-                        );
+                        // Increase mass significantly for whole building blocks
+                        body.mass *= 400; 
+                        body.updateMassProperties();
+
+                        physicsWorld.add(chunk, body);
                         
                         // Remove from grid to avoid double-processing
                         const idx = chunks.indexOf(chunk);
@@ -2036,23 +2026,12 @@ function createDebrisSparks(position, count = 5) {
     }
 }
 
-// Update and cleanup small debris (call this from the active chunks loop)
+// Update and cleanup small debris - DISABLED for realistic persistent debris
+// All debris now stays in the world permanently as solid physics objects
 export function cleanupSmallDebris() {
-    if (!gameState.smallDebris) return;
-    
-    for (let i = gameState.smallDebris.length - 1; i >= 0; i--) {
-        const piece = gameState.smallDebris[i];
-        if (piece.userData.lifetime !== undefined) {
-            piece.userData.lifetime--;
-            if (piece.userData.lifetime <= 0) {
-                scene.remove(piece);
-                gameState.smallDebris.splice(i, 1);
-                // Also remove from activeChunks if still there
-                const idx = gameState.activeChunks.indexOf(piece);
-                if (idx > -1) gameState.activeChunks.splice(idx, 1);
-            }
-        }
-    }
+    // No cleanup - debris persists forever for realism
+    // Physics engine handles sleeping bodies for performance
+    return;
 }
 
 export function createMoney() {

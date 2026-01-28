@@ -2762,9 +2762,16 @@
     </style>
 
     <script src="/public/lib/three.min.js"></script>
-    <script type="module" src="js/main.js"></script></script>
-    <script type="module" src="js/main.js"></script></script>
-    <script type="module" src="js/main.js"></script></script>
+    
+    <!-- Import Map for external modules -->
+    <script type="importmap">
+    {
+        "imports": {
+            "cannon-es": "/node_modules/cannon-es/dist/cannon-es.js"
+        }
+    }
+    </script>
+
     <script type="module" src="js/main.js"></script>
 </body>
 </html>
