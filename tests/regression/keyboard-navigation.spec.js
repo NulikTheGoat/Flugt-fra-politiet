@@ -33,7 +33,12 @@ test.describe('⌨️ Keyboard Navigation', () => {
         
         // Press down arrow to navigate to a button
         await page.keyboard.press('ArrowDown');
-        await page.waitForTimeout(100);
+        
+        // Wait for focus to update (using waitForFunction instead of timeout)
+        await page.waitForFunction(() => {
+            const focused = document.activeElement;
+            return focused && focused.tagName === 'BUTTON';
+        }, { timeout: 1000 });
         
         // Check that a button is focused or has keyboard-selected class
         const focusedElement = await page.evaluate(() => document.activeElement?.tagName);
@@ -41,7 +46,9 @@ test.describe('⌨️ Keyboard Navigation', () => {
         
         // Navigate with ArrowUp
         await page.keyboard.press('ArrowUp');
-        await page.waitForTimeout(100);
+        
+        // Wait for focus to update again
+        await page.waitForFunction(() => document.activeElement !== null, { timeout: 1000 });
         
         const focusedAfterUp = await page.evaluate(() => document.activeElement?.id);
         console.log(`Focused element after ArrowUp: ${focusedAfterUp}`);
@@ -54,9 +61,8 @@ test.describe('⌨️ Keyboard Navigation', () => {
         
         // Click to start game (or use keyboard)
         await soloBtn.click();
-        await page.waitForTimeout(500);
         
-        // Verify game started
+        // Wait for game to start (check for gameState initialization)
         await page.waitForFunction(() => !!window.gameState?.startTime, { timeout: 5000 });
         console.log('Game started successfully');
         
@@ -66,8 +72,13 @@ test.describe('⌨️ Keyboard Navigation', () => {
             window.gameState.arrested = true;
         });
         
-        // Wait longer for game over screen to appear
-        await page.waitForTimeout(2000);
+        // Wait for game over screen to appear (check DOM instead of arbitrary timeout)
+        await page.waitForFunction(() => {
+            const gameOver = document.getElementById('gameOver');
+            return gameOver && window.getComputedStyle(gameOver).display !== 'none';
+        }, { timeout: 3000 }).catch(() => {
+            console.log('Game Over screen did not appear - test may be skipped');
+        });
         
         // Check game over screen status
         const gameOverEl = page.locator('#gameOver');
