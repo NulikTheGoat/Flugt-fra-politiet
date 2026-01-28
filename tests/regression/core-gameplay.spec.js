@@ -79,14 +79,10 @@ test.describe('🎮 Core Gameplay', () => {
         // Release and coast
         await page.keyboard.up('w');
         // Wait for friction to take effect - speed should decrease
-        const startCoastTime = Date.now();
         await page.waitForFunction((targetSpeed) => {
             const currentSpeed = window.gameState?.speed || 0;
             return currentSpeed < targetSpeed - 0.1; // Speed decreased by at least 0.1
-        }, acceleratedSpeed, { timeout: 2000 }).catch(() => {
-            // If timeout, still continue test but log warning
-            console.warn('Friction did not reduce speed within 2s');
-        });
+        }, acceleratedSpeed, { timeout: 2000 });
         
         const coastingSpeed = await page.evaluate(() => window.gameState?.speed);
         console.log(`Speed after coasting: ${coastingSpeed?.toFixed(2)} (${Math.round((coastingSpeed || 0) * 3.6)} km/h)`);
