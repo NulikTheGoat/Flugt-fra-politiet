@@ -95,6 +95,7 @@
  * @property {any[]} sparks
  * @property {any[]} tireMarks
  * @property {any[]} speedParticles
+ * @property {any[]} [dustParticles] - Wheel dust particles
  * @property {number} baseFOV
  * @property {number} currentFOV
  * @property {number} screenShake

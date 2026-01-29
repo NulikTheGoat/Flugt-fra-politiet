@@ -1,6 +1,7 @@
 // World Director - LLM-driven dynamic object spawning
 // The LLM decides what objects to place on the road AND creates scenarios!
 
+import * as THREE from 'three';
 import { scene } from './core.js';
 import { gameState } from './state.js';
 import { playerCar, repairCar } from './player.js';

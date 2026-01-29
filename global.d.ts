@@ -1,6 +1,7 @@
 export {};
 
 declare module 'cannon-es';
+declare module 'three';
 
 declare global {
   interface Window {
@@ -19,6 +20,8 @@ declare global {
     closeCarDetail?: () => void;
     openCarDetail?: (key: string, car?: any) => void;
     onMultiplayerCarSelected?: (key: string) => void;
+    // Vendor-prefixed AudioContext (Safari)
+    webkitAudioContext?: typeof AudioContext;
   }
 
   const THREE: typeof import('three');

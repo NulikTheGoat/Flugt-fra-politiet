@@ -2761,12 +2761,11 @@
         }
     </style>
 
-    <script src="/public/lib/three.min.js"></script>
-    
-    <!-- Import Map for external modules -->
+    <!-- Import Map for external modules (used by native browser imports) -->
     <script type="importmap">
     {
         "imports": {
+            "three": "/node_modules/three/build/three.module.js",
             "cannon-es": "/node_modules/cannon-es/dist/cannon-es.js"
         }
     }

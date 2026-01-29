@@ -85,7 +85,7 @@ export const SheriffAI = {
 
     /**
      * Calculates the target speed for the Sheriff
-     * @param {number} currentDistance 
+     * @param {number} distance 
      * @param {number} playerSpeed 
      * @returns {number} The calculated target speed
      */

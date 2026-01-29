@@ -1,3 +1,4 @@
+import * as THREE from 'three';
 import { gameState, saveProgress } from './state.js';
 import { generateVerdict, generateNewspaper } from './commentary.js';
 import { gameConfig } from './config.js';

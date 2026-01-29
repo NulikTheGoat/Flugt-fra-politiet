@@ -1,3 +1,4 @@
+import * as THREE from 'three';
 import { sharedGeometries, sharedMaterials } from './assets.js';
 
 // Reusable geometry cache to prevent memory leaks and improve performance

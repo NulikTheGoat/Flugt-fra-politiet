@@ -1,3 +1,4 @@
+import * as THREE from 'three';
 import { gameState, keys } from './state.js';
 import { scene, camera } from './core.js';
 import { cars } from './constants.js';

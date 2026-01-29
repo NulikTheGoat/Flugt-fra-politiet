@@ -1,4 +1,5 @@
 // Level Editor Module
+import * as THREE from 'three';
 import { gameState } from './state.js';
 import { scene, camera, renderer } from './core.js';
 import { 

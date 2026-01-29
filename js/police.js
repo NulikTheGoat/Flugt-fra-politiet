@@ -1,3 +1,4 @@
+import * as THREE from 'three';
 import { gameState } from './state.js';
 import { gameConfig } from './config.js';
 import { scene, camera } from './core.js';

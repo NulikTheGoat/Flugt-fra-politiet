@@ -591,13 +591,13 @@ function showCommentaryBubble(text) {
     const existingBubbles = container.querySelectorAll('.commentary-bubble');
     existingBubbles.forEach((b, index) => {
         if (index > 0) {
-            b.style.opacity = Math.max(0.3, 1 - index * 0.2).toString();
+            /** @type {HTMLElement} */ (b).style.opacity = Math.max(0.3, 1 - index * 0.2).toString();
         }
     });
     
     // Limit number of bubbles
     while (container.children.length > 4) {
-        const lastBubble = container.lastChild;
+        const lastBubble = /** @type {HTMLElement} */ (container.lastChild);
         lastBubble.style.opacity = '0';
         lastBubble.style.transform = 'translateX(50px)';
         setTimeout(() => lastBubble.remove(), 300);

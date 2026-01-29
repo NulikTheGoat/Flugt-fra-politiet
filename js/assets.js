@@ -1,4 +1,5 @@
 // Shared Geometries and Materials
+import * as THREE from 'three';
 import { enemies } from './constants.js';
 import { scene } from './core.js';
 
