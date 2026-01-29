@@ -14,6 +14,11 @@ declare global {
     resetSheriffState?: () => void;
     SHERIFF_COMMANDS?: Record<string, string>;
     __game?: any;
+    // UI functions exposed globally
+    switchShopView?: (view: string) => void;
+    closeCarDetail?: () => void;
+    openCarDetail?: (key: string, car?: any) => void;
+    onMultiplayerCarSelected?: (key: string) => void;
   }
 
   const THREE: typeof import('three');

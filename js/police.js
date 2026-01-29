@@ -83,6 +83,7 @@ export function createPoliceCar(type = 'standard') {
     carGroup.add(blueLight);
 
     // Wheels
+    /** @type {[number, number, number][]} */
     const wheelPositions = [
         [-12, 5, 12],
         [12, 5, 12],

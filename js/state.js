@@ -44,12 +44,20 @@
  * @property {number} carTilt
  * @property {number} wheelAngle
  * @property {number} handling
+ * @property {number} [grip] - Car grip/traction (0-1)
+ * @property {number} [maxSpeedAchieved] - Maximum speed reached in current run
+ * @property {number} [weightTransfer] - Weight transfer during braking/acceleration
+ * @property {number} [driftVisualAngle] - Visual drift angle for chassis rotation
+ * @property {number} [carPitch] - Car pitch angle for acceleration/braking visuals
+ * @property {boolean} [airborne] - Whether car is in the air
+ * @property {number} [verticalVelocity] - Vertical velocity when airborne
  *
  * @property {number} health
  * @property {number} money
  * @property {number} totalMoney - Total lifetime money earned (persistent, for shop purchases)
  * @property {number} rebirthPoints
  * @property {string} selectedCar
+ * @property {Record<string, boolean>} ownedCars - Map of owned car keys to true
  * @property {number} arrestDistance
  * @property {boolean} arrested
  * @property {number} arrestCountdown
@@ -74,8 +82,9 @@
  * @property {any[]} chunks
  * @property {Record<string, any>} chunkGrid
  * @property {any[]} activeChunks
- * @property {any[]} fallenDebris
- * @property {any[]} smallDebris
+ * @property {any[]} debris - Unified debris array
+ * @property {any[]} fallenDebris - Deprecated - use debris instead
+ * @property {any[]} smallDebris - Deprecated - use debris instead
  * @property {number} chunkGridSize
  * @property {any[]} collectibles
  *

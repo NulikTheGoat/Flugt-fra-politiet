@@ -139,7 +139,7 @@ document.addEventListener('DOMContentLoaded', updateHighScoreDisplay);
 
 export function updateHUD(policeDistance) {
     const speedKmh = Math.round(gameState.speed * 3.6);
-    DOM.speed.textContent = speedKmh;
+    DOM.speed.textContent = String(speedKmh);
     DOM.speedFill.style.width = clamp((gameState.speed / gameState.maxSpeed) * 100, 0, 100) + '%';
 
     if (gameState.speed > gameState.maxSpeedWarning) {
@@ -151,7 +151,7 @@ export function updateHUD(policeDistance) {
     // Drift indicator
     if (gameState.driftFactor > 0.3) {
         DOM.driftIndicator.style.display = 'block';
-        DOM.driftIndicator.style.opacity = Math.min(1, gameState.driftFactor * 1.5);
+        DOM.driftIndicator.style.opacity = String(Math.min(1, gameState.driftFactor * 1.5));
     } else {
         DOM.driftIndicator.style.display = 'none';
     }
@@ -165,14 +165,14 @@ export function updateHUD(policeDistance) {
         } else {
             elapsedSeconds = 0;
         }
-    DOM.time.textContent = elapsedSeconds;
-    DOM.heatLevel.textContent = gameState.heatLevel;
+    DOM.time.textContent = String(elapsedSeconds);
+    DOM.heatLevel.textContent = String(gameState.heatLevel);
     
     // Count active and dead police cars
     const deadCount = gameState.policeCars.filter(c => c.userData.dead).length;
     const activeCount = gameState.policeCars.length - deadCount;
-    DOM.policeCount.textContent = activeCount;
-    DOM.deadPoliceCount.textContent = deadCount;
+    DOM.policeCount.textContent = String(activeCount);
+    DOM.deadPoliceCount.textContent = String(deadCount);
     
     // Check if Sheriff is active
     const hasSheriff = gameState.policeCars.some(c => c.userData.type === 'sheriff' && !c.userData.dead);
@@ -201,7 +201,7 @@ export function updateHUD(policeDistance) {
     if (DOM.totalMoney) DOM.totalMoney.textContent = Math.floor((gameState.totalMoney || 0) + gameState.money).toLocaleString();
 
     if (policeDistance > 0) {
-        DOM.policeDistance.textContent = Math.round(policeDistance);
+        DOM.policeDistance.textContent = String(Math.round(policeDistance));
         
         // Arrest countdown display
         if (gameState.arrestCountdown > 0) {
@@ -329,7 +329,7 @@ export function addMoney(amount) {
     if (DOM.money && DOM.money.parentElement) {
         // Find the wrapper we added in index.html for animation targeting
         // The structure changed to .money-container > .money-row > .money-value > span#money
-        const container = DOM.money.closest('.money-container'); 
+        const container = /** @type {HTMLElement|null} */ (DOM.money.closest('.money-container')); 
         if(container) {
              container.classList.remove('hud-money-pop');
              void container.offsetWidth; 
@@ -526,7 +526,7 @@ function initShopTabs() {
         tab.addEventListener('click', () => {
             tabs.forEach(t => t.classList.remove('active'));
             tab.classList.add('active');
-            currentShopCategory = tab.dataset.category;
+            currentShopCategory = /** @type {HTMLElement} */ (tab).dataset.category;
             renderShop();
         });
     });
@@ -544,7 +544,7 @@ function updateTabCounts() {
     
     Object.entries(counts).forEach(([cat, count]) => {
         const el = document.getElementById(`tabCount${cat.charAt(0).toUpperCase() + cat.slice(1)}`);
-        if (el) el.textContent = count;
+        if (el) el.textContent = String(count);
     });
 }
 
@@ -904,7 +904,7 @@ export function renderShop() {
         `;
 
         carCard.addEventListener('click', () => {
-            openCarDetail(key, car);
+            window.openCarDetail(key, car);
         });
 
         DOM.carList.appendChild(carCard);
@@ -934,7 +934,7 @@ function performRebirth() {
 }
 
 export function updateHealthUI() {
-    if (DOM.healthValue) DOM.healthValue.textContent = Math.ceil(gameState.health);
+    if (DOM.healthValue) DOM.healthValue.textContent = String(Math.ceil(gameState.health));
     if (DOM.healthFill) {
         DOM.healthFill.style.width = Math.max(0, gameState.health) + '%';
         DOM.healthFill.style.background = gameState.health < 30 ? '#ff0000' : (gameState.health < 60 ? '#ffa500' : '#00ff00');
@@ -1014,7 +1014,7 @@ window.switchShopView = function(view) {
 };
 
 window.closeCarDetail = function() {
-    switchShopView('catalog');
+    window.switchShopView('catalog');
 };
 
 let currentDetailKey = null;
@@ -1088,7 +1088,7 @@ window.openCarDetail = function(key, car) {
     const btn = document.getElementById('detailActionBtn');
     if (btn) {
         // Clone button to remove old listeners
-        const newBtn = btn.cloneNode(true);
+        const newBtn = /** @type {HTMLButtonElement} */ (btn.cloneNode(true));
         btn.parentNode.replaceChild(newBtn, btn);
         
         const updateBtnState = () => {
@@ -1142,20 +1142,21 @@ window.openCarDetail = function(key, car) {
     if (container) {
         // Helper to find the matching card preview
         const cards = document.querySelectorAll('.carCard');
+        /** @type {HTMLElement|null} */
         let targetCard = null;
         cards.forEach(c => {
             const title = c.querySelector('h3');
-            if (title && title.textContent.includes(car.name)) targetCard = c;
+            if (title && title.textContent.includes(car.name)) targetCard = /** @type {HTMLElement} */ (c);
         });
         
         if (targetCard) {
             container.innerHTML = '';
             const previewBox = targetCard.querySelector('.car-preview-box').cloneNode(true);
-            previewBox.classList.remove('preview-onfoot', 'preview-bike', 'preview-scooter'); 
+            /** @type {HTMLElement} */ (previewBox).classList.remove('preview-onfoot', 'preview-bike', 'preview-scooter'); 
             // Add a class that might help centering or scaling if needed
             container.appendChild(previewBox);
         }
     }
     
-    switchShopView('detail');
+    window.switchShopView('detail');
 };

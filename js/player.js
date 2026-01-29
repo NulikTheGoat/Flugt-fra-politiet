@@ -520,6 +520,7 @@ export function createPlayerCar(color = 0xff0000, type = 'standard') {
         chassis.add(backWindow);
 
         // Wheels
+        /** @type {[number, number, number][]} */
         const wheelPositions = [
             [-12, 5, 12],
             [12, 5, 12],
@@ -1068,7 +1069,7 @@ export function updatePlayer(delta, now) {
         if (gameState.driftFactor > 0.3 && absSpeed > 20) {
             createTireMark(playerCar.position.x, playerCar.position.z, playerCar.rotation.y);
         }
-        updateTireMarks(delta);
+        updateTireMarks();
         
         // Dust clouds from wheels at high speed or when drifting
         const speedRatio = absSpeed / gameState.maxSpeed;
