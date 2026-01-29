@@ -1,0 +1,59 @@
+[gd_scene load_steps=7 format=3 uid="uid://bx8k7p2qm5n2p"]
+
+[ext_resource type="Script" path="res://scripts/police_ai.gd" id="1_police_script"]
+
+[sub_resource type="BoxMesh" id="BoxMesh_police_body"]
+size = Vector3(2, 1, 4)
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_police"]
+albedo_color = Color(1, 0.2, 0.2, 1)
+metallic = 0.3
+roughness = 0.4
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_police"]
+size = Vector3(2, 1, 4)
+
+[sub_resource type="CylinderMesh" id="CylinderMesh_wheel"]
+top_radius = 0.3
+bottom_radius = 0.3
+height = 0.2
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_wheel"]
+albedo_color = Color(0.1, 0.1, 0.1, 1)
+
+[node name="PoliceCar" type="RigidBody3D" groups=["police"]]
+mass = 1200.0
+script = ExtResource("1_police_script")
+
+[node name="CarBody" type="MeshInstance3D" parent="."]
+mesh = SubResource("BoxMesh_police_body")
+surface_material_override/0 = SubResource("StandardMaterial3D_police")
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="."]
+shape = SubResource("BoxShape3D_police")
+
+[node name="WheelFrontLeft" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, -4.37114e-08, -1, 0, 1, -4.37114e-08, -0.8, -0.5, 1.5)
+mesh = SubResource("CylinderMesh_wheel")
+surface_material_override/0 = SubResource("StandardMaterial3D_wheel")
+
+[node name="WheelFrontRight" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, -4.37114e-08, -1, 0, 1, -4.37114e-08, 0.8, -0.5, 1.5)
+mesh = SubResource("CylinderMesh_wheel")
+surface_material_override/0 = SubResource("StandardMaterial3D_wheel")
+
+[node name="WheelBackLeft" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, -4.37114e-08, -1, 0, 1, -4.37114e-08, -0.8, -0.5, -1.5)
+mesh = SubResource("CylinderMesh_wheel")
+surface_material_override/0 = SubResource("StandardMaterial3D_wheel")
+
+[node name="WheelBackRight" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, -4.37114e-08, -1, 0, 1, -4.37114e-08, 0.8, -0.5, -1.5)
+mesh = SubResource("CylinderMesh_wheel")
+surface_material_override/0 = SubResource("StandardMaterial3D_wheel")
+
+[node name="Siren" type="OmniLight3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, 0)
+light_color = Color(1, 0, 0, 1)
+light_energy = 2.0
+omni_range = 10.0

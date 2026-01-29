@@ -1,0 +1,56 @@
+[gd_scene load_steps=7 format=3 uid="uid://dd1qxj2qp2m1k"]
+
+[ext_resource type="Script" path="res://scripts/car_controller.gd" id="1_car_script"]
+
+[sub_resource type="BoxMesh" id="BoxMesh_car_body"]
+size = Vector3(2, 1, 4)
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_car"]
+albedo_color = Color(0.2, 0.5, 1, 1)
+metallic = 0.5
+roughness = 0.3
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_car"]
+size = Vector3(2, 1, 4)
+
+[sub_resource type="CylinderMesh" id="CylinderMesh_wheel"]
+top_radius = 0.3
+bottom_radius = 0.3
+height = 0.2
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_wheel"]
+albedo_color = Color(0.1, 0.1, 0.1, 1)
+
+[node name="PlayerCar" type="RigidBody3D" groups=["player"]]
+mass = 1200.0
+script = ExtResource("1_car_script")
+
+[node name="CarBody" type="MeshInstance3D" parent="."]
+mesh = SubResource("BoxMesh_car_body")
+surface_material_override/0 = SubResource("StandardMaterial3D_car")
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="."]
+shape = SubResource("BoxShape3D_car")
+
+[node name="WheelFrontLeft" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, -4.37114e-08, -1, 0, 1, -4.37114e-08, -0.8, -0.5, 1.5)
+mesh = SubResource("CylinderMesh_wheel")
+surface_material_override/0 = SubResource("StandardMaterial3D_wheel")
+
+[node name="WheelFrontRight" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, -4.37114e-08, -1, 0, 1, -4.37114e-08, 0.8, -0.5, 1.5)
+mesh = SubResource("CylinderMesh_wheel")
+surface_material_override/0 = SubResource("StandardMaterial3D_wheel")
+
+[node name="WheelBackLeft" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, -4.37114e-08, -1, 0, 1, -4.37114e-08, -0.8, -0.5, -1.5)
+mesh = SubResource("CylinderMesh_wheel")
+surface_material_override/0 = SubResource("StandardMaterial3D_wheel")
+
+[node name="WheelBackRight" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, -4.37114e-08, -1, 0, 1, -4.37114e-08, 0.8, -0.5, -1.5)
+mesh = SubResource("CylinderMesh_wheel")
+surface_material_override/0 = SubResource("StandardMaterial3D_wheel")
+
+[node name="Camera3D" type="Camera3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 0.866025, 0.5, 0, -0.5, 0.866025, 0, 8, 12)

@@ -2,6 +2,8 @@
 
 A fast-paced 3D car chase game! Outrun the cops, collect coins, upgrade your ride, and play with friends on LAN!
 
+> 🆕 **Godot Engine POC**: Check out the [Godot POC](godot-poc/) - a proof of concept showing how this game could be built with Godot Engine! See [godot-poc/README.md](godot-poc/README.md) for details.
+
 ---
 
 ## 📚 Documentation
