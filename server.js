@@ -6,6 +6,25 @@ const fs = require('fs');
 const path = require('path');
 const { WebSocketServer } = require('ws');
 
+// Security headers (helmet-like for raw Node.js)
+const SECURITY_HEADERS = {
+  'X-Content-Type-Options': 'nosniff',
+  'X-Frame-Options': 'SAMEORIGIN',
+  'X-XSS-Protection': '1; mode=block',
+  'Referrer-Policy': 'strict-origin-when-cross-origin',
+  'Permissions-Policy': 'camera=(), microphone=(), geolocation=()',
+};
+
+// Cache control settings for static files
+const CACHE_SETTINGS = {
+  // Long cache for versioned assets (1 year)
+  immutable: 'public, max-age=31536000, immutable',
+  // Short cache for HTML and dynamic content
+  short: 'public, max-age=300',
+  // No cache for API responses
+  none: 'no-store, no-cache, must-revalidate',
+};
+
 // Prefer dotenv, but keep a safe fallback for environments where it's not installed.
 try {
   // eslint-disable-next-line global-require
@@ -235,6 +254,15 @@ function httpsPost(url, headers, body) {
 
 // Simple HTTP server for static files + discovery endpoint
 const httpServer = http.createServer(async (req, res) => {
+  // Apply security headers to all responses
+  Object.entries(SECURITY_HEADERS).forEach(([key, value]) => {
+    res.setHeader(key, value);
+  });
+
+  // Basic request logging
+  const timestamp = new Date().toISOString();
+  console.log(`[${timestamp}] ${req.method} ${req.url}`);
+
   // Handle CORS preflight
   if (req.method === 'OPTIONS') {
     res.writeHead(200, {
@@ -736,7 +764,23 @@ Skab et DYNAMISK SCENARIE! Vær kreativ og overraskende. Svar KUN med JSON.`;
         res.end('Server error: ' + err.code);
       }
     } else {
-      res.writeHead(200, { 'Content-Type': contentType });
+      // Apply cache headers based on file type
+      const headers = { 'Content-Type': contentType };
+      
+      // HTML files - short cache
+      if (extname === '.html') {
+        headers['Cache-Control'] = CACHE_SETTINGS.short;
+      }
+      // Static assets (JS, CSS, images, fonts) - long cache
+      else if (['.js', '.css', '.png', '.jpg', '.woff', '.woff2', '.svg'].includes(extname)) {
+        headers['Cache-Control'] = CACHE_SETTINGS.immutable;
+      }
+      // Audio files - medium cache
+      else if (['.wav', '.mp3', '.ogg'].includes(extname)) {
+        headers['Cache-Control'] = 'public, max-age=86400';
+      }
+      
+      res.writeHead(200, headers);
       res.end(content, 'utf-8');
     }
   });
