@@ -4,6 +4,10 @@
   "description": "A fast-paced 3D car chase game! Outrun the cops, collect coins, and upgrade your ride!",
   "main": "script_backup.js",
   "scripts": {
+    "lint": "eslint . --ext .js,.cjs",
+    "lint:fix": "eslint . --ext .js,.cjs --fix",
+    "format": "prettier --write .eslintrc.cjs .prettierrc package.json package-lock.json server.js .github/workflows/*.yml",
+    "format:check": "prettier --check .eslintrc.cjs .prettierrc package.json package-lock.json server.js .github/workflows/*.yml",
     "test": "npx playwright test",
     "test:fast": "npx playwright test --workers=4",
     "test:failed": "npx playwright test --last-failed",
@@ -45,6 +49,9 @@
   },
   "devDependencies": {
     "@playwright/test": "^1.58.0",
+    "eslint": "^8.57.0",
+    "eslint-config-prettier": "^9.1.0",
+    "prettier": "^3.4.2",
     "playwright": "^1.58.0"
   }
 }

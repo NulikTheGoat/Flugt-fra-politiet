@@ -1179,20 +1179,22 @@ function updateMissionProgress() {
             }
             break;
             
-        case MISSION_TYPES.SPEED:
+        case MISSION_TYPES.SPEED: {
             const currentSpeed = Math.round(gameState.speed * 3.6);
             if (currentSpeed >= mission.target) {
                 completeMission();
             }
             break;
+        }
             
-        case MISSION_TYPES.COLLECT:
+        case MISSION_TYPES.COLLECT: {
             const currentMoney = gameState.totalMoney || gameState.money;
             const collected = currentMoney - (mission.startValue || 0);
             if (collected >= mission.target) {
                 completeMission();
             }
             break;
+        }
         // DESTROY is handled in logEvent
     }
 }
