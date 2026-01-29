@@ -27,6 +27,7 @@
     "test:mp": "npx playwright test tests/regression/multiplayer.spec.js",
     "test:world": "npx playwright test tests/regression/world-rendering.spec.js",
     "test:all": "npm run test:values && npx playwright test --workers=4",
+    "test:ci": "npx playwright test --workers=2 --retries=2 --reporter=line",
     "start": "node server.js"
   },
   "repository": {
