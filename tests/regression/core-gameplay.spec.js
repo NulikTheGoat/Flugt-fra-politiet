@@ -275,10 +275,19 @@ test.describe('💰 Economy System', () => {
             window.gameState.money = 500;
         });
         
-        // Trigger UI update by moving
+        // Trigger UI update by moving - also ensures game loop runs
         await page.keyboard.down('w');
-        await page.waitForTimeout(500);
+        await page.waitForTimeout(200);
         await page.keyboard.up('w');
+        
+        // Wait for UI to update (handling async rendering)
+        await page.waitForFunction(
+            () => {
+                const el = document.getElementById('money');
+                return el && el.textContent.includes('500');
+            },
+            { timeout: 5000 }
+        );
         
         const displayedMoney = await page.locator('#money').textContent();
         console.log(`Money display after adding 500: ${displayedMoney}`);

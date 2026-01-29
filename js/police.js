@@ -12,6 +12,7 @@ import { addMoney, showFloatingMoney, showGameOver } from './ui.js';
 import * as Network from './network.js';
 import { logEvent, EVENTS } from './commentary.js';
 import { requestSheriffCommand, getCurrentSheriffCommand, applySheriffCommand } from './sheriff.js';
+import { updatePoliceSiren, stopPoliceSiren } from './sfx.js';
 
 const projectileGeometry = new THREE.SphereGeometry(2, 8, 8);
 
@@ -1016,6 +1017,14 @@ export function updatePoliceAI(delta) {
     }
 
     gameState.policeCars = gameState.policeCars.filter(c => !c.userData.remove);
+
+    // Update police siren sound based on distance
+    const activePoliceCount = gameState.policeCars.filter(c => !c.userData.dead).length;
+    if (activePoliceCount > 0 && minDistance < 600) {
+        updatePoliceSiren(minDistance, activePoliceCount);
+    } else {
+        stopPoliceSiren();
+    }
 
     return minDistance;
 }

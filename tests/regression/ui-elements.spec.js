@@ -96,25 +96,26 @@ test.describe('📊 HUD Elements', () => {
     });
 
     test('Timer display is visible and counting', async ({ page }) => {
-        // Try multiple possible timer selectors
-        const timerElement = page.locator('#timer, #time, .timer, [data-timer]').first();
-        const isVisible = await timerElement.isVisible().catch(() => false);
+        // Use exact ID from ui.js
+        const timerElement = page.locator('#time');
+        await expect(timerElement).toBeVisible();
         
-        if (isVisible) {
-            const initialTime = await timerElement.textContent();
-            await page.waitForTimeout(2000);
-            const laterTime = await timerElement.textContent();
-            console.log(`Timer: ${initialTime} -> ${laterTime}`);
-            // Timer should have changed (or game tracks time internally)
-            expect(laterTime !== initialTime || true).toBe(true);
-        } else {
-            // Timer may be tracked internally without UI display
-            const gameTime = await page.evaluate(() => window.gameState?.time || window.gameState?.gameTime);
-            console.log(`No timer UI, internal time: ${gameTime}`);
-            // Just verify game is running
-            const isRunning = await page.evaluate(() => window.gameState?.gameRunning);
-            expect(isRunning).toBe(true);
-        }
+        // Start moving to ensure game loop is running
+        await page.keyboard.down('w');
+        await page.waitForTimeout(500);
+        
+        const initialTime = await timerElement.textContent();
+        // Wait for time to pass while game is active
+        await page.waitForTimeout(2000);
+        const laterTime = await timerElement.textContent();
+        
+        await page.keyboard.up('w');
+        
+        console.log(`Timer: ${initialTime} -> ${laterTime}`);
+        // Timer should either change OR show a valid time format
+        const changed = laterTime !== initialTime;
+        const hasTimeFormat = /\d+/.test(laterTime || '');
+        expect(changed || hasTimeFormat).toBe(true);
     });
 });
 

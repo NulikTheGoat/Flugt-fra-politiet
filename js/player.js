@@ -4,7 +4,7 @@ import { scene, camera } from './core.js';
 import { cars } from './constants.js';
 import { sharedGeometries, sharedMaterials } from './assets.js';
 import { createSmoke, createSpark, createTireMark, updateTireMarks, createWheelDust, updateDustParticles } from './particles.js';
-import { playSfx } from './sfx.js';
+import { playSfx, setEngineRpm, stopEngineSound, setDriftIntensity, stopDriftSound } from './sfx.js';
 import { CarBuilders, makeCarLights } from './carModels.js';
 
 /**
@@ -710,13 +710,21 @@ function applyKickScooterAnimation(target, now, wantsForward) {
 // Main update loop for player logic (Physics, controls)
 // Enhanced with industry-standard car physics simulation
 export function updatePlayer(delta, now) {
-    if (!playerCar || gameState.arrested) return;
+    if (!playerCar) return;
+    
+    if (gameState.arrested) {
+        stopEngineSound();
+        stopDriftSound();
+        return;
+    }
 
     const visualType = playerCar.userData.visualType || gameState.selectedCar || 'standard';
     const isOnFoot = visualType === 'onfoot' || gameState.selectedCar === 'onfoot';
 
     // Car cannot drive when HP is 0 or below
     if (gameState.health <= 0) {
+        stopEngineSound();
+        stopDriftSound();
         // On foot: just stop (no car-like wreck drifting)
         if (isOnFoot) {
             gameState.speed *= 0.7;
@@ -744,6 +752,8 @@ export function updatePlayer(delta, now) {
     // ON-FOOT RUNNING MODEL (no car steering)
     // ============================================
     if (isOnFoot) {
+        stopEngineSound();
+        stopDriftSound();
         // Movement vector relative to camera (XZ plane)
         const forward = new THREE.Vector3();
         camera.getWorldDirection(forward);
@@ -822,6 +832,21 @@ export function updatePlayer(delta, now) {
     const handling = gameState.handling || 0.05;
     const absSpeed = Math.abs(gameState.speed);
     const speedRatio = absSpeed / gameState.maxSpeed;
+
+    // Update Engine Sound
+    if (gameState.health > 0) {
+        setEngineRpm(speedRatio);
+        
+        // Update Drift Sound
+        if (gameState.driftFactor && gameState.driftFactor > 0.1 && absSpeed > 15) {
+            setDriftIntensity(gameState.driftFactor);
+        } else {
+            stopDriftSound();
+        }
+    } else {
+        stopEngineSound();
+        stopDriftSound();
+    }
     
     // === WEIGHT TRANSFER SIMULATION ===
     // Forward weight transfer affects grip (braking = more front grip, acceleration = more rear grip)

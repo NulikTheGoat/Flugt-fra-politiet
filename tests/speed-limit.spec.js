@@ -44,6 +44,9 @@ test.describe('Player Speed Limits', () => {
             { timeout: 15000, polling: 200 }
         );
         
+        // Ensure game canvas has focus for input
+        await page.click('canvas', { force: true });
+        
         // Small buffer for UI to stabilize
         await page.waitForTimeout(500);
     });

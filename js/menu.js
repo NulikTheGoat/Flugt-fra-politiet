@@ -128,6 +128,7 @@ export function initMenu({ startGame, cleanupGame }) {
     // Solo mode - just start the game
     if (soloModeBtn) {
         soloModeBtn.addEventListener('click', () => {
+            unlockAudio(); // Ensure audio is unlocked when game starts
             if(gameModeModal) gameModeModal.style.display = 'none';
             startGame();
         });

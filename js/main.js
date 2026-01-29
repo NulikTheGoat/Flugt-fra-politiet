@@ -48,6 +48,7 @@ import { initLevelEditor, openLevelEditor } from './levelEditor.js';
 import { exposeDevtools } from './devtools.js';
 import { initMenu } from './menu.js';
 import { resetSheriffState } from './sheriff.js';
+import { unlockAudio } from './sfx.js';
 import { updateWorldDirector, clearSpawnedObjects } from './worldDirector.js';
 import { physicsWorld } from './physicsWorld.js';
 
@@ -423,6 +424,9 @@ createPlayerCar(starterCar.color, starterCar.type || gameState.selectedCar);
 initLevelEditor();
 
 export function startGame() {
+    // Ensure audio is unlocked when game starts
+    unlockAudio();
+    
     if (!window.physicsInitialized) {
         physicsWorld.init();
         

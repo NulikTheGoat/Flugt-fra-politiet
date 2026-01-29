@@ -152,10 +152,10 @@ test.describe('Debris Physics System', () => {
                 // Get player car position
                 const carPos = window.playerCar?.position || { x: 0, z: 0 };
                 
-                // Create debris 50 units ahead
-                const debris = new THREE.Mesh(
-                    new THREE.BoxGeometry(40, 40, 40),
-                    new THREE.MeshLambertMaterial({ color: 0x888888 })
+                // Create debris 50 units ahead using window.THREE
+                const debris = new window.THREE.Mesh(
+                    new window.THREE.BoxGeometry(40, 40, 40),
+                    new window.THREE.MeshLambertMaterial({ color: 0x888888 })
                 );
                 debris.position.set(carPos.x, 20, carPos.z + 80);
                 debris.userData = {
@@ -163,8 +163,8 @@ test.describe('Debris Physics System', () => {
                     width: 40,
                     height: 40,
                     depth: 40,
-                    velocity: new THREE.Vector3(0, 0, 0),
-                    rotVelocity: new THREE.Vector3(0, 0, 0),
+                    velocity: new window.THREE.Vector3(0, 0, 0),
+                    rotVelocity: new window.THREE.Vector3(0, 0, 0),
                 };
                 
                 window.scene.add(debris);
@@ -213,10 +213,10 @@ test.describe('Debris Physics System', () => {
                 window.gameState.totalMoney = 50000;
                 if (window.selectCar) window.selectCar('sportsvogn');
                 
-                // Create large debris
-                const debris = new THREE.Mesh(
-                    new THREE.BoxGeometry(30, 30, 30),
-                    new THREE.MeshLambertMaterial({ color: 0x888888 })
+                // Create large debris using window.THREE
+                const debris = new window.THREE.Mesh(
+                    new window.THREE.BoxGeometry(30, 30, 30),
+                    new window.THREE.MeshLambertMaterial({ color: 0x888888 })
                 );
                 const carPos = window.playerCar?.position || { x: 0, z: 0 };
                 debris.position.set(carPos.x, 15, carPos.z + 100);
@@ -225,8 +225,8 @@ test.describe('Debris Physics System', () => {
                     width: 30,
                     height: 30,
                     depth: 30,
-                    velocity: new THREE.Vector3(0, 0, 0),
-                    rotVelocity: new THREE.Vector3(0, 0, 0),
+                    velocity: new window.THREE.Vector3(0, 0, 0),
+                    rotVelocity: new window.THREE.Vector3(0, 0, 0),
                 };
                 
                 window.scene.add(debris);
@@ -296,10 +296,10 @@ test.describe('Debris Physics System', () => {
                 window.gameState.policeEngaged = true;
                 window.gameState.hasStartedMoving = true;
                 
-                // Create debris near expected police spawn
-                const debris = new THREE.Mesh(
-                    new THREE.BoxGeometry(30, 30, 30),
-                    new THREE.MeshLambertMaterial({ color: 0x888888 })
+                // Create debris near expected police spawn using window.THREE
+                const debris = new window.THREE.Mesh(
+                    new window.THREE.BoxGeometry(30, 30, 30),
+                    new window.THREE.MeshLambertMaterial({ color: 0x888888 })
                 );
                 debris.position.set(200, 15, 200);
                 debris.userData = {
@@ -307,8 +307,8 @@ test.describe('Debris Physics System', () => {
                     width: 30,
                     height: 30,
                     depth: 30,
-                    velocity: new THREE.Vector3(0, 0, 0),
-                    rotVelocity: new THREE.Vector3(0, 0, 0),
+                    velocity: new window.THREE.Vector3(0, 0, 0),
+                    rotVelocity: new window.THREE.Vector3(0, 0, 0),
                 };
                 
                 window.scene.add(debris);
@@ -335,16 +335,16 @@ test.describe('Debris Physics System', () => {
                 // Check if the settling condition exists in activeChunks processing
                 // A chunk should move from activeChunks to fallenDebris when velocity is low
                 
-                // Simulate: create an active chunk with near-zero velocity
-                const testChunk = new THREE.Mesh(
-                    new THREE.BoxGeometry(20, 20, 20),
-                    new THREE.MeshLambertMaterial({ color: 0x555555 })
+                // Simulate: create an active chunk with near-zero velocity using window.THREE
+                const testChunk = new window.THREE.Mesh(
+                    new window.THREE.BoxGeometry(20, 20, 20),
+                    new window.THREE.MeshLambertMaterial({ color: 0x555555 })
                 );
                 testChunk.position.set(0, 10, 0); // Near ground
                 testChunk.userData = {
                     isHit: true,
-                    velocity: new THREE.Vector3(0.01, 0.01, 0.01), // Very slow
-                    rotVelocity: new THREE.Vector3(0, 0, 0),
+                    velocity: new window.THREE.Vector3(0.01, 0.01, 0.01), // Very slow
+                    rotVelocity: new window.THREE.Vector3(0, 0, 0),
                     width: 20,
                     height: 20,
                     depth: 20,
@@ -378,9 +378,9 @@ test.describe('Debris Physics System', () => {
         test('pushing debris updates its matrix for rendering', async ({ page }) => {
             // Create stationary debris and push it
             await page.evaluate(() => {
-                const debris = new THREE.Mesh(
-                    new THREE.BoxGeometry(25, 25, 25),
-                    new THREE.MeshLambertMaterial({ color: 0x777777 })
+                const debris = new window.THREE.Mesh(
+                    new window.THREE.BoxGeometry(25, 25, 25),
+                    new window.THREE.MeshLambertMaterial({ color: 0x777777 })
                 );
                 const carPos = window.playerCar?.position || { x: 0, z: 0 };
                 debris.position.set(carPos.x, 12.5, carPos.z + 60);
@@ -392,8 +392,8 @@ test.describe('Debris Physics System', () => {
                     width: 25,
                     height: 25,
                     depth: 25,
-                    velocity: new THREE.Vector3(0, 0, 0),
-                    rotVelocity: new THREE.Vector3(0, 0, 0),
+                    velocity: new window.THREE.Vector3(0, 0, 0),
+                    rotVelocity: new window.THREE.Vector3(0, 0, 0),
                 };
                 
                 window.scene.add(debris);
