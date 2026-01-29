@@ -269,6 +269,7 @@ function createSpawnedObject(type, x, z, moving = false, speed = 0) {
         });
     }
     
+    /** @type {THREE.Mesh|THREE.Group} */
     let mesh = new THREE.Mesh(geometry, material);
     mesh.position.set(x, config.height, z);
 

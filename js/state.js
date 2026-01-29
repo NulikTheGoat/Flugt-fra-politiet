@@ -107,6 +107,17 @@
  * @property {string|null} roomCode
  * @property {Map<string, any>} otherPlayers
  * @property {number} playerColor
+ *
+ * @property {number} [policeCount] - Number of active police cars
+ * @property {number} [survivalTime] - Time survived in seconds
+ * @property {boolean} [shieldActive] - Whether shield powerup is active
+ * @property {number} [shieldEndTime] - When shield expires
+ * @property {boolean} [nitroActive] - Whether nitro boost is active
+ * @property {number} [nitroEndTime] - When nitro expires
+ * @property {number} [speedBoost] - Current speed boost amount
+ * @property {number} [airborneStartTime] - When car became airborne
+ * @property {boolean} [slipping] - Whether car is slipping on oil
+ * @property {number} [slipFactor] - Slip factor multiplier
  */
 
 /** @type {GameState} */

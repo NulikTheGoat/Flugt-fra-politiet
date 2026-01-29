@@ -199,9 +199,11 @@ export const CarBuilders = {
         floor.position.y = 4; chassis.add(floor);
 
         const postGeo = carGeometries.buggyPost;
-        [
+        /** @type {[number, number, number][]} */
+        const postPositions = [
             [-6, 10, 5], [6, 10, 5], [-6, 10, -10], [6, 10, -10]
-        ].forEach(p => {
+        ];
+        postPositions.forEach(p => {
             const post = new THREE.Mesh(postGeo, tubeMat); post.position.set(...p); chassis.add(post);
         });
         const roof = new THREE.Mesh(carGeometries.buggyRoof, tubeMat); roof.position.set(0, 16, -2.5); chassis.add(roof);
