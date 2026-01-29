@@ -2623,6 +2623,7 @@
             <div class="editor-section">
                 <label>Objekter: <span id="objectCount">0</span></label>
             </div>
+            <button id="editorStartGame" class="editor-btn start">🎮 Start Spil</button>
             <button id="editorClose" class="editor-btn close">✖ Luk Editor</button>
         </div>
         <div id="editorPreview"></div>
@@ -2727,6 +2728,20 @@
             width: 100%;
             margin-top: 15px;
             background: linear-gradient(135deg, #666, #444);
+        }
+        
+        .editor-btn.start {
+            width: 100%;
+            margin-top: 10px;
+            padding: 15px;
+            font-size: 16px;
+            background: linear-gradient(135deg, #0088ff, #0066cc);
+            box-shadow: 0 0 15px rgba(0, 136, 255, 0.3);
+        }
+        
+        .editor-btn.start:hover {
+            background: linear-gradient(135deg, #00aaff, #0088ff);
+            box-shadow: 0 0 20px rgba(0, 170, 255, 0.5);
         }
         
         .editor-btn.active {

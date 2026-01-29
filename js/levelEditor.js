@@ -33,7 +33,7 @@ const editorState = {
 let editorPanel, objectTypeSelect, buildingTypeSelect, buildingOptions;
 let widthSlider, depthSlider, heightSlider;
 let widthVal, depthVal, heightVal;
-let deleteModeBtn, undoBtn, clearBtn, saveBtn, loadBtn, exportBtn, closeBtn;
+let deleteModeBtn, undoBtn, clearBtn, saveBtn, loadBtn, exportBtn, closeBtn, startGameBtn;
 let coordsDisplay, objectCountDisplay, fileInput;
 
 export function initLevelEditor() {
@@ -55,6 +55,7 @@ export function initLevelEditor() {
     loadBtn = document.getElementById('editorLoad');
     exportBtn = document.getElementById('editorExport');
     closeBtn = document.getElementById('editorClose');
+    startGameBtn = document.getElementById('editorStartGame');
     coordsDisplay = document.getElementById('editorCoords');
     objectCountDisplay = document.getElementById('objectCount');
     fileInput = document.getElementById('editorFileInput');
@@ -88,6 +89,7 @@ export function initLevelEditor() {
     loadBtn.addEventListener('click', () => fileInput.click());
     exportBtn.addEventListener('click', exportToClipboard);
     closeBtn.addEventListener('click', closeLevelEditor);
+    startGameBtn.addEventListener('click', startGameFromEditor);
     fileInput.addEventListener('change', loadLevel);
 
     // Mouse events on renderer
@@ -161,6 +163,26 @@ export function closeLevelEditor() {
     }
     
     console.log('🏗️ Level Editor closed');
+}
+
+// Start the game from editor - closes editor and begins gameplay
+function startGameFromEditor() {
+    console.log('🎮 Starting game from editor...');
+    
+    // Close the editor first
+    closeLevelEditor();
+    
+    // Reset 2D mode
+    gameState.is2DMode = false;
+    
+    // Trigger game start - look for the play button callback
+    const playBtn = document.getElementById('playBtn');
+    if (playBtn) {
+        playBtn.click();
+    } else {
+        // Fallback: dispatch a custom event that main.js can listen to
+        window.dispatchEvent(new CustomEvent('editorStartGame'));
+    }
 }
 
 function onObjectTypeChange(e) {
