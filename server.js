@@ -6,14 +6,23 @@ const fs = require('fs');
 const path = require('path');
 const { WebSocketServer } = require('ws');
 
-const PORT = 3000;
-const WS_PORT = 3001;
+// Prefer dotenv, but keep a safe fallback for environments where it's not installed.
+try {
+    // eslint-disable-next-line global-require
+    require('dotenv').config();
+} catch (err) {
+    // no-op
+}
+
+const PORT = parseInt(process.env.PORT || '3000', 10);
+const WS_PORT = parseInt(process.env.WS_PORT || '3001', 10);
 
 // Default room code - always available
 const DEFAULT_ROOM = 'SPIL';
 
-// Load environment variables from .env file
-function loadEnv() {
+// Backward-compatible .env loader (kept to avoid breaking existing setups).
+// If dotenv already loaded, this is effectively a no-op.
+function loadEnvFallback() {
     try {
         const envPath = path.join(__dirname, '.env');
         if (fs.existsSync(envPath)) {
@@ -23,7 +32,7 @@ function loadEnv() {
                 if (line && !line.startsWith('#')) {
                     const [key, ...valueParts] = line.split('=');
                     const value = valueParts.join('=').trim();
-                    if (key && value) {
+                    if (key && value && process.env[key.trim()] === undefined) {
                         process.env[key.trim()] = value;
                     }
                 }
@@ -34,7 +43,7 @@ function loadEnv() {
         console.warn('⚠️ Could not load .env file:', err.message);
     }
 }
-loadEnv();
+loadEnvFallback();
 
 // MPS API Configuration
 const MPS_CONFIG = {

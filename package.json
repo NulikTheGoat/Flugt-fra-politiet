@@ -1,6 +1,6 @@
 {
   "name": "flugt-fra-politiet",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "A fast-paced 3D car chase game! Outrun the cops, collect coins, and upgrade your ride!",
   "main": "script_backup.js",
   "scripts": {
@@ -39,6 +39,7 @@
   "homepage": "https://github.com/NulikTheGoat/Flugt-fra-politiet#readme",
   "dependencies": {
     "cannon-es": "^0.20.0",
+    "dotenv": "^16.4.7",
     "three": "^0.160.0",
     "ws": "^8.19.0"
   },
