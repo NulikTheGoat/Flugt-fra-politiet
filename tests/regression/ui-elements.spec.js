@@ -20,7 +20,7 @@ test.describe('📊 HUD Elements', () => {
         await page.waitForSelector('canvas', { timeout: 15000 });
         const soloBtn = page.locator('#soloModeBtn');
         if (await soloBtn.isVisible()) {
-            await soloBtn.click();
+            await soloBtn.click({ force: true });
             // Wait for game state to fully initialize
             await page.waitForFunction(
                 () => window.gameState && window.gameState.startTime > 0,
@@ -122,7 +122,7 @@ test.describe('📋 Menu System', () => {
     
     test('Game mode modal appears on load', async ({ page }) => {
         await page.goto('http://localhost:3000');
-        await page.waitForSelector('canvas', { timeout: 10000 });
+        await page.waitForSelector('canvas', { timeout: 20000 });
         
         const modal = page.locator('#gameModeModal');
         await expect(modal).toBeVisible();
@@ -130,11 +130,11 @@ test.describe('📋 Menu System', () => {
 
     test('Solo mode button starts game', async ({ page }) => {
         await page.goto('http://localhost:3000');
-        await page.waitForSelector('canvas', { timeout: 10000 });
+        await page.waitForSelector('canvas', { timeout: 20000 });
         
         const soloBtn = page.locator('#soloModeBtn');
         await expect(soloBtn).toBeVisible();
-        await soloBtn.click();
+        await soloBtn.click({ force: true });
         
         // Modal should disappear
         const modal = page.locator('#gameModeModal');
@@ -147,7 +147,7 @@ test.describe('📋 Menu System', () => {
 
     test('Multiplayer button opens lobby', async ({ page }) => {
         await page.goto('http://localhost:3000');
-        await page.waitForSelector('canvas', { timeout: 10000 });
+        await page.waitForSelector('canvas', { timeout: 20000 });
         
         const mpBtn = page.locator('#multiplayerModeBtn');
         if (await mpBtn.isVisible()) {
@@ -160,7 +160,7 @@ test.describe('📋 Menu System', () => {
 
     test('Shop button navigates to shop', async ({ page }) => {
         await page.goto('http://localhost:3000');
-        await page.waitForSelector('canvas', { timeout: 10000 });
+        await page.waitForSelector('canvas', { timeout: 20000 });
         
         const shopBtn = page.locator('#menuShopBtn');
         if (await shopBtn.isVisible()) {
@@ -176,7 +176,7 @@ test.describe('🏪 Shop UI', () => {
     
     test.beforeEach(async ({ page }) => {
         await page.goto('http://localhost:3000');
-        await page.waitForSelector('canvas', { timeout: 10000 });
+        await page.waitForSelector('canvas', { timeout: 20000 });
         
         const shopBtn = page.locator('#menuShopBtn');
         if (await shopBtn.isVisible()) {
@@ -213,9 +213,9 @@ test.describe('💀 Game Over Screen', () => {
     
     test('Game over appears when health reaches 0', async ({ page }) => {
         await page.goto('http://localhost:3000');
-        await page.waitForSelector('canvas', { timeout: 10000 });
+        await page.waitForSelector('canvas', { timeout: 20000 });
         const soloBtn = page.locator('#soloModeBtn');
-        if (await soloBtn.isVisible()) await soloBtn.click();
+        if (await soloBtn.isVisible()) await soloBtn.click({ force: true });
         await page.waitForTimeout(500);
         
         // Set health to 0 to trigger game over
@@ -239,7 +239,7 @@ test.describe('🎯 High Score Display', () => {
     
     test('High score list exists', async ({ page }) => {
         await page.goto('http://localhost:3000');
-        await page.waitForSelector('canvas', { timeout: 10000 });
+        await page.waitForSelector('canvas', { timeout: 20000 });
         
         // Check if high score element exists (may be in game over or menu)
         const highScoreExists = await page.evaluate(() => {

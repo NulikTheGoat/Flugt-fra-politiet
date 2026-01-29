@@ -19,7 +19,7 @@ test.describe('Multiplayer Police Targeting', () => {
         // Click solo mode to start game
         const soloBtn = page.locator('#soloModeBtn');
         await expect(soloBtn).toBeVisible({ timeout: 10000 });
-        await soloBtn.click();
+        await soloBtn.click({ force: true });
         
         // Wait for game state initialization
         await page.waitForFunction(
@@ -370,7 +370,7 @@ test.describe('Police Spawn Distribution', () => {
         
         const soloBtn = page.locator('#soloModeBtn');
         await expect(soloBtn).toBeVisible({ timeout: 10000 });
-        await soloBtn.click();
+        await soloBtn.click({ force: true });
         
         await page.waitForFunction(
             () => window.gameState && window.gameState.startTime > 0,

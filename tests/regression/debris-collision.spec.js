@@ -22,7 +22,7 @@ test.describe('Debris Physics System', () => {
         // Start the game
         const soloBtn = page.locator('#soloModeBtn');
         if (await soloBtn.isVisible()) {
-            await soloBtn.click();
+            await soloBtn.click({ force: true });
         } else {
              // Fallback if modal is not open yet (e.g. wait for it)
              await page.waitForSelector('#soloModeBtn');

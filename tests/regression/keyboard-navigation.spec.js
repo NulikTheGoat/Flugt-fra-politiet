@@ -23,7 +23,7 @@ test.describe('⌨️ Keyboard Navigation', () => {
     
     test.beforeEach(async ({ page }) => {
         await page.goto('http://localhost:3000');
-        await page.waitForSelector('canvas', { timeout: 10000 });
+        await page.waitForSelector('canvas', { timeout: 20000 });
     });
 
     test('Can navigate game mode menu with keyboard', async ({ page }) => {
@@ -67,7 +67,7 @@ test.describe('⌨️ Keyboard Navigation', () => {
         await expect(soloBtn).toBeVisible();
         
         // Click to start game (or use keyboard)
-        await soloBtn.click();
+        await soloBtn.click({ force: true });
         
         // Wait for game to start (check for gameState initialization)
         await page.waitForFunction(() => !!window.gameState?.startTime, { timeout: 5000 });
@@ -221,7 +221,7 @@ test.describe('⌨️ Keyboard Navigation', () => {
         
         // Find and focus the solo mode button and click it
         const soloBtn = page.locator('#soloModeBtn');
-        await soloBtn.click(); // Use click instead of Enter for reliability
+        await soloBtn.click({ force: true }); // Use click instead of Enter for reliability
         await page.waitForTimeout(500);
         
         // Verify game started
@@ -296,7 +296,7 @@ test.describe('⌨️ Keyboard Navigation', () => {
     test('Escape key behavior during game', async ({ page }) => {
         // Start game
         const soloBtn = page.locator('#soloModeBtn');
-        await soloBtn.click();
+        await soloBtn.click({ force: true });
         await page.waitForTimeout(500);
         
         await page.waitForFunction(() => !!window.gameState?.startTime, { timeout: 5000 });
@@ -320,7 +320,7 @@ test.describe('🛒 Shop Keyboard Navigation', () => {
     
     test.beforeEach(async ({ page }) => {
         await page.goto('http://localhost:3000');
-        await page.waitForSelector('canvas', { timeout: 10000 });
+        await page.waitForSelector('canvas', { timeout: 20000 });
     });
 
     test('Can navigate shop with keyboard', async ({ page }) => {

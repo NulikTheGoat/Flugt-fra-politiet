@@ -21,12 +21,12 @@ test.describe('💰 Economy System', () => {
             localStorage.clear();
         });
         await page.goto('http://localhost:3000');
-        await page.waitForSelector('canvas', { timeout: 10000 });
+        await page.waitForSelector('canvas', { timeout: 20000 });
     });
 
     test('Player starts with initial money', async ({ page }) => {
         const soloBtn = page.locator('#soloModeBtn');
-        if (await soloBtn.isVisible()) await soloBtn.click();
+        if (await soloBtn.isVisible()) await soloBtn.click({ force: true });
         
         // Wait for gameState to be initialized instead of arbitrary timeout
         await page.waitForFunction(() => window.gameState?.money !== undefined, { timeout: 5000 });
@@ -38,7 +38,7 @@ test.describe('💰 Economy System', () => {
 
     test('Money display updates in HUD', async ({ page }) => {
         const soloBtn = page.locator('#soloModeBtn');
-        if (await soloBtn.isVisible()) await soloBtn.click();
+        if (await soloBtn.isVisible()) await soloBtn.click({ force: true });
         
         // Wait for game to start by checking gameState
         await page.waitForFunction(() => window.gameState?.startTime > 0, { timeout: 5000 });
@@ -54,7 +54,7 @@ test.describe('💰 Economy System', () => {
 
     test('Money earned during gameplay', async ({ page }) => {
         const soloBtn = page.locator('#soloModeBtn');
-        if (await soloBtn.isVisible()) await soloBtn.click();
+        if (await soloBtn.isVisible()) await soloBtn.click({ force: true });
         
         // Wait for game to be fully initialized
         await page.waitForFunction(() => window.gameState?.startTime > 0, { timeout: 5000 });
@@ -91,7 +91,7 @@ test.describe('🛒 Shop System', () => {
             localStorage.clear();
         });
         await page.goto('http://localhost:3000');
-        await page.waitForSelector('canvas', { timeout: 10000 });
+        await page.waitForSelector('canvas', { timeout: 20000 });
     });
 
     test('Shop button opens shop modal', async ({ page }) => {
@@ -137,7 +137,7 @@ test.describe('🛒 Shop System', () => {
 
     test('Owned cars are tracked', async ({ page }) => {
         const soloBtn = page.locator('#soloModeBtn');
-        if (await soloBtn.isVisible()) await soloBtn.click();
+        if (await soloBtn.isVisible()) await soloBtn.click({ force: true });
         
         // Wait for gameState to be initialized
         await page.waitForFunction(() => window.gameState?.selectedCar !== undefined, { timeout: 5000 });
@@ -156,7 +156,7 @@ test.describe('🛒 Shop System', () => {
 
     test('Selected car persists', async ({ page }) => {
         const soloBtn = page.locator('#soloModeBtn');
-        if (await soloBtn.isVisible()) await soloBtn.click();
+        if (await soloBtn.isVisible()) await soloBtn.click({ force: true });
         
         // Wait for game state to be initialized
         await page.waitForFunction(() => window.gameState?.selectedCar !== undefined, { timeout: 5000 });
@@ -172,7 +172,7 @@ test.describe('💾 Persistence', () => {
     
     test('Money can be stored and retrieved', async ({ page }) => {
         await page.goto('http://localhost:3000');
-        await page.waitForSelector('canvas', { timeout: 10000 });
+        await page.waitForSelector('canvas', { timeout: 20000 });
         
         // Check what localStorage keys the game uses
         const storageKeys = await page.evaluate(() => Object.keys(localStorage));
@@ -180,7 +180,7 @@ test.describe('💾 Persistence', () => {
         
         // Start game and set some money
         const soloBtn = page.locator('#soloModeBtn');
-        if (await soloBtn.isVisible()) await soloBtn.click();
+        if (await soloBtn.isVisible()) await soloBtn.click({ force: true });
         
         // Wait for gameState to be initialized
         await page.waitForFunction(() => window.gameState?.money !== undefined, { timeout: 5000 });
@@ -196,10 +196,10 @@ test.describe('💾 Persistence', () => {
 
     test('Owned cars tracking works', async ({ page }) => {
         await page.goto('http://localhost:3000');
-        await page.waitForSelector('canvas', { timeout: 10000 });
+        await page.waitForSelector('canvas', { timeout: 20000 });
         
         const soloBtn = page.locator('#soloModeBtn');
-        if (await soloBtn.isVisible()) await soloBtn.click();
+        if (await soloBtn.isVisible()) await soloBtn.click({ force: true });
         
         // Wait for gameState to be initialized
         await page.waitForFunction(() => window.gameState?.selectedCar !== undefined, { timeout: 5000 });

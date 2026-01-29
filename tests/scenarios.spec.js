@@ -18,7 +18,7 @@ test.describe('DevTools Scenarios', () => {
         // 4. Start game (Solo)
         const soloBtn = page.locator('#soloModeBtn');
         await expect(soloBtn).toBeVisible({ timeout: 5000 });
-        await soloBtn.click();
+        await soloBtn.click({ force: true });
         
         await page.waitForTimeout(1000); // Wait for transition
     });

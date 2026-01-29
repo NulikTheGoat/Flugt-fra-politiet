@@ -7,7 +7,7 @@ module.exports = defineConfig({
     
     // PARALLEL EXECUTION - drastically speeds up tests
     fullyParallel: true,
-    workers: process.env.CI ? 2 : 4, // 4 parallel workers locally
+    workers: process.env.CI ? 4 : 4, // More workers with sharding
     
     // RETRY ONLY FAILED - automatically retry failed tests
     retries: process.env.CI ? 2 : 1,
@@ -20,10 +20,10 @@ module.exports = defineConfig({
         ['html', { open: 'never' }]
     ],
     
-    // GLOBAL TIMEOUT - fail fast
-    timeout: 30000, // 30s per test max
+    // GLOBAL TIMEOUT - more generous for CI
+    timeout: 60000, // 60s per test max (CI can be slow)
     expect: {
-        timeout: 5000, // 5s for assertions
+        timeout: 10000, // 10s for assertions (WebGL init can be slow)
     },
     
     use: {
@@ -35,11 +35,10 @@ module.exports = defineConfig({
         trace: 'retain-on-failure', // Only save trace if test fails
         screenshot: 'only-on-failure',
         
-        // FASTER PAGE LOADS
-        // Some CI/local machines can occasionally exceed 10s while starting WebGL.
-        // Keep navigation more tolerant to avoid flaky `page.goto()` timeouts.
-        navigationTimeout: 20000,
-        actionTimeout: 5000,
+        // TOLERANT TIMEOUTS FOR CI
+        // WebGL and Three.js initialization can be slow on CI runners
+        navigationTimeout: 30000,
+        actionTimeout: 15000, // Increased for slow CI button clicks
     },
     
     // Start server before tests

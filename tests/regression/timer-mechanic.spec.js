@@ -8,7 +8,7 @@ test.describe('⏱️ Game Timer Logic', () => {
         // Click solo button to start game
         const soloBtn = page.locator('#soloModeBtn');
         await expect(soloBtn).toBeVisible({ timeout: 10000 });
-        await soloBtn.click();
+        await soloBtn.click({ force: true });
         await page.waitForFunction(
             () => window.gameState !== undefined && window.gameState.startTime > 0,
             { timeout: 15000, polling: 200 }

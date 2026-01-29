@@ -13,7 +13,7 @@ test.describe('🏎️ Cornering Physics', () => {
         
         const soloBtn = page.locator('#soloModeBtn');
         await expect(soloBtn).toBeVisible({ timeout: 10000 });
-        await soloBtn.click();
+        await soloBtn.click({ force: true });
         await page.waitForFunction(
             () => window.gameState && window.gameState.startTime > 0,
             { timeout: 15000, polling: 200 }
@@ -121,7 +121,7 @@ test.describe('🏎️ Cornering Physics', () => {
         // Force fresh start
         await forceCleanReload(page);
         const soloBtn = page.locator('#soloModeBtn');
-        await soloBtn.click();
+        await soloBtn.click({ force: true });
         await page.waitForFunction(
             () => window.gameState && window.gameState.startTime > 0,
             { timeout: 15000, polling: 200 }

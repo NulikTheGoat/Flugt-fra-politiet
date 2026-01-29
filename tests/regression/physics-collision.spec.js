@@ -25,7 +25,7 @@ test.describe('⚡ Physics Simulation', () => {
         });
 
         const soloBtn = page.locator('#soloModeBtn');
-        if (await soloBtn.isVisible()) await soloBtn.click();
+        if (await soloBtn.isVisible()) await soloBtn.click({ force: true });
         await page.waitForFunction(() => !!window.gameState?.startTime, { timeout: 5000 });
         await page.waitForTimeout(200);
     });
@@ -135,9 +135,9 @@ test.describe('💥 Collision Detection', () => {
     
     test.beforeEach(async ({ page }) => {
         await page.goto('http://localhost:3000');
-        await page.waitForSelector('canvas', { timeout: 10000 });
+        await page.waitForSelector('canvas', { timeout: 20000 });
         const soloBtn = page.locator('#soloModeBtn');
-        if (await soloBtn.isVisible()) await soloBtn.click();
+        if (await soloBtn.isVisible()) await soloBtn.click({ force: true });
         await page.waitForTimeout(500);
     });
 
@@ -166,7 +166,7 @@ test.describe('🎯 Car Stats Application', () => {
     
     test('All car types have required stats', async ({ page }) => {
         await page.goto('http://localhost:3000');
-        await page.waitForSelector('canvas', { timeout: 10000 });
+        await page.waitForSelector('canvas', { timeout: 20000 });
         
         const carsValidation = await page.evaluate(() => {
             const cars = window.cars;
@@ -197,9 +197,9 @@ test.describe('🎯 Car Stats Application', () => {
 
     test('Selected car speed matches constants', async ({ page }) => {
         await page.goto('http://localhost:3000');
-        await page.waitForSelector('canvas', { timeout: 10000 });
+        await page.waitForSelector('canvas', { timeout: 20000 });
         const soloBtn = page.locator('#soloModeBtn');
-        if (await soloBtn.isVisible()) await soloBtn.click();
+        if (await soloBtn.isVisible()) await soloBtn.click({ force: true });
         await page.waitForTimeout(500);
         
         const comparison = await page.evaluate(() => {

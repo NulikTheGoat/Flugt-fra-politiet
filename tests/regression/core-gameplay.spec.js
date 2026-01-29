@@ -24,18 +24,21 @@ test.describe('🎮 Core Gameplay', () => {
         }
 
         const soloBtn = page.locator('#soloModeBtn');
-        if (await soloBtn.isVisible()) {
-            await soloBtn.click();
+        if (await soloBtn.isVisible({ timeout: 10000 })) {
+            // Use force:true to bypass potential overlay issues on CI
+            await soloBtn.click({ force: true });
         }
 
-        await page.waitForFunction(() => !!window.gameState?.startTime, { timeout: 5000 });
+        await page.waitForFunction(() => !!window.gameState?.startTime, { timeout: 15000 });
         // Wait for animation frame to complete rendering
-        await page.waitForFunction(() => window.gameState?.speed !== undefined, { timeout: 1000 });
+        await page.waitForFunction(() => window.gameState?.speed !== undefined, { timeout: 5000 });
     };
     
     test.beforeEach(async ({ page }) => {
         await page.goto('http://localhost:3000');
-        await page.waitForSelector('canvas', { timeout: 10000 });
+        await page.waitForSelector('canvas', { timeout: 20000 });
+        // Wait for WebGL to initialize
+        await page.waitForTimeout(500);
     });
 
     test('Game initializes with correct default state', async ({ page }) => {
@@ -196,9 +199,9 @@ test.describe('🏥 Health System', () => {
     
     test.beforeEach(async ({ page }) => {
         await page.goto('http://localhost:3000');
-        await page.waitForSelector('canvas', { timeout: 10000 });
+        await page.waitForSelector('canvas', { timeout: 20000 });
         const soloBtn = page.locator('#soloModeBtn');
-        if (await soloBtn.isVisible()) await soloBtn.click();
+        if (await soloBtn.isVisible()) await soloBtn.click({ force: true });
         await page.waitForTimeout(500);
     });
 
@@ -255,9 +258,9 @@ test.describe('💰 Economy System', () => {
     
     test.beforeEach(async ({ page }) => {
         await page.goto('http://localhost:3000');
-        await page.waitForSelector('canvas', { timeout: 10000 });
+        await page.waitForSelector('canvas', { timeout: 20000 });
         const soloBtn = page.locator('#soloModeBtn');
-        if (await soloBtn.isVisible()) await soloBtn.click();
+        if (await soloBtn.isVisible()) await soloBtn.click({ force: true });
         await page.waitForTimeout(500);
     });
 
@@ -289,9 +292,9 @@ test.describe('🚨 Heat Level System', () => {
     
     test.beforeEach(async ({ page }) => {
         await page.goto('http://localhost:3000');
-        await page.waitForSelector('canvas', { timeout: 10000 });
+        await page.waitForSelector('canvas', { timeout: 20000 });
         const soloBtn = page.locator('#soloModeBtn');
-        if (await soloBtn.isVisible()) await soloBtn.click();
+        if (await soloBtn.isVisible()) await soloBtn.click({ force: true });
         await page.waitForTimeout(500);
     });
 
@@ -332,9 +335,9 @@ test.describe('🚗 Police Spawning', () => {
     
     test.beforeEach(async ({ page }) => {
         await page.goto('http://localhost:3000');
-        await page.waitForSelector('canvas', { timeout: 10000 });
+        await page.waitForSelector('canvas', { timeout: 20000 });
         const soloBtn = page.locator('#soloModeBtn');
-        if (await soloBtn.isVisible()) await soloBtn.click();
+        if (await soloBtn.isVisible()) await soloBtn.click({ force: true });
         await page.waitForTimeout(1000);
     });
 

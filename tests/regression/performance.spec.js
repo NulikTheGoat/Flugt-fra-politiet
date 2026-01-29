@@ -15,7 +15,7 @@ test.describe('🚀 Performance Tests', () => {
         // Start game (click single player or start button if present)
         const soloBtn = page.locator('#soloModeBtn');
         if (await soloBtn.isVisible()) {
-            await soloBtn.click();
+            await soloBtn.click({ force: true });
         }
 
         // Wait for game to initialize

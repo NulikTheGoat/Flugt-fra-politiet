@@ -16,7 +16,7 @@ test.describe('🌐 Multiplayer UI', () => {
     
     test.beforeEach(async ({ page }) => {
         await page.goto('http://localhost:3000');
-        await page.waitForSelector('canvas', { timeout: 10000 });
+        await page.waitForSelector('canvas', { timeout: 20000 });
     });
 
     test('Multiplayer button exists in menu', async ({ page }) => {
@@ -36,7 +36,7 @@ test.describe('🔌 Network State', () => {
     
     test.beforeEach(async ({ page }) => {
         await page.goto('http://localhost:3000');
-        await page.waitForSelector('canvas', { timeout: 10000 });
+        await page.waitForSelector('canvas', { timeout: 20000 });
     });
 
     test('Multiplayer state fields exist', async ({ page }) => {
@@ -105,7 +105,7 @@ test.describe('👥 Multiplayer Mode', () => {
     
     test('Multiplayer button click works', async ({ page }) => {
         await page.goto('http://localhost:3000');
-        await page.waitForSelector('canvas', { timeout: 10000 });
+        await page.waitForSelector('canvas', { timeout: 20000 });
         
         const mpBtn = page.locator('#multiplayerModeBtn');
         if (await mpBtn.isVisible()) {
@@ -124,7 +124,7 @@ test.describe('👥 Multiplayer Mode', () => {
 
     test('Socket.IO availability check', async ({ page }) => {
         await page.goto('http://localhost:3000');
-        await page.waitForSelector('canvas', { timeout: 10000 });
+        await page.waitForSelector('canvas', { timeout: 20000 });
         
         const hasSocketIO = await page.evaluate(() => typeof io === 'function');
         console.log(`Socket.IO available: ${hasSocketIO ? '✅' : '❌ (loaded on demand?)'}`);
