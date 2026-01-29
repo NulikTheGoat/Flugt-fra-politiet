@@ -1,5 +1,10 @@
+// @ts-ignore - handled by runtime import map and build tooling
 import * as CANNON from 'cannon-es';
 import { GRAVITY } from './constants.js';
+
+/**
+ * @typedef {{ x: number, y: number, z: number }} Vector3Like
+ */
 
 // Debris collision damage constants
 export const DEBRIS_DAMAGE = {
@@ -25,7 +30,7 @@ class PhysicsWorld {
         this.world.allowSleep = true;
         
         // More solver iterations for accurate stacking/collisions
-        this.world.solver.iterations = 10;
+        /** @type {any} */ (this.world.solver).iterations = 10;
         
         // Higher body limit for persistent debris
         this.MAX_BODIES = 1000;
@@ -73,6 +78,7 @@ class PhysicsWorld {
         this.meshes = [];
         
         // Collision tracking to prevent spam
+        /** @type {Map<string, number>} */
         this.recentHits = new Map(); // bodyId -> lastHitTime
     }
 
@@ -95,24 +101,25 @@ class PhysicsWorld {
 
     /**
      * Check if a debris body can hit a target (cooldown check)
-     * @param {number} bodyId 
+     * @param {string|number} bodyId 
      * @returns {boolean}
      */
     canDebrisHit(bodyId) {
+        const key = String(bodyId);
         const now = Date.now();
-        const lastHit = this.recentHits.get(bodyId);
+        const lastHit = this.recentHits.get(key);
         if (lastHit && now - lastHit < DEBRIS_DAMAGE.HIT_COOLDOWN) {
             return false;
         }
-        this.recentHits.set(bodyId, now);
+        this.recentHits.set(key, now);
         return true;
     }
 
     /**
      * Check debris collisions against game objects
      * Call this from main game loop
-     * @param {THREE.Vector3} playerPos Player position
-     * @param {Array} policeCars Array of police car meshes
+    * @param {Vector3Like} playerPos Player position
+    * @param {Array} policeCars Array of police car meshes
      * @param {Object} chunkGrid Chunk grid map (optional)
      * @param {number} chunkGridSize Grid size (optional)
      */
@@ -246,7 +253,7 @@ class PhysicsWorld {
     update(dt) {
         // Limit max substeps to avoid spiral of death
         // Fixed time step is critical for stable physics
-        this.world.fixedStep(1 / 60, dt, 3);
+        this.world.step(1 / 60, dt, 3);
 
         // Sync visual meshes
         for (let i = 0; i < this.meshes.length; i++) {
@@ -262,7 +269,7 @@ class PhysicsWorld {
 
     /**
      * Add an object to the physics world
-     * @param {THREE.Mesh} mesh Visual mesh
+    * @param {any} mesh Visual mesh
      * @param {CANNON.Body} body Physics body
      */
     add(mesh, body) {
@@ -289,7 +296,7 @@ class PhysicsWorld {
             
             // Link them for reference
             mesh.userData.physicsBody = body;
-            body.userData = { meshUuid: mesh.uuid };
+            /** @type {any} */ (body).userData = { meshUuid: mesh.uuid };
         }
     }
 

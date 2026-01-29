@@ -14,6 +14,10 @@ import { requestSheriffCommand, getCurrentSheriffCommand, applySheriffCommand } 
 
 const projectileGeometry = new THREE.SphereGeometry(2, 8, 8);
 
+/**
+ * @param {string} [type='standard']
+ * @returns {any}
+ */
 export function createPoliceCar(type = 'standard') {
     const config = enemies[type];
     const carGroup = new THREE.Group();
@@ -236,6 +240,7 @@ export function updatePoliceAI(delta) {
     gameState.policeCars.forEach((policeCar, index) => {
         // Shared constants for this police car's update
         const gridSize = gameState.chunkGridSize;
+        let policeSpeed = policeCar.userData.currentSpeed || policeCar.userData.speed || 0;
         
         if (policeCar.userData.dead) {
              // Dead police cars slow down and stop
@@ -671,7 +676,7 @@ export function updatePoliceAI(delta) {
         const speedBlendRate = 0.1;
         policeCar.userData.currentSpeed += (targetPoliceSpeed - policeCar.userData.currentSpeed) * speedBlendRate;
         
-        const policeSpeed = policeCar.userData.currentSpeed;
+        policeSpeed = policeCar.userData.currentSpeed || 0;
         const policeMove = policeSpeed * 0.016 * (delta || 1);
         
         // === CORNERING PHYSICS FOR NPC ===
@@ -744,9 +749,12 @@ export function updatePoliceAI(delta) {
 
                         // Create debris with police-specific physics
                         const policeAngle = policeCar.rotation.y;
-                        createBuildingDebris(chunk.position, chunk.material.color, policeSpeed, { 
-                            isPolice: true, 
-                            impactAngle: policeAngle 
+                        const policeMass = enemies[policeCar.userData.type]?.mass || 1.0;
+                        createBuildingDebris(chunk.position, chunk.material.color, policeSpeed, {
+                            isPolice: true,
+                            impactAngle: policeAngle,
+                            vehicleMass: policeMass,
+                            hasWindows: true
                         });
                         
                         const impactSpeed = policeSpeed * 0.01;

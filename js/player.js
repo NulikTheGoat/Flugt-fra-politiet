@@ -6,15 +6,22 @@ import { createSmoke, createSpark, createTireMark, updateTireMarks, createWheelD
 import { playSfx } from './sfx.js';
 import { CarBuilders, makeCarLights } from './carModels.js';
 
+/**
+ * @typedef {{ triggerDamageEffect: () => void, updateHealthUI: () => void }} UICallbacks
+ */
+
+/** @type {UICallbacks} */
 let uiCallbacks = {
     triggerDamageEffect: () => {},
     updateHealthUI: () => {}
 };
 
+/** @param {Partial<UICallbacks>} callbacks */
 export function setUICallbacks(callbacks) {
     uiCallbacks = { ...uiCallbacks, ...callbacks };
 }
 
+/** @type {any} */
 export let playerCar;
 
 function clamp01(v) {

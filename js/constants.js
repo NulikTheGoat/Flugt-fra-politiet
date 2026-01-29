@@ -22,6 +22,8 @@ export const enemies = {
  * @property {number=} scale
  * @property {number=} reqRebirth
  * @property {number=} mass
+ * @property {number=} grip
+ * @property {boolean=} canRam
  */
 
 /** @type {Record<string, CarDefinition>} */

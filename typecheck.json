@@ -1,0 +1,17 @@
+{
+  "compilerOptions": {
+    "target": "ES2020",
+    "allowJs": true,
+    "checkJs": true,
+    "noResolve": true,
+    "lib": ["DOM", "ES2020"],
+    "skipLibCheck": true
+  },
+  "files": [
+    "js/physicsWorld.js",
+    "js/world.js",
+    "js/player.js",
+    "js/police.js",
+    "global.d.ts"
+  ]
+}

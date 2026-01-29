@@ -19,6 +19,7 @@ import {
     createDebrisBody
 } from './debrisLogic.js';
 
+/** @type {any} */
 let skyMesh = null;
 
 export function createSky() {
@@ -1175,7 +1176,11 @@ export function updateBuildingChunks(delta) {
                                                 );
                                             }
 
-                                            createTreeDebris(chunk.position, pSpeed, { isPolice: true, impactAngle: pAngle });
+                                            createTreeDebris(chunk.position, pSpeed, {
+                                                isPolice: true,
+                                                impactAngle: pAngle,
+                                                vehicleMass: 1.0
+                                            });
                                             policeCar.userData.speed *= 0.7;
                                         }
                                     } else if (chunk.userData.isHotdogStand) {
@@ -1195,7 +1200,11 @@ export function updateBuildingChunks(delta) {
                                             (Math.random() - 0.5) * 0.2
                                         );
 
-                                        createTreeDebris(chunk.position, pSpeed, { isPolice: true, impactAngle: pAngle });
+                                        createTreeDebris(chunk.position, pSpeed, {
+                                            isPolice: true,
+                                            impactAngle: pAngle,
+                                            vehicleMass: 1.0
+                                        });
                                         policeCar.userData.speed *= 0.7;
                                     } else {
                                         chunk.userData.isHit = true;
@@ -1214,7 +1223,12 @@ export function updateBuildingChunks(delta) {
                                             (Math.random() - 0.5) * 0.5
                                         );
 
-                                        createBuildingDebris(chunk.position, chunk.material.color, pSpeed, { isPolice: true, impactAngle: pAngle });
+                                        createBuildingDebris(chunk.position, chunk.material.color, pSpeed, {
+                                            isPolice: true,
+                                            impactAngle: pAngle,
+                                            vehicleMass: 1.0,
+                                            hasWindows: true
+                                        });
                                         policeCar.userData.speed *= 0.6;
                                     }
                                 }
@@ -1448,12 +1462,9 @@ export function updateBuildingChunks(delta) {
  * Create tree debris (wood chunks and leaves)
  * Uses unified debris physics for consistency
  * 
- * @param {THREE.Vector3|Object} position - Impact position
+ * @param {any} position - Impact position
  * @param {number} carSpeed - Speed at impact
- * @param {Object} options - Optional settings
- * @param {boolean} options.isPolice - Whether this is a police collision
- * @param {number} options.impactAngle - Override impact angle (defaults to playerCar rotation)
- * @param {number} options.vehicleMass - Vehicle mass multiplier
+ * @param {Partial<{ isPolice: boolean, impactAngle: number, vehicleMass: number }>} [options]
  */
 function createTreeDebris(position, carSpeed, options = {}) {
     const {
@@ -1555,14 +1566,10 @@ function createTreeDebris(position, carSpeed, options = {}) {
  * Create building debris (concrete chunks, glass shards, dust particles)
  * Uses unified debris physics for consistency between player and police
  * 
- * @param {THREE.Vector3|Object} position - Impact position
- * @param {THREE.Color|number} buildingColor - Color of the building material
+ * @param {any} position - Impact position
+ * @param {any} buildingColor - Color of the building material
  * @param {number} carSpeed - Speed at impact
- * @param {Object} options - Optional settings
- * @param {boolean} options.isPolice - Whether this is a police collision
- * @param {number} options.impactAngle - Override impact angle (defaults to playerCar rotation)
- * @param {number} options.vehicleMass - Vehicle mass multiplier
- * @param {boolean} options.hasWindows - Whether building has windows (default true)
+ * @param {Partial<{ isPolice: boolean, impactAngle: number, vehicleMass: number, hasWindows: boolean }>} [options]
  */
 export function createBuildingDebris(position, buildingColor, carSpeed, options = {}) {
     const {
@@ -2261,9 +2268,9 @@ export function createSingleBuilding(x, z, width, depth, height, type) {
                 buildingGroup.add(chunk); 
                 gameState.chunks.push(chunk);
                 // Store in 3D array
-                if(chunks[ix] && chunks[ix][iy]) {
-                    chunks[ix][iy][iz] = chunk;
-                }
+                const chunkRow = chunks[ix] || (chunks[ix] = []);
+                const chunkCol = chunkRow[iy] || (chunkRow[iy] = []);
+                chunkCol[iz] = chunk;
 
                 const gridX = Math.floor(chunk.position.x / gameState.chunkGridSize);
                 const gridZ = Math.floor(chunk.position.z / gameState.chunkGridSize);
