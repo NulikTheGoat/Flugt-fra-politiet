@@ -2360,9 +2360,9 @@
             </div>
         </div>
         
-        <button id="gameOverShopBtn">🎮 Spil igen</button>
-        <button id="gameOverRejoinBtn" style="display: none; margin-top: 10px; background: #00cc66;">🔄 Drop ind igen</button>
-        <button id="gameOverMpShopBtn" style="display: none; margin-top: 10px; background: #ff9900;">🛒 Køb ny bil & Drop ind</button>
+        <button id="gameOverShopBtn" data-testid="game-over-play-again">🎮 Spil igen</button>
+        <button id="gameOverRejoinBtn" data-testid="game-over-rejoin" style="display: none; margin-top: 10px; background: #00cc66;">🔄 Drop ind igen</button>
+        <button id="gameOverMpShopBtn" data-testid="game-over-mp-shop" style="display: none; margin-top: 10px; background: #ff9900;">🛒 Køb ny bil & Drop ind</button>
     </div>
 
     <div id="shop">
@@ -2426,11 +2426,11 @@
                 <div id="shopCatalogView" class="view-active">
                     <div class="catalog-header">
                          <div id="shopTabs">
-                            <button class="shop-tab active" data-category="all">Alle<span class="tab-count" id="tabCountAll">0</span></button>
-                            <button class="shop-tab" data-category="budget">Budget<span class="tab-count" id="tabCountBudget">0</span></button>
-                            <button class="shop-tab" data-category="sport">Sport<span class="tab-count" id="tabCountSport">0</span></button>
-                            <button class="shop-tab" data-category="premium">Premium<span class="tab-count" id="tabCountPremium">0</span></button>
-                            <button class="shop-tab" data-category="special">Special<span class="tab-count" id="tabCountSpecial">0</span></button>
+                            <button class="shop-tab active" data-category="all" data-testid="shop-tab-all">Alle<span class="tab-count" id="tabCountAll">0</span></button>
+                            <button class="shop-tab" data-category="budget" data-testid="shop-tab-budget">Budget<span class="tab-count" id="tabCountBudget">0</span></button>
+                            <button class="shop-tab" data-category="sport" data-testid="shop-tab-sport">Sport<span class="tab-count" id="tabCountSport">0</span></button>
+                            <button class="shop-tab" data-category="premium" data-testid="shop-tab-premium">Premium<span class="tab-count" id="tabCountPremium">0</span></button>
+                            <button class="shop-tab" data-category="special" data-testid="shop-tab-special">Special<span class="tab-count" id="tabCountSpecial">0</span></button>
                         </div>
                     </div>
                     <div id="carList"></div>
@@ -2438,7 +2438,7 @@
 
                 <!-- DETAIL VIEW -->
                 <div id="shopDetailView" class="view-hidden">
-                    <button class="back-btn" onclick="closeCarDetail()">
+                    <button class="back-btn" data-testid="shop-back-btn" onclick="closeCarDetail()">
                         <span>←</span> Tilbage til butik
                     </button>
                     
@@ -2464,7 +2464,7 @@
                              
                              <div class="detail-actions">
                                  <div class="detail-price" id="detailPrice">100.000 KR</div>
-                                 <button id="detailActionBtn" class="action-btn">KØB NU</button>
+                                 <button id="detailActionBtn" data-testid="shop-buy-btn" class="action-btn">KØB NU</button>
                              </div>
                         </div>
                     </div>
@@ -2480,18 +2480,18 @@
             <h2>🎮 VÆLG SPILTYPE</h2>
             <p>Server kører altid - join når som helst!</p>
             <div class="gamemode-buttons">
-                <button id="multiplayerModeBtn" class="gamemode-btn host">
+                <button id="multiplayerModeBtn" data-testid="multiplayer-btn" class="gamemode-btn host">
                     <span class="icon">🌐</span> MULTIPLAYER
                     <span style="font-size: 11px; display: block; opacity: 0.8; margin-top: 3px;">Spil med venner på netværket</span>
                 </button>
-                <button id="soloModeBtn" class="gamemode-btn solo">
+                <button id="soloModeBtn" data-testid="solo-btn" class="gamemode-btn solo">
                     <span class="icon">🚗</span> SOLO
                 </button>
-                <button id="menuShopBtn" class="gamemode-btn" style="background: linear-gradient(135deg, #ff9900, #ff6600);">
+                <button id="menuShopBtn" data-testid="menu-shop-btn" class="gamemode-btn" style="background: linear-gradient(135deg, #ff9900, #ff6600);">
                     <span class="icon">🛒</span> SHOP
                     <span style="font-size: 11px; display: block; opacity: 0.8; margin-top: 3px;">Køb og vælg biler</span>
                 </button>
-                <button id="resetProgressBtn" class="gamemode-btn" style="background: linear-gradient(135deg, #cc0000, #990000); margin-top: 15px;">
+                <button id="resetProgressBtn" data-testid="reset-progress-btn" class="gamemode-btn" style="background: linear-gradient(135deg, #cc0000, #990000); margin-top: 15px;">
                     <span class="icon">⚠️</span> NULSTIL PROGRES
                     <span style="font-size: 11px; display: block; opacity: 0.8; margin-top: 3px;">Starter forfra (penge og biler)</span>
                 </button>
@@ -2503,7 +2503,7 @@
     <div id="multiplayerLobby">
         <div class="lobby-content">
             <h1>🌐 MULTIPLAYER</h1>
-            <button id="lobbyCloseBtn" class="lobby-close">✕</button>
+            <button id="lobbyCloseBtn" data-testid="lobby-close-btn" class="lobby-close">✕</button>
             
             <!-- Step 1: Server Discovery -->
             <div id="serverDiscovery" class="lobby-section">
@@ -2516,14 +2516,14 @@
                     <h3 style="color: #00ff66; margin-bottom: 10px;">📡 Fundne Servere</h3>
                     <p style="color: #666; font-size: 12px; margin-bottom: 15px;">Klik på en server for at joine</p>
                     <div id="serverList"></div>
-                    <button id="rescanBtn" class="lobby-btn" style="width: 100%; background: #333; margin-top: 15px;">🔄 Scan igen</button>
+                    <button id="rescanBtn" data-testid="rescan-btn" class="lobby-btn" style="width: 100%; background: #333; margin-top: 15px;">🔄 Scan igen</button>
                 </div>
                 
                 <div id="noServersFound" style="display: none; text-align: center; padding: 20px;">
                     <p style="color: #ff6600; font-size: 18px; margin-bottom: 10px;">❌ Ingen servere fundet</p>
                     <p style="color: #888; font-size: 12px; margin-bottom: 15px;">Sørg for at serveren kører på netværket</p>
-                    <button id="hostOwnServerBtn" class="lobby-btn host" style="width: 100%; margin-bottom: 10px;">🖥️ Forbind til localhost</button>
-                    <button id="rescanBtnEmpty" class="lobby-btn" style="width: 100%; background: #333;">🔄 Scan igen</button>
+                    <button id="hostOwnServerBtn" data-testid="host-localhost-btn" class="lobby-btn host" style="width: 100%; margin-bottom: 10px;">🖥️ Forbind til localhost</button>
+                    <button id="rescanBtnEmpty" data-testid="rescan-empty-btn" class="lobby-btn" style="width: 100%; background: #333;">🔄 Scan igen</button>
                 </div>
             </div>
             
@@ -2536,9 +2536,9 @@
                     <input type="text" id="playerNameInput" placeholder="Indtast navn..." maxlength="20" value="Spiller">
                 </div>
                 
-                <button id="joinGameBtn" class="lobby-btn host" style="width: 100%; font-size: 18px; padding: 15px; margin-top: 15px;">🎮 JOIN SPIL</button>
+                <button id="joinGameBtn" data-testid="join-game-btn" class="lobby-btn host" style="width: 100%; font-size: 18px; padding: 15px; margin-top: 15px;">🎮 JOIN SPIL</button>
                 
-                <button id="backToServersBtn" class="lobby-btn" style="width: 100%; background: #333; margin-top: 10px;">← Tilbage til serverliste</button>
+                <button id="backToServersBtn" data-testid="back-to-servers-btn" class="lobby-btn" style="width: 100%; background: #333; margin-top: 10px;">← Tilbage til serverliste</button>
                 
                 <div id="lobbyError" class="lobby-error"></div>
             </div>
@@ -2562,7 +2562,7 @@
                             <span>Tillad drop-in under spil</span>
                         </label>
                     </div>
-                    <button id="startMultiplayerBtn" class="lobby-btn start" style="width: 100%;">🚀 START SPIL</button>
+                    <button id="startMultiplayerBtn" data-testid="start-multiplayer-btn" class="lobby-btn start" style="width: 100%;">🚀 START SPIL</button>
                     <p style="color: #00ff00; font-size: 12px; text-align: center; margin-top: 10px;">👑 Du er værten!</p>
                 </div>
                 
@@ -2611,20 +2611,20 @@
                 <input type="range" id="editorHeight" min="50" max="300" value="150">
             </div>
             <div class="editor-buttons">
-                <button id="editorDeleteMode" class="editor-btn">🗑️ Slet Mode</button>
-                <button id="editorUndo" class="editor-btn">↩️ Fortryd</button>
-                <button id="editorClear" class="editor-btn danger">🧹 Ryd Alt</button>
+                <button id="editorDeleteMode" data-testid="editor-delete-btn" class="editor-btn">🗑️ Slet Mode</button>
+                <button id="editorUndo" data-testid="editor-undo-btn" class="editor-btn">↩️ Fortryd</button>
+                <button id="editorClear" data-testid="editor-clear-btn" class="editor-btn danger">🧹 Ryd Alt</button>
             </div>
             <div class="editor-buttons">
-                <button id="editorSave" class="editor-btn save">💾 Gem Level</button>
-                <button id="editorLoad" class="editor-btn">📂 Indlæs</button>
-                <button id="editorExport" class="editor-btn">📋 Eksporter</button>
+                <button id="editorSave" data-testid="editor-save-btn" class="editor-btn save">💾 Gem Level</button>
+                <button id="editorLoad" data-testid="editor-load-btn" class="editor-btn">📂 Indlæs</button>
+                <button id="editorExport" data-testid="editor-export-btn" class="editor-btn">📋 Eksporter</button>
             </div>
             <div class="editor-section">
                 <label>Objekter: <span id="objectCount">0</span></label>
             </div>
-            <button id="editorStartGame" class="editor-btn start">🎮 Start Spil</button>
-            <button id="editorClose" class="editor-btn close">✖ Luk Editor</button>
+            <button id="editorStartGame" data-testid="editor-start-game-btn" class="editor-btn start">🎮 Start Spil</button>
+            <button id="editorClose" data-testid="editor-close-btn" class="editor-btn close">✖ Luk Editor</button>
         </div>
         <div id="editorPreview"></div>
         <div id="editorCoords">X: 0, Z: 0</div>

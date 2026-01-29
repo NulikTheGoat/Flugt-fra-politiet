@@ -7,6 +7,59 @@ const { expect } = require('@playwright/test');
  */
 
 /**
+ * Test IDs for buttons - use these for consistent selectors
+ */
+const BUTTON_TEST_IDS = {
+    // Main Menu
+    soloBtn: 'solo-btn',
+    multiplayerBtn: 'multiplayer-btn',
+    menuShopBtn: 'menu-shop-btn',
+    resetProgressBtn: 'reset-progress-btn',
+    
+    // Game Over
+    gameOverPlayAgain: 'game-over-play-again',
+    gameOverRejoin: 'game-over-rejoin',
+    gameOverMpShop: 'game-over-mp-shop',
+    
+    // Shop
+    shopBackBtn: 'shop-back-btn',
+    shopBuyBtn: 'shop-buy-btn',
+    shopTabAll: 'shop-tab-all',
+    shopTabBudget: 'shop-tab-budget',
+    shopTabSport: 'shop-tab-sport',
+    shopTabPremium: 'shop-tab-premium',
+    shopTabSpecial: 'shop-tab-special',
+    
+    // Multiplayer Lobby
+    lobbyCloseBtn: 'lobby-close-btn',
+    rescanBtn: 'rescan-btn',
+    rescanEmptyBtn: 'rescan-empty-btn',
+    hostLocalhostBtn: 'host-localhost-btn',
+    joinGameBtn: 'join-game-btn',
+    backToServersBtn: 'back-to-servers-btn',
+    startMultiplayerBtn: 'start-multiplayer-btn',
+    
+    // Level Editor
+    editorDeleteBtn: 'editor-delete-btn',
+    editorUndoBtn: 'editor-undo-btn',
+    editorClearBtn: 'editor-clear-btn',
+    editorSaveBtn: 'editor-save-btn',
+    editorLoadBtn: 'editor-load-btn',
+    editorExportBtn: 'editor-export-btn',
+    editorStartGameBtn: 'editor-start-game-btn',
+    editorCloseBtn: 'editor-close-btn',
+};
+
+/**
+ * Get a locator for a button by its test ID
+ * @param {import('@playwright/test').Page} page
+ * @param {string} testId
+ */
+function getButton(page, testId) {
+    return page.locator(`[data-testid="${testId}"]`);
+}
+
+/**
  * Navigate to game and wait for initial load
  * @param {import('@playwright/test').Page} page
  */
@@ -26,7 +79,8 @@ async function navigateToGame(page) {
  * @param {import('@playwright/test').Page} page
  */
 async function clickSoloMode(page) {
-    const soloBtn = page.locator('#soloModeBtn');
+    // Try data-testid first, fall back to ID
+    const soloBtn = page.locator('[data-testid="solo-btn"], #soloModeBtn').first();
     
     // Wait for button to be visible
     await expect(soloBtn).toBeVisible({ timeout: 15000 });
@@ -47,7 +101,8 @@ async function clickSoloMode(page) {
     if (!clicked) {
         // Final attempt with JavaScript click as fallback
         await page.evaluate(() => {
-            const btn = document.querySelector('#soloModeBtn');
+            const btn = document.querySelector('[data-testid="solo-btn"]') || 
+                        document.querySelector('#soloModeBtn');
             if (btn) btn.click();
         });
     }
@@ -144,6 +199,8 @@ async function getGameState(page) {
 }
 
 module.exports = {
+    BUTTON_TEST_IDS,
+    getButton,
     navigateToGame,
     clickSoloMode,
     waitForGameReady,

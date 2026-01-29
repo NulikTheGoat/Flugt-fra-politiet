@@ -132,7 +132,8 @@ test.describe('📋 Menu System', () => {
         await page.goto('http://localhost:3000');
         await page.waitForSelector('canvas', { timeout: 20000 });
         
-        const soloBtn = page.locator('#soloModeBtn');
+        // Use data-testid for more stable selectors
+        const soloBtn = page.locator('[data-testid="solo-btn"]');
         await expect(soloBtn).toBeVisible();
         await soloBtn.click({ force: true });
         
@@ -149,9 +150,10 @@ test.describe('📋 Menu System', () => {
         await page.goto('http://localhost:3000');
         await page.waitForSelector('canvas', { timeout: 20000 });
         
-        const mpBtn = page.locator('#multiplayerModeBtn');
+        // Use data-testid for more stable selectors
+        const mpBtn = page.locator('[data-testid="multiplayer-btn"]');
         if (await mpBtn.isVisible()) {
-            await mpBtn.click();
+            await mpBtn.click({ force: true });
             
             const lobby = page.locator('#multiplayerLobby');
             await expect(lobby).toBeVisible();
@@ -162,9 +164,10 @@ test.describe('📋 Menu System', () => {
         await page.goto('http://localhost:3000');
         await page.waitForSelector('canvas', { timeout: 20000 });
         
-        const shopBtn = page.locator('#menuShopBtn');
+        // Use data-testid for more stable selectors
+        const shopBtn = page.locator('[data-testid="menu-shop-btn"]');
         if (await shopBtn.isVisible()) {
-            await shopBtn.click();
+            await shopBtn.click({ force: true });
             
             const shopContainer = page.locator('#shop');
             await expect(shopContainer).toBeVisible();
@@ -178,9 +181,10 @@ test.describe('🏪 Shop UI', () => {
         await page.goto('http://localhost:3000');
         await page.waitForSelector('canvas', { timeout: 20000 });
         
-        const shopBtn = page.locator('#menuShopBtn');
+        // Use data-testid for more stable selectors
+        const shopBtn = page.locator('[data-testid="menu-shop-btn"]');
         if (await shopBtn.isVisible()) {
-            await shopBtn.click();
+            await shopBtn.click({ force: true });
             await page.waitForTimeout(500);
         }
     });

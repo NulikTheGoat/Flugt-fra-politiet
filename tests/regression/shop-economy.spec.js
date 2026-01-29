@@ -25,7 +25,8 @@ test.describe('💰 Economy System', () => {
     });
 
     test('Player starts with initial money', async ({ page }) => {
-        const soloBtn = page.locator('#soloModeBtn');
+        // Use data-testid for stable selector
+        const soloBtn = page.locator('[data-testid="solo-btn"]');
         if (await soloBtn.isVisible()) await soloBtn.click({ force: true });
         
         // Wait for gameState to be initialized instead of arbitrary timeout
@@ -37,13 +38,15 @@ test.describe('💰 Economy System', () => {
     });
 
     test('Money display updates in HUD', async ({ page }) => {
-        const soloBtn = page.locator('#soloModeBtn');
+        // Use data-testid for stable selector
+        const soloBtn = page.locator('[data-testid="solo-btn"]');
         if (await soloBtn.isVisible()) await soloBtn.click({ force: true });
         
         // Wait for game to start by checking gameState
         await page.waitForFunction(() => window.gameState?.startTime > 0, { timeout: 5000 });
         
-        const moneyDisplay = page.locator('#money');
+        // Use data-testid for money display
+        const moneyDisplay = page.locator('[data-testid="money"]');
         await expect(moneyDisplay).toBeVisible();
         
         const displayText = await moneyDisplay.textContent();
@@ -53,7 +56,8 @@ test.describe('💰 Economy System', () => {
     });
 
     test('Money earned during gameplay', async ({ page }) => {
-        const soloBtn = page.locator('#soloModeBtn');
+        // Use data-testid for stable selector
+        const soloBtn = page.locator('[data-testid="solo-btn"]');
         if (await soloBtn.isVisible()) await soloBtn.click({ force: true });
         
         // Wait for game to be fully initialized
