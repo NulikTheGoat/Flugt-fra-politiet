@@ -13,8 +13,15 @@ A fast-paced 3D car chase game! Outrun the cops, collect coins, upgrade your rid
 - **[CODE_ARCHITECTURE.md](CODE_ARCHITECTURE.md)** - Technical deep dive into the codebase
 - **[DEVELOPER_GUIDE.md](DEVELOPER_GUIDE.md)** - Step-by-step guide for developers
 - **[CHANGELOG.md](CHANGELOG.md)** - Version history and release notes
+- **Archived Plans**: See `docs/archive/` for completed implementation plans.
 
-**Tech Stack**: Three.js r128 • JavaScript ES6 • WebSocket • Node.js
+**Tech Stack**: Three.js r160 • Cannon-es (Physics) • JavaScript ES6 • WebSocket • Node.js • LLM Integration
+
+### 🌟 New Features (v1.1.0)
+- **Physics Revolution**: Fully simulated rigid-body physics for debris and obstacles.
+- **Destruction**: Buildings crumble dynamically; impact creates persistent debris fields.
+- **AI Sheriff**: A smart adversary that coordinates police units using LLM-generated tactics.
+- **Monster Truck**: Drive a tank-like beast that crushes everything in its path!
 
 ---
 

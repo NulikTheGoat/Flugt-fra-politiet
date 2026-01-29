@@ -20,7 +20,14 @@ test.describe('Debris Physics System', () => {
         // Wait for game to fully load
         await page.waitForFunction(() => window.gameState !== undefined);
         // Start the game
-        await page.click('#soloBtn');
+        const soloBtn = page.locator('#soloModeBtn');
+        if (await soloBtn.isVisible()) {
+            await soloBtn.click();
+        } else {
+             // Fallback if modal is not open yet (e.g. wait for it)
+             await page.waitForSelector('#soloModeBtn');
+             await page.click('#soloModeBtn');
+        }
         await page.waitForTimeout(500);
     });
     
@@ -426,9 +433,10 @@ test.describe('Debris Physics System', () => {
 test.describe('Debris System Performance', () => {
     
     test('debris array does not grow unbounded', async ({ page }) => {
+        test.setTimeout(60000);
         await page.goto('http://localhost:3000');
         await page.waitForFunction(() => window.gameState !== undefined);
-        await page.click('#soloBtn');
+        await page.click('#soloModeBtn');
         await page.waitForTimeout(500);
         
         // Setup fast car

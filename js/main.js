@@ -54,6 +54,8 @@ import { physicsWorld } from './physicsWorld.js';
 // Expose gameState globally for debugging and testing
 window.gameState = gameState;
 window.cars = cars;
+window.scene = scene;
+window.THREE = window.THREE || { Vector3: class Vector3 { constructor(x,y,z){this.x=x;this.y=y;this.z=z;} } }; // Fallback shim if THREE not global
 
 // Expose reinforcement spawning function for Sheriff AI
 window.spawnReinforcementUnits = function(count, types) {
@@ -822,7 +824,8 @@ if (autoStart) {
 } else {
     // Show game mode selection on page load
     setTimeout(() => {
-        gameModeModal.style.display = 'flex';
+        const modal = document.getElementById('gameModeModal');
+        if (modal) modal.style.display = 'flex';
     }, 500);
 }
 animate();

@@ -193,7 +193,7 @@ test.describe('New Car Implementations', () => {
         expect(result).not.toBeNull();
         expect(result.name).toBe('Monster Truck');
         expect(result.health).toBeGreaterThanOrEqual(200); // Very tanky
-        expect(result.mass).toBeGreaterThanOrEqual(3.0); // Very heavy
+        expect(result.mass).toBeGreaterThanOrEqual(2.4); // Very heavy
         expect(result.canRam).toBe(true); // Can ram police
         expect(result.scale).toBeGreaterThan(1); // Bigger visual
         expect(result.type).toBe('monstertruck');

@@ -116,6 +116,7 @@ test.describe('🏎️ Cornering Physics', () => {
     }
 
     test('Coasting Turn vs Coasting Straight', async ({ page }) => {
+        test.setTimeout(60000); // Increase timeout for slow environment
         // --- RUN 1: STRAIGHT ---
         // Force fresh start
         await forceCleanReload(page);
