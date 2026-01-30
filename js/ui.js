@@ -6,6 +6,7 @@ import { clamp, darkenColor } from './utils.js';
 import { cars } from './constants.js';
 import { scene, renderer } from './core.js';
 import { updateCarStats } from './player.js';
+import { stopEngineSound, stopDriftSound } from './sfx.js';
 
 let startGameCallback = null;
 
@@ -43,9 +44,48 @@ export const DOM = {
 };
 
 // ==========================================
-// HIGH SCORE SYSTEM
+// HIGH SCORE SYSTEM - Per Player Records
 // ==========================================
 
+/**
+ * Get the current player's name for record tracking
+ * @returns {string}
+ */
+function getCurrentPlayerName() {
+    const savedName = localStorage.getItem('playerName');
+    if (savedName && savedName.trim() !== '') {
+        return savedName.trim().substring(0, 15);
+    }
+    return 'Anonym';
+}
+
+/**
+ * Get all player records from storage
+ * @returns {Object.<string, Array<{time: number, date: string}>>}
+ */
+function getAllPlayerRecords() {
+    try {
+        const stored = localStorage.getItem('flugt_player_records');
+        return stored ? JSON.parse(stored) : {};
+    } catch (e) {
+        console.error("Failed to load player records", e);
+        return {};
+    }
+}
+
+/**
+ * Get top 5 records for a specific player
+ * @param {string} playerName
+ * @returns {Array<{time: number, date: string}>}
+ */
+function getPlayerRecords(playerName) {
+    const allRecords = getAllPlayerRecords();
+    return allRecords[playerName] || [];
+}
+
+/**
+ * Legacy: Get global high scores (for backwards compatibility)
+ */
 function getHighScores() {
     try {
         const stored = localStorage.getItem('flugt_highscores');
@@ -56,32 +96,65 @@ function getHighScores() {
     }
 }
 
+/**
+ * Save a new record for the current player
+ * @param {number} time - Survival time in seconds
+ */
 function saveHighScore(time) {
     if (!time || time < 1) return;
     
-    let scores = getHighScores();
+    const playerName = getCurrentPlayerName();
+    const allRecords = getAllPlayerRecords();
     
-    // Check if score qualifies for top 5
-    const qualifies = scores.length < 5 || time > scores[scores.length - 1].time;
+    // Get or create player's records
+    let playerRecords = allRecords[playerName] || [];
+    
+    // Check if score qualifies for top 5 personal records
+    const qualifies = playerRecords.length < 5 || time > playerRecords[playerRecords.length - 1].time;
     
     if (qualifies) {
-        // Simple prompt for name
-        let playerName = prompt("NY REKORD! Indtast dit navn:", "Anonym");
-        if (!playerName || playerName.trim() === "") playerName = "Anonym";
+        // Format date as DD/MM HH:MM
+        const now = new Date();
+        const date = now.toLocaleDateString('da-DK', { day: '2-digit', month: '2-digit' }) + 
+                     ' ' + now.toLocaleTimeString('da-DK', { hour: '2-digit', minute: '2-digit' });
         
-        // Format date as DD/MM
-        const date = new Date().toLocaleDateString('da-DK', { day: '2-digit', month: '2-digit' });
-        
-        scores.push({ name: playerName.substring(0, 10), time, date });
+        playerRecords.push({ time, date });
         
         // Sort descending by time
-        scores.sort((a, b) => b.time - a.time);
+        playerRecords.sort((a, b) => b.time - a.time);
         
         // Keep top 5
-        scores = scores.slice(0, 5);
+        playerRecords = playerRecords.slice(0, 5);
         
-        localStorage.setItem('flugt_highscores', JSON.stringify(scores));
+        // Save back
+        allRecords[playerName] = playerRecords;
+        localStorage.setItem('flugt_player_records', JSON.stringify(allRecords));
+        
+        // Also update legacy global highscores for backwards compatibility
+        updateLegacyHighScores(playerName, time);
+        
         updateHighScoreDisplay();
+        
+        // Check if this is a new personal best
+        if (playerRecords[0].time === time) {
+            console.log(`🏆 NY PERSONLIG REKORD for ${playerName}: ${formatTime(time)}!`);
+        }
+    }
+}
+
+/**
+ * Update legacy global highscores (backwards compatibility)
+ */
+function updateLegacyHighScores(playerName, time) {
+    let scores = getHighScores();
+    const qualifies = scores.length < 5 || time > scores[scores.length - 1]?.time;
+    
+    if (qualifies) {
+        const date = new Date().toLocaleDateString('da-DK', { day: '2-digit', month: '2-digit' });
+        scores.push({ name: playerName.substring(0, 10), time, date });
+        scores.sort((a, b) => b.time - a.time);
+        scores = scores.slice(0, 5);
+        localStorage.setItem('flugt_highscores', JSON.stringify(scores));
     }
 }
 
@@ -100,40 +173,65 @@ function updateHighScoreDisplay() {
             position: fixed;
             bottom: 140px;
             left: 20px;
-            background: rgba(0, 0, 0, 0.7);
+            background: rgba(0, 0, 0, 0.85);
             color: #fff;
-            padding: 10px 15px;
-            border-radius: 8px;
+            padding: 12px 16px;
+            border-radius: 10px;
             font-family: 'Courier New', monospace;
             z-index: 1000;
-            border: 1px solid #444;
-            min-width: 280px;
+            border: 2px solid #333;
+            min-width: 260px;
             pointer-events: none;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.5);
         `;
         document.body.appendChild(container);
     }
 
-    const scores = getHighScores();
-    if (scores.length === 0) {
-        container.innerHTML = `<div style="text-align:center;color:#aaa;font-size:12px;">INGEN REKORDER</div>`;
+    const playerName = getCurrentPlayerName();
+    const personalRecords = getPlayerRecords(playerName);
+    
+    if (personalRecords.length === 0) {
+        container.innerHTML = `
+            <div style="text-align:center;color:#f1c40f;font-size:14px;font-weight:bold;margin-bottom:6px;">
+                🏆 DINE REKORDER
+            </div>
+            <div style="text-align:center;color:#666;font-size:11px;margin-bottom:8px;">
+                ${playerName}
+            </div>
+            <div style="text-align:center;color:#aaa;font-size:12px;padding:10px 0;">
+                Ingen rekorder endnu!<br>
+                <span style="font-size:10px;color:#666;">Overlev længst muligt</span>
+            </div>
+        `;
         return;
     }
 
-    let html = `<div style="text-align:center;font-weight:bold;margin-bottom:8px;border-bottom:1px solid #666;padding-bottom:4px;font-size:18px;color:#f1c40f;">TOP 5 TIDER</div>`;
+    let html = `
+        <div style="text-align:center;color:#f1c40f;font-size:14px;font-weight:bold;margin-bottom:4px;">
+            🏆 DINE TOP 5
+        </div>
+        <div style="text-align:center;color:#888;font-size:11px;margin-bottom:10px;border-bottom:1px solid #444;padding-bottom:8px;">
+            ${playerName}
+        </div>
+    `;
     
-    scores.forEach((score, index) => {
-        const color = index === 0 ? '#ffd700' : (index === 1 ? '#c0c0c0' : (index === 2 ? '#cd7f32' : '#fff'));
-        const name = score.name || 'Spiller';
+    personalRecords.forEach((record, index) => {
+        const color = index === 0 ? '#ffd700' : (index === 1 ? '#c0c0c0' : (index === 2 ? '#cd7f32' : '#aaa'));
+        const medal = index === 0 ? '🥇' : (index === 1 ? '🥈' : (index === 2 ? '🥉' : '  '));
         html += `
-            <div style="display:flex;justify-content:space-between;align-items:center;font-size:14px;margin-bottom:4px;color:${color};font-weight:bold;">
-                <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:160px;">${index + 1}. ${name}</span>
-                <span>${formatTime(score.time)}</span>
+            <div style="display:flex;justify-content:space-between;align-items:center;font-size:13px;margin-bottom:5px;color:${color};">
+                <span>${medal} #${index + 1}</span>
+                <span style="font-weight:bold;">${formatTime(record.time)}</span>
+                <span style="font-size:10px;color:#666;">${record.date}</span>
             </div>
         `;
     });
 
     container.innerHTML = html;
 }
+
+// Export for external use (e.g., when player name changes)
+export { updateHighScoreDisplay, getCurrentPlayerName, getPlayerRecords };
 
 // Initial display load
 document.addEventListener('DOMContentLoaded', updateHighScoreDisplay);
@@ -345,6 +443,10 @@ export function addMoney(amount) {
 }
 
 export function showGameOver(customMessage) {
+    // Stop engine and drift sounds immediately
+    stopEngineSound();
+    stopDriftSound();
+    
     // Remove all police cars
     gameState.policeCars.forEach(car => scene.remove(car));
     gameState.policeCars = [];
@@ -469,9 +571,14 @@ function animateCount(element, target, duration) {
 // Track if we're in multiplayer shop mode (for respawn with new car)
 let multiplayerShopMode = false;
 let onMultiplayerCarSelected = null;
+let onCarSelectionChanged = null; // For syncing car selection to network
 
 export function setMultiplayerShopCallback(cb) {
     onMultiplayerCarSelected = cb;
+}
+
+export function setOnCarSelectionChanged(cb) {
+    onCarSelectionChanged = cb;
 }
 
 export function goToShop(isMultiplayerRespawn = false) {
@@ -1121,7 +1228,8 @@ window.openCarDetail = function(key, car) {
                 updateCarStats(key);
                 updateBtnState();
                 renderShop();
-                if (window.onMultiplayerCarSelected) window.onMultiplayerCarSelected(key);
+                if (onMultiplayerCarSelected) onMultiplayerCarSelected(key);
+                if (onCarSelectionChanged) onCarSelectionChanged(key);
             } else if (canAfford) {
                 if(confirm(`Køb ${car.name}?`)) {
                     gameState.totalMoney -= car.price;
@@ -1132,7 +1240,8 @@ window.openCarDetail = function(key, car) {
                     updateCarStats(key);
                     updateBtnState();
                     renderShop();
-                    if (window.onMultiplayerCarSelected) window.onMultiplayerCarSelected(key);
+                    if (onMultiplayerCarSelected) onMultiplayerCarSelected(key);
+                    if (onCarSelectionChanged) onCarSelectionChanged(key);
                 }
             }
         });

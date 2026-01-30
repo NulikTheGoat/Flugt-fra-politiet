@@ -852,4 +852,176 @@ export function clearSpawnedObjects() {
     directorState.comboCount = 0;
 }
 
-export { directorState };
+/**
+ * Create a visual spawn indicator (glowing ring effect)
+ * @param {number} x - X position
+ * @param {number} z - Z position
+ * @param {string} type - Object type for color coding
+ */
+function createSpawnIndicator(x, z, type) {
+    // Color based on type
+    const colors = {
+        roadblock: 0xff6b6b,
+        barrier: 0xff6b6b,
+        cones: 0xffa500,
+        spike: 0xff0000,
+        oil: 0x333333,
+        ramp: 0x00ff88,
+        money: 0xffff00,
+        health: 0x00ff00,
+        boost: 0x00aaff
+    };
+    const color = colors[type] || 0x7cf5b5;
+    
+    // Create ring geometry
+    const ringGeo = new THREE.RingGeometry(15, 18, 32);
+    const ringMat = new THREE.MeshBasicMaterial({
+        color: color,
+        transparent: true,
+        opacity: 0.8,
+        side: THREE.DoubleSide
+    });
+    const ring = new THREE.Mesh(ringGeo, ringMat);
+    ring.rotation.x = -Math.PI / 2;
+    ring.position.set(x, 1, z);
+    scene.add(ring);
+    
+    // Animate: expand and fade
+    let scale = 1;
+    let opacity = 0.8;
+    const animateRing = () => {
+        scale += 0.08;
+        opacity -= 0.02;
+        ring.scale.set(scale, scale, 1);
+        ringMat.opacity = Math.max(0, opacity);
+        
+        if (opacity > 0) {
+            requestAnimationFrame(animateRing);
+        } else {
+            scene.remove(ring);
+            ringGeo.dispose();
+            ringMat.dispose();
+        }
+    };
+    animateRing();
+}
+
+/**
+ * Spawn environment objects from Challenger role
+ * @param {Array<{type: string, side?: string}>} objects - Objects to spawn
+ * @param {number} baseZ - Base Z position (player's current Z)
+ */
+export function challengerSpawnObjects(objects, baseZ) {
+    if (!objects || !Array.isArray(objects)) return;
+    
+    const spawnZ = baseZ + directorState.spawnDistance;
+    
+    // Count object types for better announcement
+    const typeCounts = {};
+    
+    objects.forEach((obj, idx) => {
+        const type = obj.type || 'barrier';
+        typeCounts[type] = (typeCounts[type] || 0) + 1;
+        
+        let x = 0;
+        
+        // Position based on side
+        if (obj.side === 'left') x = -60 - Math.random() * 30;
+        else if (obj.side === 'right') x = 60 + Math.random() * 30;
+        else if (obj.side === 'center') x = (Math.random() - 0.5) * 40;
+        else x = (Math.random() - 0.5) * 140; // random
+        
+        const z = spawnZ + idx * 80 + Math.random() * 40;
+        
+        // Create visual spawn indicator
+        createSpawnIndicator(x, z, type);
+        
+        createSpawnedObject(type, x, z, obj.moving || false, obj.speed || 0);
+    });
+    
+    // Build descriptive message
+    const typeNames = {
+        roadblock: 'Vejspærring',
+        barrier: 'Barrierer',
+        cones: 'Kegler',
+        spike: 'Sømmåtte',
+        oil: 'Olieplet',
+        ramp: 'Rampe',
+        money: 'Penge',
+        health: 'Sundhed',
+        boost: 'Boost'
+    };
+    
+    const descriptions = Object.entries(typeCounts)
+        .map(([type, count]) => `${count}x ${typeNames[type] || type}`)
+        .join(', ');
+    
+    // Determine mood based on content
+    const hasDanger = ['spike', 'oil', 'roadblock', 'barrier'].some(t => typeCounts[t]);
+    const hasBonus = ['money', 'health', 'boost'].some(t => typeCounts[t]);
+    const mood = hasBonus && !hasDanger ? 'rewarding' : hasDanger ? 'intense' : 'dramatic';
+    
+    // Show announcement with specific content
+    showDirectorAnnouncement('CHALLENGER', descriptions, mood);
+}
+
+/**
+ * Spawn environment objects at specific position (for free-roaming Challenger)
+ * @param {Array<{type: string, side?: string}>} objects - Objects to spawn
+ * @param {number} centerX - Center X position from Challenger marker
+ * @param {number} centerZ - Center Z position from Challenger marker
+ */
+export function challengerSpawnObjectsAtPosition(objects, centerX, centerZ) {
+    if (!objects || !Array.isArray(objects)) return;
+    
+    // Count object types for better announcement
+    const typeCounts = {};
+    
+    objects.forEach((obj, idx) => {
+        const type = obj.type || 'barrier';
+        typeCounts[type] = (typeCounts[type] || 0) + 1;
+        
+        let x = centerX;
+        
+        // Position based on side (relative to center position)
+        if (obj.side === 'left') x = centerX - 60 - Math.random() * 30;
+        else if (obj.side === 'right') x = centerX + 60 + Math.random() * 30;
+        else if (obj.side === 'center') x = centerX + (Math.random() - 0.5) * 40;
+        else x = centerX + (Math.random() - 0.5) * 140; // random spread around center
+        
+        // Spread objects along Z axis from the marker position
+        const z = centerZ + idx * 80 + Math.random() * 40;
+        
+        // Create visual spawn indicator
+        createSpawnIndicator(x, z, type);
+        
+        createSpawnedObject(type, x, z, obj.moving || false, obj.speed || 0);
+    });
+    
+    // Build descriptive message
+    const typeNames = {
+        roadblock: 'Vejspærring',
+        barrier: 'Barrierer',
+        cones: 'Kegler',
+        spike: 'Sømmåtte',
+        oil: 'Olieplet',
+        ramp: 'Rampe',
+        money: 'Penge',
+        health: 'Sundhed',
+        boost: 'Boost'
+    };
+    
+    const descriptions = Object.entries(typeCounts)
+        .map(([type, count]) => `${count}x ${typeNames[type] || type}`)
+        .join(', ');
+    
+    // Determine mood based on content
+    const hasDanger = ['spike', 'oil', 'roadblock', 'barrier'].some(t => typeCounts[t]);
+    const hasBonus = ['money', 'health', 'boost'].some(t => typeCounts[t]);
+    const mood = hasBonus && !hasDanger ? 'rewarding' : hasDanger ? 'intense' : 'dramatic';
+    
+    // Show announcement with specific content
+    showDirectorAnnouncement('CHALLENGER', descriptions, mood);
+}
+
+export { directorState, createSpawnedObject };

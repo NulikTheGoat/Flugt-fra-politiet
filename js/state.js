@@ -107,6 +107,8 @@
  * @property {string|null} roomCode
  * @property {Map<string, any>} otherPlayers
  * @property {number} playerColor
+ * @property {string} [playerRole] - Multiplayer role: 'contester' or 'challenger'
+ * @property {number} [lastPlayerShot] - Timestamp of last player shot
  *
  * @property {number} [policeCount] - Number of active police cars
  * @property {number} [survivalTime] - Time survived in seconds
@@ -202,7 +204,8 @@ export const gameState = {
     playerId: null,
     roomCode: null,
     otherPlayers: new Map(), // playerId -> { car, mesh, state }
-    playerColor: 0xff0000
+    playerColor: 0xff0000,
+    playerRole: 'contester'
 };
 
 // Input State - Keyboard keys currently pressed

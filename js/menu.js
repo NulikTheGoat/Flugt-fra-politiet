@@ -1,15 +1,15 @@
 // MENU.JS - Handles Main Menu, Lobby, and UI Interaction logic
 import { gameState } from './state.js';
 import * as Network from './network.js';
-import { DOM, goToShop, setMultiplayerShopCallback } from './ui.js';
+import { DOM, goToShop, setMultiplayerShopCallback, setOnCarSelectionChanged } from './ui.js';
 import { gameConfig } from './config.js';
 import { unlockAudio } from './sfx.js';
 
 // DOM Elements
 const multiplayerLobby = document.getElementById('multiplayerLobby');
 const lobbyCloseBtn = document.getElementById('lobbyCloseBtn');
-const joinGameBtn = document.getElementById('joinGameBtn');
-const playerNameInput = document.getElementById('playerNameInput');
+const joinGameBtn = /** @type {HTMLButtonElement|null} */ (document.getElementById('joinGameBtn'));
+const playerNameInput = /** @type {HTMLInputElement|null} */ (document.getElementById('playerNameInput'));
 const lobbyError = document.getElementById('lobbyError');
 const lobbyConnect = document.getElementById('lobbyConnect');
 const lobbyRoom = document.getElementById('lobbyRoom');
@@ -19,10 +19,12 @@ const playerCount = document.getElementById('playerCount');
 const hostControls = document.getElementById('hostControls');
 const waitingMessage = document.getElementById('waitingMessage');
 const startMultiplayerBtn = document.getElementById('startMultiplayerBtn');
-const hostTouchArrest = document.getElementById('hostTouchArrest');
-const hostDropInEnabled = document.getElementById('hostDropInEnabled');
+const hostTouchArrest = /** @type {HTMLInputElement|null} */ (document.getElementById('hostTouchArrest'));
+const hostDropInEnabled = /** @type {HTMLInputElement|null} */ (document.getElementById('hostDropInEnabled'));
 const gameOverRejoinBtn = document.getElementById('gameOverRejoinBtn');
 const gameOverMpShopBtn = document.getElementById('gameOverMpShopBtn');
+const playerRoleInput = /** @type {HTMLInputElement|null} */ (document.getElementById('playerRoleInput'));
+const roleOptions = Array.from(document.querySelectorAll('.role-option'));
 
 // Game Mode Modal elements
 const gameModeModal = document.getElementById('gameModeModal');
@@ -74,14 +76,43 @@ async function showServerDiscovery() {
             
             // Click handler for server cards
             serverList.querySelectorAll('.server-card').forEach(card => {
-                card.addEventListener('click', () => {
-                    selectServer(card.dataset.ip, card.dataset.players);
+                const cardEl = /** @type {HTMLElement} */ (card);
+                cardEl.addEventListener('click', () => {
+                    selectServer(cardEl.dataset.ip, cardEl.dataset.players);
                 });
             });
         }
     } else {
         if (noServersFound) noServersFound.style.display = 'block';
     }
+}
+
+function getRoleOptions() {
+    return /** @type {HTMLElement[]} */ (Array.from(document.querySelectorAll('.role-option')));
+}
+
+function setActiveRole(role) {
+    console.log('[Role] setActiveRole called with:', role);
+    const roleInput = /** @type {HTMLInputElement|null} */ (document.getElementById('playerRoleInput'));
+    if (!roleInput) {
+        console.error('[Role] playerRoleInput not found!');
+        return;
+    }
+    roleInput.value = role;
+    console.log('[Role] Set playerRoleInput.value to:', roleInput.value);
+    
+    // Update game state immediately
+    gameState.playerRole = role;
+
+    const options = getRoleOptions();
+    console.log('[Role] Found role options:', options.length);
+    options.forEach(option => {
+        const isActive = option.dataset.role === role;
+        option.classList.toggle('active', isActive);
+        option.setAttribute('aria-pressed', String(isActive));
+    });
+    // Also save to localStorage immediately
+    localStorage.setItem('playerRole', role);
 }
 
 function selectServer(ip, playerCount) {
@@ -189,6 +220,28 @@ export function initMenu({ startGame, cleanupGame }) {
         playerNameInput.value = savedName;
     }
 
+    // Load saved role (default contester)
+    const savedRole = localStorage.getItem('playerRole') || 'contester';
+    if (document.getElementById('playerRoleInput')) {
+        setActiveRole(savedRole);
+    }
+
+    // Role selection (event delegation for reliability)
+    const roleSelect = document.querySelector('.role-select');
+    console.log('[Role] Setting up role selection, found .role-select:', !!roleSelect);
+    if (roleSelect) {
+        roleSelect.addEventListener('click', (event) => {
+            console.log('[Role] Click detected on .role-select');
+            const target = /** @type {HTMLElement} */ (event.target);
+            const option = /** @type {HTMLElement|null} */ (target.closest('.role-option'));
+            console.log('[Role] Closest .role-option:', option);
+            if (!option) return;
+            const role = option.dataset.role || 'contester';
+            console.log('[Role] Selected role:', role);
+            setActiveRole(role);
+        });
+    }
+
     if (DOM.gameOverShopBtn) {
         DOM.gameOverShopBtn.addEventListener('click', () => {
             // If in multiplayer, disconnect first
@@ -226,6 +279,15 @@ export function initMenu({ startGame, cleanupGame }) {
         
         // Request respawn with new car
         Network.requestRespawnWithCar(carKey);
+    });
+
+    // Set up car selection sync - when car is selected (owned or bought), notify network
+    setOnCarSelectionChanged((carKey) => {
+        // Only send update if connected and in lobby (game not started)
+        if (Network.isConnectedToServer()) {
+            console.log('Car selection changed, notifying server:', carKey);
+            Network.updateCarSelection(carKey);
+        }
     });
 
     // Close game mode modal when clicking outside
@@ -295,9 +357,14 @@ export function initMenu({ startGame, cleanupGame }) {
         joinGameBtn.addEventListener('click', async () => {
             const name = playerNameInput.value.trim() || 'Spiller';
             const car = gameState.selectedCar || 'standard';
+            const role = playerRoleInput?.value || 'contester';
+            
+            console.log('[Join] Joining with role:', role, 'from input value:', playerRoleInput?.value);
             
             // Save player name for next time
             localStorage.setItem('playerName', name);
+            localStorage.setItem('playerRole', role);
+            gameState.playerRole = role;
             
             joinGameBtn.disabled = true;
             if(lobbyError) {
@@ -308,7 +375,7 @@ export function initMenu({ startGame, cleanupGame }) {
             try {
                 await Network.connect();
                 if(lobbyError) lobbyError.textContent = 'Joiner spil...';
-                Network.joinGame(name, car);
+                Network.joinGame(name, car, null, role);
             } catch (e) {
                 if(lobbyError) {
                     lobbyError.textContent = 'Kunne ikke forbinde til server';
@@ -321,6 +388,18 @@ export function initMenu({ startGame, cleanupGame }) {
 
     if (startMultiplayerBtn) {
         startMultiplayerBtn.addEventListener('click', () => {
+            // Check if host is challenger - need at least one contester to start
+            // FIXED: Allow Challenger to start alone for testing/exploration
+            /* 
+            if (gameState.playerRole === 'challenger') {
+                const hasContester = Array.from(gameState.otherPlayers?.values() || []).some(p => p.role !== 'challenger');
+                if (!hasContester) {
+                    alert('🎮 Som Challenger skal der være mindst én Contester for at starte spillet!');
+                    return;
+                }
+            }
+            */
+            
             // Get host config settings
             const hostConfig = {
                 ...gameConfig,
@@ -446,9 +525,11 @@ function handleShopNavigation(e) {
     } else {
         // Default start: Select first available card or first tab
         if (cards.length > 0) {
-            cards[0].focus(); cards[0].classList.add('keyboard-selected');
+            const firstCard = /** @type {HTMLElement} */ (cards[0]);
+            firstCard.focus(); firstCard.classList.add('keyboard-selected');
         } else {
-            tabs[0].focus(); tabs[0].classList.add('keyboard-selected');
+            const firstTab = /** @type {HTMLElement} */ (tabs[0]);
+            firstTab.focus(); firstTab.classList.add('keyboard-selected');
         }
         return;
     }
@@ -456,9 +537,9 @@ function handleShopNavigation(e) {
     // Handle Enter
     if (e.key === 'Enter') {
         if (currentSection === 'tabs') {
-            tabs[index].click();
+            /** @type {HTMLElement} */ (tabs[index]).click();
         } else if (currentSection === 'cards') {
-            cards[index].click();
+            /** @type {HTMLElement} */ (cards[index]).click();
         } else if (currentSection === 'play') {
             playBtn.click();
         }

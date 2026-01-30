@@ -33,7 +33,7 @@ export const EVENTS = {
 const commentaryState = {
     eventBuffer: [],
     lastRequestTime: 0,
-    requestCooldown: 5000, // 5 seconds between API calls
+    requestCooldown: 15000, // 15 seconds between API calls (was 5s)
     commentaryQueue: [],
     isDisplaying: false,
     displayDuration: 6000,
@@ -49,15 +49,195 @@ const commentaryState = {
     isDrifting: false,
     activeBubbles: [], // Track active bubbles for stacking
     lastPoliceMessageTime: 0,
-    policeMessageCooldown: 12000, // 12 seconds cooldown for police radio
+    policeMessageCooldown: 25000, // 25 seconds cooldown for police radio (was 12s)
     lastGPSMessageTime: 0,
-    gpsCooldown: 15000, // 15 seconds cooldown for GPS
+    gpsCooldown: 30000, // 30 seconds cooldown for GPS (was 15s)
     lastMovementTime: 0, // Track idle time
     activeMission: null, // { type, target, progress, text, reward, startTime }
     lastMissionTime: 0,
-    missionCooldown: 45000, // 45 seconds between missions
+    missionCooldown: 60000, // 60 seconds between missions (was 45s)
     voiceEnabled: true // New flag for Text-to-Speech
 };
+
+// ==========================================
+// Unified Chat Pane (Right side)
+// ==========================================
+
+function ensureChatPane() {
+    let pane = document.getElementById('chatPane');
+    if (!pane) {
+        pane = document.createElement('div');
+        pane.id = 'chatPane';
+        pane.style.cssText = `
+            position: fixed;
+            top: 110px;
+            right: 20px;
+            width: 280px;
+            max-height: 40vh;
+            background: rgba(10, 10, 20, 0.7);
+            border: 1px solid rgba(0, 136, 255, 0.25);
+            border-radius: 12px;
+            padding: 10px 10px 6px 10px;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            z-index: 10000;
+            pointer-events: none;
+            backdrop-filter: blur(6px);
+            box-shadow: 0 8px 20px rgba(0,0,0,0.3);
+            overflow: hidden;
+        `;
+
+        const header = document.createElement('div');
+        header.textContent = 'RADIO';
+        header.style.cssText = `
+            font-size: 10px;
+            letter-spacing: 2px;
+            color: #9bbcff;
+            font-weight: 700;
+            text-align: center;
+            margin-bottom: 2px;
+            opacity: 0.6;
+        `;
+
+        const list = document.createElement('div');
+        list.id = 'chatMessageList';
+        list.style.cssText = `
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            overflow: hidden;
+        `;
+
+        pane.appendChild(header);
+        pane.appendChild(list);
+        document.body.appendChild(pane);
+    }
+    return pane;
+}
+
+// Message queue system to prevent spam
+const messageQueue = [];
+let isProcessingQueue = false;
+const MESSAGE_DELAY = 1500; // 1.5 seconds between messages
+let lastMessageTime = 0;
+
+function processMessageQueue() {
+    if (isProcessingQueue || messageQueue.length === 0) return;
+    
+    const now = Date.now();
+    const timeSinceLastMessage = now - lastMessageTime;
+    
+    if (timeSinceLastMessage < MESSAGE_DELAY) {
+        // Wait for the remaining delay
+        setTimeout(processMessageQueue, MESSAGE_DELAY - timeSinceLastMessage);
+        return;
+    }
+    
+    isProcessingQueue = true;
+    const msg = messageQueue.shift();
+    lastMessageTime = Date.now();
+    
+    displayChatMessage(msg);
+    
+    isProcessingQueue = false;
+    
+    // Process next message after delay
+    if (messageQueue.length > 0) {
+        setTimeout(processMessageQueue, MESSAGE_DELAY);
+    }
+}
+
+function appendChatMessage({ source, text, variant = 'default' }) {
+    if (!text) return;
+    
+    // Add to queue instead of displaying immediately
+    messageQueue.push({ source, text, variant });
+    
+    // Limit queue size (drop oldest if too many pending)
+    while (messageQueue.length > 8) {
+        messageQueue.shift();
+    }
+    
+    processMessageQueue();
+}
+
+function displayChatMessage({ source, text, variant = 'default' }) {
+    ensureChatPane();
+    const list = document.getElementById('chatMessageList');
+    if (!list) return;
+
+    const bubble = document.createElement('div');
+    const colorMap = {
+        default: '#3b82f6',
+        commentary: '#f59e0b',
+        gps: '#38bdf8',
+        boss: '#22c55e',
+        police: '#22c55e',
+        sheriff: '#facc15'
+    };
+    const accent = colorMap[variant] || colorMap.default;
+
+    bubble.style.cssText = `
+        background: rgba(0,0,0,0.65);
+        border: 1px solid ${accent};
+        color: #eef2ff;
+        border-radius: 12px;
+        padding: 8px 10px;
+        font-size: 12px;
+        line-height: 1.35;
+        box-shadow: 0 6px 16px rgba(0,0,0,0.25);
+        opacity: 0;
+        transform: translateX(12px);
+        transition: opacity 0.25s ease, transform 0.25s ease;
+    `;
+
+    const title = document.createElement('div');
+    title.textContent = source || 'System';
+    title.style.cssText = `
+        font-size: 10px;
+        font-weight: 700;
+        letter-spacing: 0.6px;
+        color: ${accent};
+        text-transform: uppercase;
+        margin-bottom: 4px;
+    `;
+
+    const content = document.createElement('div');
+    content.textContent = text;
+
+    bubble.appendChild(title);
+    bubble.appendChild(content);
+    list.appendChild(bubble);
+
+    requestAnimationFrame(() => {
+        bubble.style.opacity = '1';
+        bubble.style.transform = 'translateX(0)';
+    });
+
+    // Auto-fade after 6 seconds
+    setTimeout(() => {
+        bubble.style.transition = 'opacity 0.5s ease';
+        bubble.style.opacity = '0.3';
+    }, 6000);
+
+    // Remove after 12 seconds
+    setTimeout(() => {
+        bubble.style.opacity = '0';
+        setTimeout(() => {
+            if (bubble.parentNode) bubble.remove();
+        }, 500);
+    }, 12000);
+
+    // Limit visible messages to 5 (remove oldest immediately if over limit)
+    while (list.children.length > 5) {
+        const oldest = /** @type {HTMLElement|null} */ (list.firstChild);
+        if (oldest && oldest.style) {
+            oldest.style.opacity = '0';
+            setTimeout(() => oldest.remove(), 300);
+        }
+    }
+}
 
 const MISSION_TYPES = {
     DESTROY: 'DESTROY', // Smash police cars
@@ -541,103 +721,19 @@ function queueCommentary(text) {
     showCommentaryBubble(text);
 }
 
-// Display commentary in UI - create stacking chat bubbles on right side
+// Display commentary in UI - unified chat pane on right side
 function showCommentaryBubble(text) {
-    // Create container if it doesn't exist
-    let container = document.getElementById('commentaryContainer');
-    if (!container) {
-        container = document.createElement('div');
-        container.id = 'commentaryContainer';
-        container.style.cssText = `
-            position: fixed;
-            top: 120px;
-            right: 20px;
-            display: flex;
-            flex-direction: column;
-            gap: 10px;
-            z-index: 10000;
-            pointer-events: none;
-            max-height: 60vh;
-            overflow: hidden;
-        `;
-        document.body.appendChild(container);
-    }
-    
-    // Create new bubble
-    const bubble = document.createElement('div');
-    bubble.className = 'commentary-bubble';
-    bubble.style.cssText = `
-        background: rgba(0, 0, 0, 0.85);
-        color: #fff;
-        padding: 10px 16px;
-        border-radius: 16px 16px 4px 16px;
-        font-size: 13px;
-        font-family: 'Arial', sans-serif;
-        font-weight: 500;
-        text-align: left;
-        max-width: 280px;
-        border: 2px solid #ffcc00;
-        box-shadow: 0 4px 15px rgba(255, 204, 0, 0.3);
-        opacity: 0;
-        transform: translateX(50px);
-        transition: opacity 0.4s ease, transform 0.4s ease;
-        line-height: 1.4;
-    `;
-    
-    // Add to container at the top
-    container.insertBefore(bubble, container.firstChild);
-    
-    // Push existing bubbles down (animate)
-    const existingBubbles = container.querySelectorAll('.commentary-bubble');
-    existingBubbles.forEach((b, index) => {
-        if (index > 0) {
-            /** @type {HTMLElement} */ (b).style.opacity = Math.max(0.3, 1 - index * 0.2).toString();
-        }
+    appendChatMessage({
+        source: 'Kommentator',
+        text,
+        variant: 'commentary'
     });
-    
-    // Limit number of bubbles
-    while (container.children.length > 4) {
-        const lastBubble = /** @type {HTMLElement} */ (container.lastChild);
-        lastBubble.style.opacity = '0';
-        lastBubble.style.transform = 'translateX(50px)';
-        setTimeout(() => lastBubble.remove(), 300);
-    }
-    
-    // Animate in
-    requestAnimationFrame(() => {
-        bubble.style.opacity = '1';
-        bubble.style.transform = 'translateX(0)';
-    });
-    
-    // Typewriter effect
-    let i = 0;
-    const typeInterval = setInterval(() => {
-        if (i < text.length) {
-            bubble.textContent += text.charAt(i);
-            i++;
-        } else {
-            clearInterval(typeInterval);
-        }
-    }, 25);
-    
-    // Fade out after display duration
-    setTimeout(() => {
-        bubble.style.opacity = '0';
-        bubble.style.transform = 'translateX(50px)';
-        setTimeout(() => {
-            if (bubble.parentNode) {
-                bubble.remove();
-            }
-        }, 400);
-    }, commentaryState.displayDuration);
 }
 
 function hideCommentaryBubble() {
-    // Clear all bubbles
-    const container = document.getElementById('commentaryContainer');
-    if (container) {
-        container.innerHTML = '';
-    }
+    // Clear all chat messages
+    const list = document.getElementById('chatMessageList');
+    if (list) list.innerHTML = '';
 }
 
 // Main update function - call this from game loop
@@ -895,53 +991,11 @@ function useGPSFallback() {
 }
 
 function showGPSBubble(text) {
-    let bubble = document.getElementById('gpsBubble');
-    if (!bubble) {
-        bubble = document.createElement('div');
-        bubble.id = 'gpsBubble';
-        bubble.style.cssText = `
-            position: fixed;
-            top: 20px;
-            left: 50%;
-            transform: translateX(-50%);
-            background: linear-gradient(180deg, #2c3e50 0%, #000000 100%);
-            color: #3498db;
-            padding: 8px 20px;
-            border: 2px solid #3498db;
-            border-radius: 20px;
-            font-family: 'Verdana', sans-serif;
-            font-size: 14px;
-            font-weight: bold;
-            z-index: 9998;
-            box-shadow: 0 0 15px rgba(52, 152, 219, 0.5);
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            opacity: 0;
-            transition: opacity 0.5s;
-        `;
-        
-        // Icon
-        const icon = document.createElement('span');
-        icon.textContent = "🗺️";
-        icon.style.fontSize = "18px";
-        bubble.appendChild(icon);
-        
-        const content = document.createElement('span');
-        content.id = 'gpsContent';
-        bubble.appendChild(content);
-        
-        document.body.appendChild(bubble);
-    }
-    
-    const content = bubble.querySelector('#gpsContent');
-    content.textContent = text;
-    bubble.style.opacity = "1";
-    
-    // Hide after duration
-    setTimeout(() => {
-        bubble.style.opacity = "0";
-    }, 5000);
+    appendChatMessage({
+        source: 'GPS',
+        text,
+        variant: 'gps'
+    });
 }
 
 // ==========================================
@@ -1034,134 +1088,10 @@ function useBossFallback(type) { // type: 'NEW' or 'COMPLETE'
 }
 
 function showBossMessage(text, isSuccess = false) {
-    let container = document.getElementById('bossMessageContainer');
-    if (container) container.remove();
-    
-    container = document.createElement('div');
-    container.id = 'bossMessageContainer';
-    // Wrapper for positioning (managed by updateBubblePositions)
-    // We keep it 0x0 so the 'centered' transform logic works nicely on the child
-    container.style.cssText = `
-        position: fixed;
-        z-index: 9997;
-        pointer-events: none; /* KEY: Cannot be clicked */
-        width: 0; min-height: 0;
-        display: flex;
-        justify-content: center;
-    `;
-
-    // Colors
-    const bgColor = isSuccess ? '#2ecc71' : '#1e1e1e';
-    const textColor = '#ffffff';
-    const accentColor = isSuccess ? '#27ae60' : '#f1c40f'; // Gold or Dark Green
-    
-    // Inner Visual Bubble
-    const bubble = document.createElement('div');
-    bubble.style.cssText = `
-        position: relative;
-        bottom: 20px; /* Offset from anchor point */
-        width: 820px;
-        background: ${bgColor};
-        color: ${textColor};
-        padding: 16px 20px;
-        border-radius: 24px;
-        border-bottom-right-radius: 4px; /* Callout style */
-        box-shadow: 0 10px 30px rgba(0,0,0,0.5), 0 0 0 1px rgba(255,255,255,0.1);
-        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-        display: flex;
-        flex-direction: column;
-        gap: 6px;
-        transform: scale(0.5);
-        opacity: 0;
-        transform-origin: bottom right; /* Pop from the tail */
-        transition: transform 0.5s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.3s ease;
-    `;
-
-    // Header: Icon + Title
-    const header = document.createElement('div');
-    header.style.cssText = "display: flex; align-items: center; gap: 8px; margin-bottom: 2px;";
-    
-    const icon = document.createElement('span');
-    icon.textContent = isSuccess ? '✅' : '🕶️';
-    icon.style.filter = "grayscale(100%)"; // Subtle icon
-    icon.style.fontSize = "16px";
-    
-    const title = document.createElement('span');
-    title.textContent = "THE BOSS";
-    title.style.cssText = `
-        font-size: 11px;
-        font-weight: 800;
-        letter-spacing: 2px;
-        color: ${accentColor};
-        text-transform: uppercase;
-    `;
-    
-    header.appendChild(icon);
-    header.appendChild(title);
-    
-    // Message Content
-    const message = document.createElement('div');
-    message.style.cssText = `
-        font-size: 16px;
-        line-height: 1.4;
-        font-weight: 600;
-        letter-spacing: 0.3px;
-        text-shadow: 0 1px 2px rgba(0,0,0,0.2);
-    `;
-    
-    // Callout Tail (Triangle)
-    const tail = document.createElement('div');
-    tail.style.cssText = `
-        position: absolute;
-        bottom: -8px;
-        right: 0;
-        width: 0; 
-        height: 0; 
-        border-style: solid;
-        border-width: 8px 0 0 8px;
-        border-color: ${bgColor} transparent transparent transparent;
-    `;
-
-    bubble.appendChild(header);
-    bubble.appendChild(message);
-    bubble.appendChild(tail);
-    
-    container.appendChild(bubble);
-    document.body.appendChild(container);
-
-    // Initial positioning
-    updateBubblePositions();
-
-    // Trigger Exit
-    const removeBubble = () => {
-        if (container.parentNode) {
-            bubble.style.transform = "scale(0.8) translateY(10px)";
-            bubble.style.opacity = "0";
-            setTimeout(() => {
-                if (container.parentNode) container.remove();
-            }, 300);
-        }
-    };
-
-    // Animate In (Next frame)
-    requestAnimationFrame(() => {
-        bubble.style.opacity = "1";
-        bubble.style.transform = "scale(1)";
-        
-        // Typewriter Effect
-        let i = 0;
-        const typeSpeed = 25;
-        const interval = setInterval(() => {
-            if (i < text.length) {
-                message.textContent += text.charAt(i);
-                // Simple sound effect simulation could go here
-                i++;
-            } else {
-                clearInterval(interval);
-                // Auto dismiss after reading time (min 3s, + time per char)
-                setTimeout(removeBubble, 5000 + (text.length * 50));
-            }
-        }, typeSpeed);
+    appendChatMessage({
+        source: 'The Boss',
+        text,
+        variant: 'boss'
     });
 }
 
@@ -1235,83 +1165,14 @@ function usePoliceFallback() {
 }
 
 function showPoliceScannerBubble(text) {
-    let bubble = document.getElementById('policeScannerBubble');
-    if (!bubble) {
-        bubble = document.createElement('div');
-        bubble.id = 'policeScannerBubble';
-        bubble.style.cssText = `
-            position: fixed;
-            bottom: 20px;
-            left: 20px;
-            background: rgba(0, 20, 0, 0.9);
-            color: #00ff00;
-            padding: 10px 15px;
-            border: 1px solid #00ff00;
-            border-radius: 5px;
-            font-family: 'Courier New', Courier, monospace;
-            font-size: 14px;
-            max-width: 300px;
-            z-index: 1500; /* Lowered from 9999 to be below Overlay UIs if needed, but above world */
-            text-transform: uppercase;
-            box-shadow: 0 0 10px rgba(0, 255, 0, 0.2);
-            pointer-events: none;
-            opacity: 0;
-            transition: opacity 0.5s;
-        `;
-        
-        // Add "SCANNING..." header
-        const header = document.createElement('div');
-        header.style.cssText = "font-size: 10px; margin-bottom: 5px; opacity: 0.7; border-bottom: 1px solid #004400; padding-bottom: 2px;";
-        header.textContent = "POLICE FREQUENCY 112.5 MHz";
-        bubble.appendChild(header);
-        
-        const content = document.createElement('div');
-        content.id = 'policeScannerContent';
-        bubble.appendChild(content);
-        
-        document.body.appendChild(bubble);
-    }
-    
-    // Check if Sheriff talks
     const sheriff = gameState.policeCars.find(p => p.userData.type === 'sheriff' && !p.userData.dead);
-    if (sheriff) {
-         // Style for Sheriff Speech
-         bubble.style.background = 'rgba(50, 40, 0, 0.95)'; // Gold-ish background
-         bubble.style.color = '#ffd700'; // Gold text
-         bubble.style.border = '2px solid #ffd700';
-         const header = bubble.querySelector('div:first-child');
-         if (header) header.textContent = "SHERIFF COMMAND CHANNEL"; // Change header
-    } else {
-         // Reset standard police style
-         bubble.style.background = 'rgba(0, 20, 0, 0.9)';
-         bubble.style.color = '#00ff00';
-         bubble.style.border = '1px solid #00ff00';
-         const header = bubble.querySelector('div:first-child');
-         if (header) header.textContent = "POLICE FREQUENCY 112.5 MHz";
-    }
-
-    const content = bubble.querySelector('#policeScannerContent');
-    content.textContent = "";
-    bubble.style.opacity = "1";
-    
-    // Force immediate position update
-    updateBubblePositions();
-
-    // Typewriter effect
-    let i = 0;
-    const typeInterval = setInterval(() => {
-        if (i < text.length) {
-            content.textContent += text.charAt(i);
-            i++;
-        } else {
-            clearInterval(typeInterval);
-        }
-    }, 20);
-    
-    // Hide after duration
-    setTimeout(() => {
-        bubble.style.opacity = "0";
-    }, 6000);
+    const source = sheriff ? 'Sheriff' : 'Politi';
+    const variant = sheriff ? 'sheriff' : 'police';
+    appendChatMessage({
+        source,
+        text,
+        variant
+    });
 }
 
 /**

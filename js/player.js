@@ -620,6 +620,9 @@ export function updateCarStats(key) {
 export function takeDamage(amount) {
     if (gameState.arrested) return;
     
+    // Challenger/Observer role is immune to damage (they're just watching)
+    if (gameState.playerRole === 'challenger') return;
+    
     // Mass-based damage reduction (Rigid Body/Density)
     // Heavier vehicles have better armor/structure
     const currentCar = cars[gameState.selectedCar] || cars.standard;
@@ -833,8 +836,9 @@ export function updatePlayer(delta, now) {
     const absSpeed = Math.abs(gameState.speed);
     const speedRatio = absSpeed / gameState.maxSpeed;
 
-    // Update Engine Sound
-    if (gameState.health > 0) {
+    // Update Engine Sound (skip for bicycle/scooters/on-foot, and when arrested)
+    const isHumanOrBike = ['onfoot', 'bicycle', 'scooter', 'scooter_electric'].includes(visualType);
+    if (gameState.health > 0 && !gameState.arrested && !isHumanOrBike) {
         setEngineRpm(speedRatio);
         
         // Update Drift Sound
@@ -993,6 +997,11 @@ export function updatePlayer(delta, now) {
     // Only apply base friction (rolling resistance) when not providing input
     // This allows the car to reach max speed while accelerating, but slow down when coasting
     const isInputActive = (keys['w'] || keys['arrowup'] || keys['s'] || keys['arrowdown']);
+    // === CHALLENGER ROLE ===
+    // If we are Challenger, we are just a ghost camera, not a physical car.
+    // Skip all physics updates.
+    if (gameState.playerRole === 'challenger') return;
+
     if (!isInputActive) {
         const frictionFactor = Math.pow(gameState.friction, delta);
         gameState.speed *= frictionFactor;
