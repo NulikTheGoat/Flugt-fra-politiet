@@ -27,7 +27,7 @@ const CACHE_SETTINGS = {
 
 // Prefer dotenv, but keep a safe fallback for environments where it's not installed.
 try {
-  // eslint-disable-next-line global-require
+   
   require('dotenv').config();
 } catch (err) {
   // no-op
