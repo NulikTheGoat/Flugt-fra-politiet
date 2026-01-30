@@ -1134,8 +1134,9 @@ window.addEventListener('resize', () => {
 });
 
 window.addEventListener('keydown', (e) => {
-    if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') {
-        console.log('[KEYDOWN-BLOCKED] Target is input:', e.target.tagName);
+    const target = /** @type {HTMLElement} */ (e.target);
+    if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA') {
+        console.log('[KEYDOWN-BLOCKED] Target is input:', target.tagName);
         return;
     }
     
@@ -1181,7 +1182,8 @@ window.addEventListener('keydown', (e) => {
 });
 
 window.addEventListener('keyup', (e) => {
-    if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+    const target = /** @type {HTMLElement} */ (e.target);
+    if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA') return;
     const key = e.key.toLowerCase();
     keys[key] = false;
     

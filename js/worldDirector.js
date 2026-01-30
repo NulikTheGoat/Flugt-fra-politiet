@@ -908,7 +908,7 @@ function createSpawnIndicator(x, z, type) {
 
 /**
  * Spawn environment objects from Challenger role
- * @param {Array<{type: string, side?: string}>} objects - Objects to spawn
+ * @param {Array<{type: string, side?: string, moving?: boolean, speed?: number}>} objects - Objects to spawn
  * @param {number} baseZ - Base Z position (player's current Z)
  */
 export function challengerSpawnObjects(objects, baseZ) {
@@ -967,7 +967,7 @@ export function challengerSpawnObjects(objects, baseZ) {
 
 /**
  * Spawn environment objects at specific position (for free-roaming Challenger)
- * @param {Array<{type: string, side?: string}>} objects - Objects to spawn
+ * @param {Array<{type: string, side?: string, moving?: boolean, speed?: number}>} objects - Objects to spawn
  * @param {number} centerX - Center X position from Challenger marker
  * @param {number} centerZ - Center Z position from Challenger marker
  */

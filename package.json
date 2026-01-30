@@ -50,13 +50,13 @@
     "cannon-es": "^0.20.0",
     "dotenv": "^16.4.7",
     "helmet": "^8.1.0",
-    "three": "^0.160.0",
+    "three": "^0.182.0",
     "ws": "^8.19.0"
   },
   "devDependencies": {
     "@playwright/test": "^1.58.0",
     "@types/node": "^22.10.7",
-    "eslint": "^8.57.0",
+    "eslint": "^9.39.2",
     "eslint-config-prettier": "^9.1.0",
     "playwright": "^1.58.0",
     "prettier": "^3.4.2",

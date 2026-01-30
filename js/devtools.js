@@ -478,9 +478,9 @@ function startStatsLoop() {
         
         if (health) health.textContent = `${Math.round(gameState.health || 0)} HP`;
         if (speed) speed.textContent = `${Math.round(Math.abs(gameState.speed || 0) * 3.6)} km/h`;
-        if (chunks) chunks.textContent = gameState.activeChunks?.length || 0;
+        if (chunks) chunks.textContent = String(gameState.activeChunks?.length || 0);
         if (police) police.textContent = `${gameState.policeCars?.filter(c => !c.userData.dead).length || 0} alive`;
-        if (debris) debris.textContent = gameState.fallenDebris?.length || 0;
+        if (debris) debris.textContent = String(gameState.fallenDebris?.length || 0);
     }, 100);
 }
 
@@ -562,9 +562,9 @@ export function exposeDevtools(extra = {}) {
         
         // Config changes
         applyConfigChanges: () => {
-            const policeDmg = document.getElementById('cfgPoliceBldgDmg');
-            const playerBase = document.getElementById('cfgPlayerBldgBase');
-            const speedMult = document.getElementById('cfgSpeedMult');
+            const policeDmg = /** @type {HTMLInputElement|null} */ (document.getElementById('cfgPoliceBldgDmg'));
+            const playerBase = /** @type {HTMLInputElement|null} */ (document.getElementById('cfgPlayerBldgBase'));
+            const speedMult = /** @type {HTMLInputElement|null} */ (document.getElementById('cfgSpeedMult'));
             
             if (policeDmg) GAME_CONFIG.POLICE_BUILDING_COLLISION_DAMAGE = parseFloat(policeDmg.value);
             if (playerBase) GAME_CONFIG.PLAYER_BUILDING_COLLISION_DAMAGE_BASE = parseFloat(playerBase.value);
@@ -613,7 +613,7 @@ export function exposeDevtools(extra = {}) {
         
         toggleSlowMo: () => {
             slowMoEnabled = !slowMoEnabled;
-            gameState.timeScale = slowMoEnabled ? 0.25 : 1.0;
+            /** @type {any} */ (gameState).timeScale = slowMoEnabled ? 0.25 : 1.0;
             logCollision('SLOWMO', slowMoEnabled ? 'Enabled (0.25x)' : 'Disabled');
         },
         
