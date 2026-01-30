@@ -4,6 +4,12 @@ A fast-paced 3D car chase game! Outrun the cops, collect coins, upgrade your rid
 
 **Tech Stack**: Three.js r160 • Cannon-es Physics • JavaScript ES6 • WebSocket • Node.js
 
+Three.js - for 3D graphics rendering
+Cannon-ES - for physics simulation
+Vite - as the build tool/dev server
+Plain HTML/CSS/JS - no frontend framework
+LMM MCP API Connection - Anthropic
+
 ---
 
 ## 🎮 Controls

@@ -6,11 +6,15 @@ declare module 'three';
 declare global {
   interface Window {
     gameState: any;
+    camera?: any;
+    keys?: any;
+    challengerKeys?: any;
     playerCar: any;
     cars?: any;
     sheriffState?: any;
     spawnPoliceCar?: () => any;
     spawnReinforcementUnits?: (...args: any[]) => any;
+    spawnReinforcementUnitsAt?: (count: number, types: string[], position?: { x: number; z: number }) => any;
     requestReinforcements?: (...args: any[]) => Promise<any> | any;
     resetSheriffState?: () => void;
     SHERIFF_COMMANDS?: Record<string, string>;
@@ -22,6 +26,13 @@ declare global {
     onMultiplayerCarSelected?: (key: string) => void;
     // Vendor-prefixed AudioContext (Safari)
     webkitAudioContext?: typeof AudioContext;
+    // Three.js and scene exposure
+    scene?: any;
+    THREE?: any;
+    // Physics initialization flag
+    physicsInitialized?: boolean;
+    // Debug exposure
+    __lastDelta?: number;
   }
 
   const THREE: typeof import('three');

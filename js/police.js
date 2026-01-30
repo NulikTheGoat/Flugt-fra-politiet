@@ -421,17 +421,18 @@ export function updatePoliceAI(delta) {
         if (gameState.isMultiplayer) {
             let minTargetDistSq = Infinity;
             
-            // Check local player first
-            if (!gameState.arrested) {
+            // Check local player first (ignore if Challenger)
+            if (!gameState.arrested && gameState.playerRole !== 'challenger') {
                 const dx = playerCar.position.x - policeCar.position.x;
                 const dz = playerCar.position.z - policeCar.position.z;
                 minTargetDistSq = dx*dx + dz*dz;
             }
             
             // Check other players
+            let foundTarget = false;
             if (gameState.otherPlayers && gameState.otherPlayers.size > 0) {
                 gameState.otherPlayers.forEach((p) => {
-                    if (!p.state || p.state.arrested) return;
+                    if (!p.state || p.state.arrested || p.role === 'challenger') return; // Also ignore remote Challengers
                     
                     const pdx = p.state.x - policeCar.position.x;
                     const pdz = p.state.z - policeCar.position.z;
@@ -448,12 +449,21 @@ export function updatePoliceAI(delta) {
                         targetVelX = Math.sin(r) * s;
                         targetVelZ = Math.cos(r) * s;
                         targetSpeedKmh = Math.abs(s) * 3.6;
-                        // Determine if RAM logic can apply (handled below via distance)
+                        foundTarget = true;
                     }
                 });
             }
-            
-            // If everyone arrested, fallback to local player defaults (already set)
+
+            // If local is Challenger AND no other target found:
+            // Set target to Infinity or a patrol point, so police don't swarm the hidden local car.
+            if (gameState.playerRole === 'challenger' && !foundTarget) {
+                 // No valid target (all arrested or all challengers). 
+                 // Make police patrol around their current position or move randomly
+                 const time = Date.now() * 0.001;
+                 targetPosX = policeCar.position.x + Math.sin(time + index) * 50;
+                 targetPosZ = policeCar.position.z + Math.cos(time + index) * 50;
+                 targetSpeedKmh = 0;
+            }
         }
 
         const dx = targetPosX - policeCar.position.x;
@@ -969,8 +979,9 @@ export function updatePoliceAI(delta) {
     });
 
     // Touch Arrest - instant arrest when close to any police car (no countdown)
+    // Challenger/Observer role cannot be arrested
     if (gameConfig.touchArrest) {
-        if (minDistance < gameState.arrestDistance && !gameState.arrested) {
+        if (minDistance < gameState.arrestDistance && !gameState.arrested && gameState.playerRole !== 'challenger') {
             gameState.arrested = true;
             gameState.arrestCountdown = 0;
             gameState.arrestStartTime = 0;
@@ -992,7 +1003,8 @@ export function updatePoliceAI(delta) {
     const speedThreshold = maxSpeedKmh * gameConfig.arrestSpeedThreshold;
     const isMovingSlow = speedKmh < speedThreshold;
     
-    if (minDistance < gameState.arrestDistance && isMovingSlow && !gameState.arrested) {
+    // Challenger/Observer role cannot be arrested
+    if (minDistance < gameState.arrestDistance && isMovingSlow && !gameState.arrested && gameState.playerRole !== 'challenger') {
         // Start or continue arrest countdown
         if (gameState.arrestStartTime === 0) {
             gameState.arrestStartTime = Date.now();

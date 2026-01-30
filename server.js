@@ -771,8 +771,12 @@ Skab et DYNAMISK SCENARIE! Vær kreativ og overraskende. Svar KUN med JSON.`;
       if (extname === '.html') {
         headers['Cache-Control'] = CACHE_SETTINGS.short;
       }
-      // Static assets (JS, CSS, images, fonts) - long cache
-      else if (['.js', '.css', '.png', '.jpg', '.woff', '.woff2', '.svg'].includes(extname)) {
+      // JS files - no cache during development to ensure fresh code
+      else if (extname === '.js') {
+        headers['Cache-Control'] = 'no-cache, must-revalidate';
+      }
+      // Static assets (CSS, images, fonts) - long cache
+      else if (['.css', '.png', '.jpg', '.woff', '.woff2', '.svg'].includes(extname)) {
         headers['Cache-Control'] = CACHE_SETTINGS.immutable;
       }
       // Audio files - medium cache
@@ -902,12 +906,14 @@ wss.on('connection', (ws) => {
           const color = getNextColor(room);
           const isFirstPlayer = room.players.size === 0;
           const willBeHost = isFirstPlayer || !room.hostId;
+          const role = msg.role || 'contester';
 
           room.players.set(playerId, {
             ws,
             name: msg.playerName || 'Spiller',
             isHost: willBeHost,
             car: msg.car || 'standard',
+            role,
             color: color,
             state: null,
           });
@@ -927,6 +933,7 @@ wss.on('connection', (ws) => {
               name: p.name,
               isHost: id === room.hostId,
               car: p.car,
+              role: p.role || 'contester',
               color: p.color,
             });
           });
@@ -960,6 +967,7 @@ wss.on('connection', (ws) => {
                 name: p.name,
                 isHost: id === room.hostId,
                 car: p.car,
+                role: p.role || 'contester',
                 color: p.color,
                 spawnPos: spawnPositions[idx % spawnPositions.length],
               });
@@ -996,6 +1004,7 @@ wss.on('connection', (ws) => {
                   name: msg.playerName || 'Spiller',
                   isHost: willBeHost,
                   car: msg.car,
+                  role,
                   color: color,
                 },
                 players: playerList,
@@ -1027,6 +1036,7 @@ wss.on('connection', (ws) => {
                   name: msg.playerName || 'Spiller',
                   isHost: willBeHost,
                   car: msg.car,
+                  role,
                   color: color,
                 },
                 players: playerList,
@@ -1064,6 +1074,7 @@ wss.on('connection', (ws) => {
               name: p.name,
               isHost: id === room.hostId,
               car: p.car,
+              role: p.role || 'contester',
               color: p.color,
               spawnPos: spawnPositions[idx % spawnPositions.length],
             });
@@ -1099,6 +1110,40 @@ wss.on('connection', (ws) => {
             },
             playerId
           );
+          break;
+        }
+
+        case 'updateCarSelection': {
+          // Player updates their car selection in lobby
+          const room = rooms.get(currentRoom);
+          if (!room) return;
+
+          const player = room.players.get(playerId);
+          if (player) {
+            player.car = msg.car || 'standard';
+            console.log(`🚗 ${player.name} changed car to: ${player.car}`);
+            
+            // Build updated player list
+            const playerList = [];
+            room.players.forEach((p, id) => {
+              playerList.push({
+                id,
+                name: p.name,
+                isHost: id === room.hostId,
+                car: p.car,
+                role: p.role || 'contester',
+                color: p.color,
+              });
+            });
+
+            // Notify all players about the car change
+            broadcastToAll(currentRoom, {
+              type: 'playerCarUpdated',
+              playerId,
+              car: player.car,
+              players: playerList
+            });
+          }
           break;
         }
 

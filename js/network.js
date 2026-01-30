@@ -28,6 +28,7 @@ let onChat = null;
 let onRespawned = null;
 let onHostChanged = null;
 let onGameReset = null;
+let onPlayerCarUpdated = null;
 
 // Scan for servers on the local network
 export async function scanForServers(onProgress = null) {
@@ -224,18 +225,24 @@ function handleMessage(msg) {
             // Server confirmed respawn
             if (onRespawned) onRespawned(msg.spawnPos, msg.car, msg.resetHeat);
             break;
+            
+        case 'playerCarUpdated':
+            // Another player updated their car selection
+            if (onPlayerCarUpdated) onPlayerCarUpdated(msg.playerId, msg.car, msg.players);
+            break;
     }
 }
 
 // Join the game (unified - no more host/join distinction)
-export function joinGame(name, car = 'standard', roomCodeOverride = null) {
+export function joinGame(name, car = 'standard', roomCodeOverride = null, role = 'contester') {
     if (!isConnected) return;
     playerName = name;
     ws.send(JSON.stringify({
         type: 'join',
         roomCode: roomCodeOverride || DEFAULT_ROOM,
         playerName: name,
-        car
+        car,
+        role
     }));
 }
 
@@ -245,6 +252,15 @@ export function startGame(config = {}) {
     ws.send(JSON.stringify({
         type: 'startGame',
         config
+    }));
+}
+
+// Update car selection in lobby (before game starts)
+export function updateCarSelection(car) {
+    if (!isConnected) return;
+    ws.send(JSON.stringify({
+        type: 'updateCarSelection',
+        car
     }));
 }
 
@@ -332,6 +348,7 @@ export function setOnChat(cb) { onChat = cb; }
 export function setOnRespawned(cb) { onRespawned = cb; }
 export function setOnHostChanged(cb) { onHostChanged = cb; }
 export function setOnGameReset(cb) { onGameReset = cb; }
+export function setOnPlayerCarUpdated(cb) { onPlayerCarUpdated = cb; }
 
 // Getters
 export function getIsConnected() { return isConnected; }
