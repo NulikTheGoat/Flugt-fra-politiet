@@ -755,7 +755,11 @@ export function updatePoliceAI(delta) {
                     const cdz = chunk.position.z - policeCar.position.z;
                     const chunkDist = Math.sqrt(cdx*cdx + cdz*cdz);
                     
-                    if (chunkDist < 30 && Math.abs(chunk.position.y - 15) < chunk.userData.height) {
+                    // Check collision with proper height/width calculation
+                    const collisionDist = (chunk.userData.width || 30) / 2 + 15; // building half-width + police radius
+                    const heightCheck = Math.abs(chunk.position.y - policeCar.position.y) < (chunk.userData.height / 2 + 10);
+                    
+                    if (chunkDist < collisionDist && heightCheck) {
                         // Police hit a building chunk
                         chunk.userData.isHit = true;
                         gameState.activeChunks.push(chunk);
