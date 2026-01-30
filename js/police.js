@@ -6,7 +6,7 @@ import { enemies, cars, GAME_CONFIG } from './constants.js';
 import { sharedGeometries, sharedMaterials } from './assets.js';
 import { createSmoke, createSpeedParticle, createFire, createMoneyExplosion, createWheelDust } from './particles.js';
 import { playerCar, takeDamage, repairCar } from './player.js';
-import { normalizeAngleRadians, clamp } from './utils.js';
+import { normalizeAngleRadians, clamp, lerp, lerpAngle } from './utils.js';
 import { createBuildingDebris } from './world.js';
 import { addMoney, showFloatingMoney, showGameOver } from './ui.js';
 import * as Network from './network.js';
@@ -100,10 +100,10 @@ export function createPoliceCar(type = 'standard') {
         carGroup.add(wheel);
     });
 
-    // Health Bar (Billboard)
+    // Health Bar (Billboard) - use shared geometries
     if (config.health) {
         const hpBg = new THREE.Mesh(
-            new THREE.PlaneGeometry(14, 2),
+            sharedGeometries.healthBarBg,
             new THREE.MeshBasicMaterial({ color: 0x000000, side: THREE.DoubleSide })
         );
         hpBg.position.set(0, 25, 0);
@@ -111,7 +111,7 @@ export function createPoliceCar(type = 'standard') {
         carGroup.add(hpBg);
 
         const hpBar = new THREE.Mesh(
-            new THREE.PlaneGeometry(13.6, 1.6),
+            sharedGeometries.healthBarFill,
             new THREE.MeshBasicMaterial({ color: 0x00ff00, side: THREE.DoubleSide })
         );
         // Position relative to BG (always in front because BG looks at camera)
@@ -1189,15 +1189,12 @@ export function syncPoliceFromNetwork(policeData) {
             const { car } = existingPolice.get(data.id);
             
             // Smooth interpolation
-            const lerpFactor = 0.3;
-            car.position.x += (data.x - car.position.x) * lerpFactor;
-            car.position.z += (data.z - car.position.z) * lerpFactor;
+            const factor = 0.3;
+            car.position.x = lerp(car.position.x, data.x, factor);
+            car.position.z = lerp(car.position.z, data.z, factor);
             
             // Smooth rotation
-            let diff = data.rotation - car.rotation.y;
-            if (diff > Math.PI) diff -= Math.PI * 2;
-            if (diff < -Math.PI) diff += Math.PI * 2;
-            car.rotation.y += diff * lerpFactor;
+            car.rotation.y = lerpAngle(car.rotation.y, data.rotation, factor);
             
             // Update health
             car.userData.health = data.health;

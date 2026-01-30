@@ -11,6 +11,9 @@ export const sharedGeometries = {
     policeStripe: new THREE.BoxGeometry(20, 2, 45),
     policeLight: new THREE.BoxGeometry(8, 3, 8),
     tankBody: new THREE.BoxGeometry(26, 14, 50),
+    tankTurret: new THREE.BoxGeometry(16, 8, 20),
+    tankBarrel: new THREE.CylinderGeometry(2, 2, 30, 16),
+    tankTrack: new THREE.BoxGeometry(6, 12, 48),
     militaryCamo: new THREE.BoxGeometry(18, 5, 40),
     militaryTurretBase: new THREE.CylinderGeometry(6, 8, 5, 8),
     militaryTurretBarrel: new THREE.CylinderGeometry(1.5, 1.5, 20, 8),
@@ -18,7 +21,13 @@ export const sharedGeometries = {
     spark: new THREE.BoxGeometry(1, 1, 3),
     speedParticle: new THREE.BoxGeometry(0.5, 0.5, 3),
     smoke: new THREE.BoxGeometry(3, 3, 3),
-    tireMark: new THREE.PlaneGeometry(3, 8)
+    tireMark: new THREE.PlaneGeometry(3, 8),
+    // Health bar geometries (reused per police car)
+    healthBarBg: new THREE.PlaneGeometry(14, 2),
+    healthBarFill: new THREE.PlaneGeometry(13.6, 1.6),
+    // UFO geometries
+    ufoDisc: new THREE.CylinderGeometry(18, 22, 8, 32),
+    ufoDome: new THREE.SphereGeometry(10, 32, 16, 0, Math.PI * 2, 0, Math.PI / 2)
 };
 
 export const sharedMaterials = {
