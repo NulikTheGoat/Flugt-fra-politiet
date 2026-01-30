@@ -231,8 +231,8 @@ function displayChatMessage({ source, text, variant = 'default' }) {
 
     // Limit visible messages to 5 (remove oldest immediately if over limit)
     while (list.children.length > 5) {
-        const oldest = list.firstChild;
-        if (oldest) {
+        const oldest = /** @type {HTMLElement|null} */ (list.firstChild);
+        if (oldest && oldest.style) {
             oldest.style.opacity = '0';
             setTimeout(() => oldest.remove(), 300);
         }
