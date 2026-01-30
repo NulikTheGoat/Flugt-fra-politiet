@@ -10,7 +10,9 @@ test.describe('Challenger Solo Movement', () => {
         // Handle server discovery
         try {
             await page.waitForSelector('#scanningStatus', { state: 'hidden', timeout: 5000 });
-        } catch (e) {}
+        } catch (e) {
+            // Timeout is expected if scanning finishes quickly or element doesn't exist
+        }
         
         if (await page.isVisible('#hostOwnServerBtn')) {
             await page.click('#hostOwnServerBtn');
