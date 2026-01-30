@@ -33,7 +33,7 @@ export const EVENTS = {
 const commentaryState = {
     eventBuffer: [],
     lastRequestTime: 0,
-    requestCooldown: 5000, // 5 seconds between API calls
+    requestCooldown: 15000, // 15 seconds between API calls (was 5s)
     commentaryQueue: [],
     isDisplaying: false,
     displayDuration: 6000,
@@ -49,13 +49,13 @@ const commentaryState = {
     isDrifting: false,
     activeBubbles: [], // Track active bubbles for stacking
     lastPoliceMessageTime: 0,
-    policeMessageCooldown: 12000, // 12 seconds cooldown for police radio
+    policeMessageCooldown: 25000, // 25 seconds cooldown for police radio (was 12s)
     lastGPSMessageTime: 0,
-    gpsCooldown: 15000, // 15 seconds cooldown for GPS
+    gpsCooldown: 30000, // 30 seconds cooldown for GPS (was 15s)
     lastMovementTime: 0, // Track idle time
     activeMission: null, // { type, target, progress, text, reward, startTime }
     lastMissionTime: 0,
-    missionCooldown: 45000, // 45 seconds between missions
+    missionCooldown: 60000, // 60 seconds between missions (was 45s)
     voiceEnabled: true // New flag for Text-to-Speech
 };
 
