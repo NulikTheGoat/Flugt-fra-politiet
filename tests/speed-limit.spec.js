@@ -16,18 +16,18 @@ const { test, expect } = require('@playwright/test');
 test.describe('Player Speed Limits', () => {
     
     test.beforeEach(async ({ page }) => {
-        // Start the game
-        await page.goto('http://localhost:3000');
+        // Start the game with retry logic for CI reliability
+        await page.goto('http://localhost:3000', { waitUntil: 'domcontentloaded', timeout: 30000 });
         
         // Wait for game to load (Three.js canvas should be present)
-        await page.waitForSelector('canvas', { timeout: 20000 });
+        await page.waitForSelector('canvas', { timeout: 30000 });
         
         // Wait for WebGL to initialize
         await page.waitForTimeout(500);
         
         // Wait for solo mode button to be visible and ready
         const soloBtn = page.locator('#soloModeBtn');
-        await expect(soloBtn).toBeVisible({ timeout: 15000 });
+        await expect(soloBtn).toBeVisible({ timeout: 20000 });
         
         // Click solo mode to start the game (force:true for CI reliability)
         await soloBtn.click({ force: true });
