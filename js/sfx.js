@@ -447,7 +447,7 @@ export function playSfx(name) {
             break;
             
         case 'damage': // Impact: low thud + crunch
-            playNoise({ duration: 0.3, volume: 0.3, filterFreq: 800 });e
+            playNoise({ duration: 0.3, volume: 0.3, filterFreq: 800 });
             playTone({ frequency: 100, bendTo: 50, duration: 0.2, type: 'sawtooth', volume: 0.25 });
             break;
             
