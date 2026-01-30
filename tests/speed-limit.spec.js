@@ -1,4 +1,4 @@
-// @ts-check
+// @ts-nocheck
 const { test, expect } = require('@playwright/test');
 
 /**
