@@ -1,3 +1,6 @@
+// Physics constants
+export const GRAVITY = -9.82; // Earth gravity (m/s²)
+
 export const enemies = {
     standard: { color: 0x0000ff, speed: 250, scale: 1, name: 'Politibil', health: 50, killReward: 150, pickupReward: 300, mass: 1.0 },
     interceptor: { color: 0x111111, speed: 300, scale: 1, name: 'Interceptor', health: 40, killReward: 200, pickupReward: 400, mass: 1.1 },
@@ -19,6 +22,8 @@ export const enemies = {
  * @property {number=} scale
  * @property {number=} reqRebirth
  * @property {number=} mass
+ * @property {number=} grip
+ * @property {boolean=} canRam
  */
 
 /** @type {Record<string, CarDefinition>} */
@@ -111,6 +116,30 @@ export const cars = {
         mass: 1.4,
         grip: 0.55          // Muscle cars slide more (classic feel)
     },
+    buggy: {
+        name: 'Strandbuggy',
+        price: 25000,
+        maxSpeed: 26,       // ~94 km/h display
+        acceleration: 0.11,
+        handling: 0.09,     // Good handling, off-road capable
+        health: 95,
+        color: 0xFF6B35,    // Orange/sandy color
+        type: 'buggy',
+        mass: 0.9,
+        grip: 0.75          // Good off-road grip
+    },
+    pickup: {
+        name: 'Pickup Truck',
+        price: 45000,
+        maxSpeed: 24,       // ~86 km/h display
+        acceleration: 0.10,
+        handling: 0.045,
+        health: 140,
+        color: 0x8B4513,    // Saddle brown
+        type: 'pickup',
+        mass: 1.5,
+        grip: 0.65          // Heavy but stable
+    },
     super: {
         name: 'Superbil',
         price: 95000,
@@ -121,6 +150,18 @@ export const cars = {
         color: 0xff00ff,
         mass: 1.2,
         grip: 0.9           // Performance tires
+    },
+    rally: {
+        name: 'Rallybil',
+        price: 65000,
+        maxSpeed: 36,       // ~130 km/h display
+        acceleration: 0.16,
+        handling: 0.11,     // Excellent handling
+        health: 105,
+        color: 0x00FF7F,    // Spring green
+        type: 'rally',
+        mass: 1.15,
+        grip: 0.88          // Rally tires - great grip
     },
     hyper: {
         name: 'Hyperbil',
@@ -133,18 +174,57 @@ export const cars = {
         mass: 1.3,
         grip: 0.95          // Racing slicks
     },
+    hotrod: {
+        name: 'Hot Rod',
+        price: 120000,
+        maxSpeed: 38,       // ~137 km/h display
+        acceleration: 0.20,
+        handling: 0.06,     // Less handling, more power
+        health: 110,
+        color: 0xFF1493,    // Deep pink (classic hot rod)
+        type: 'hotrod',
+        mass: 1.25,
+        grip: 0.70          // Classic street tires
+    },
+    monstertruck: {
+        name: 'Monster Truck',
+        price: 250000,
+        maxSpeed: 20,       // ~72 km/h display
+        acceleration: 0.08,
+        handling: 0.07,
+        health: 200,        // Still tanky but less immortal
+        color: 0x32CD32,    // Lime green (monster truck style)
+        mass: 2.4,          // Heavy, but not unstoppable
+        type: 'monstertruck',
+        canRam: true,       // Requires speed threshold (see police AI)
+        grip: 0.80,         // Big tires = good grip
+        scale: 1.4          // Bigger visual size
+    },
+    formula: {
+        name: 'Racerbil F1',
+        price: 500000,
+        maxSpeed: 60,       // ~216 km/h display
+        acceleration: 0.28,
+        handling: 0.14,     // Best handling
+        health: 85,         // Fragile
+        color: 0xFF0000,    // Racing red
+        type: 'formula',
+        mass: 0.85,
+        grip: 0.98,         // Racing slicks, maximum grip
+        scale: 0.9          // Smaller, low profile
+    },
     tank: {
         name: 'Kampvogn',
         price: 700000,
         maxSpeed: 17,       // ~60 km/h display
         acceleration: 0.05,
         handling: 0.08,
-        health: 300,        // Nerfed from 500 - stadig tanky!
+        health: 260,        // Further nerfed for balance
         color: 0x2f4f4f,
         type: 'tank',
         canRam: true,       // Can destroy police cars on impact
         reqRebirth: 0,
-        mass: 5.0,
+        mass: 4.0,
         grip: 0.6           // Tank treads = moderate grip
     },
     ufo: {
@@ -174,4 +254,21 @@ export const BUILDING_TYPES = {
     RESIDENTIAL: { name: 'residential', colors: [0xF8C291, 0xE77F67, 0xFDA7DF, 0xD980FA, 0xB53471] }, // Pastel warmth and pinks
     OFFICE: { name: 'office', colors: [0x7EFFF5, 0x7158E2, 0x17C0EB], isGlass: true }, // Cyan/Neon Blue
     WAREHOUSE: { name: 'warehouse', colors: [0x95A5A6, 0x7F8C8D, 0xA4B0BE], hasRollerDoor: true }, // Grey (Standard concrete)
+};
+
+// Gameplay tuning constants - centralized for easy balancing
+export const GAME_CONFIG = {
+    // Collision damage values
+    POLICE_BUILDING_COLLISION_DAMAGE: 25,      // Police take meaningful damage but survive light taps
+    PLAYER_BUILDING_COLLISION_DAMAGE_BASE: 8,  // Base damage player takes hitting buildings
+    PLAYER_BUILDING_COLLISION_DAMAGE_SPEED_MULT: 0.06, // Additional damage per speed unit (so 100 km/h ≈ +6)
+    
+    // Physics multipliers
+    BUILDING_DEBRIS_VELOCITY_MULT: 0.18,       // Slightly calmer debris throw
+    BUILDING_DEBRIS_HEIGHT_BASE: 4,            // Lower base upward velocity
+    BUILDING_DEBRIS_HEIGHT_RANDOM: 3,          // Less random vertical impulse
+    
+    // Speed retention on impact (1.0 = no loss, 0.0 = full stop)
+    PLAYER_BUILDING_SPEED_RETENTION: 0.7,      // Player loses more speed on impact for realism
+    POLICE_BUILDING_SPEED_RETENTION: 0.6       // Police lose more speed when they slam into buildings
 };

@@ -674,140 +674,378 @@
             left: 0;
             width: 100%;
             height: 100%;
-            background: linear-gradient(135deg, #0a0a10 0%, #1a1a25 50%, #0a0a10 100%);
+            background: #0f1015; /* Base Dark */
             z-index: 300;
             display: none;
-            flex-direction: column;
-            align-items: center;
-            padding: 30px 20px;
-            backdrop-filter: blur(15px);
             overflow: hidden;
         }
-        
-        /* Animated background pattern */
-        #shop::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background: 
-                radial-gradient(circle at 20% 80%, rgba(0, 255, 100, 0.03) 0%, transparent 50%),
-                radial-gradient(circle at 80% 20%, rgba(255, 200, 0, 0.03) 0%, transparent 50%),
-                radial-gradient(circle at 50% 50%, rgba(0, 150, 255, 0.02) 0%, transparent 70%);
-            pointer-events: none;
-            animation: shopBgPulse 10s ease-in-out infinite;
-        }
-        
-        @keyframes shopBgPulse {
-            0%, 100% { opacity: 0.5; }
-            50% { opacity: 1; }
-        }
 
-        #shopContent {
-            width: 100%;
-            max-width: 1400px;
+        /* SIDEBAR STYLES */
+        .shop-sidebar {
+            width: 260px;
+            height: 100%;
+            background: #181920;
+            border-right: 1px solid rgba(255,255,255,0.05);
             display: flex;
             flex-direction: column;
-            height: 100%;
-            position: relative;
-            z-index: 1;
+            float: left;
         }
 
-        #shopHeader {
+        .shop-brand {
+            padding: 30px;
             display: flex;
-            justify-content: space-between;
             align-items: center;
-            margin-bottom: 20px;
-            padding-bottom: 20px;
-            border-bottom: 1px solid rgba(255,255,255,0.1);
-            flex-wrap: wrap;
-            gap: 15px;
+            gap: 12px;
+            border-bottom: 1px solid rgba(255,255,255,0.05);
         }
-
-        #shopHeader h1 {
-            font-size: 28px;
-            color: #fff;
-            text-transform: uppercase;
-            letter-spacing: 4px;
-            margin: 0;
-            font-weight: 800;
-            background: linear-gradient(90deg, #fff 0%, #aaa 50%, #fff 100%);
+        
+        .shop-brand-icon {
+            font-size: 24px;
+            background: linear-gradient(135deg, #00C9FF, #92FE9D);
+            background-clip: text;
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
+        }
+        
+        .shop-brand-text {
+            font-family: 'Montserrat', sans-serif;
+            font-weight: 800;
+            font-size: 20px;
+            color: #fff;
+            letter-spacing: 1px;
+        }
+
+        .sidebar-menu {
+            padding: 20px;
+            flex-grow: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .sidebar-item {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            padding: 14px 20px;
+            color: #888;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: all 0.2s cubic-bezier(0.4,0,0.2,1);
+            font-weight: 600;
+            font-size: 14px;
+        }
+
+        .sidebar-item:hover {
+            background: rgba(255,255,255,0.04);
+            color: #fff;
+            transform: translateX(5px);
+        }
+
+        .sidebar-item.active {
+            background: linear-gradient(90deg, rgba(0, 201, 255, 0.15), rgba(146, 254, 157, 0.05));
+            border-left: 3px solid #00C9FF;
+            color: #fff;
+        }
+        
+        .sidebar-item.disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            pointer-events: none;
+        }
+        
+        .sidebar-item.link {
+            text-decoration: none;
+        }
+
+        .sidebar-item.logout {
+            margin-top: auto;
+            color: #ff5555;
+        }
+        .sidebar-item.logout:hover {
+            background: rgba(255, 85, 85, 0.1);
+        }
+
+        .sidebar-icon {
+            font-size: 18px;
+            width: 20px;
+            text-align: center;
+        }
+        
+        .badge-coming-soon {
+            font-size: 9px;
+            padding: 2px 6px;
+            background: rgba(255,255,255,0.1);
+            border-radius: 10px;
+            margin-left: auto;
+        }
+        
+        .sidebar-spacer {
+            flex-grow: 1;
+        }
+
+        /* MAIN CONTENT AREA */
+        .shop-main {
+            margin-left: 260px;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            background: radial-gradient(circle at 10% 10%, rgba(30,30,40,0.5) 0%, transparent 40%);
+        }
+
+        /* TOP BAR */
+        .shop-topbar {
+            height: 80px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 40px;
+        }
+
+        .topbar-title {
+            font-size: 18px;
+            font-weight: 800;
+            letter-spacing: 1px;
+            color: #fff;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .topbar-title .title-accent {
+            font-weight: 900;
+            background: linear-gradient(135deg, #00C9FF, #92FE9D);
             background-clip: text;
-            text-shadow: none;
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        
+        .topbar-actions {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+        }
+
+        .profile-pic {
+            width: 40px;
+            height: 40px;
+            background: #333;
+            border-radius: 50%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            border: 2px solid rgba(255,255,255,0.1);
         }
 
         #moneyDisplay {
-            font-size: 22px;
-            color: #ffd700;
-            font-family: 'Courier New', monospace;
-            background: linear-gradient(135deg, rgba(255, 215, 0, 0.15) 0%, rgba(255, 180, 0, 0.05) 100%);
-            padding: 12px 24px;
-            border-radius: 12px;
-            border: 2px solid rgba(255, 215, 0, 0.3);
-            box-shadow: 0 0 20px rgba(255, 215, 0, 0.1), inset 0 0 20px rgba(255, 215, 0, 0.05);
-            display: flex;
-            align-items: center;
-            gap: 8px;
+            font-size: 16px;
+            color: #fff;
+            font-weight: 700;
+            background: rgba(0,0,0,0.3);
+            padding: 8px 16px;
+            border-radius: 20px;
+            border: 1px solid rgba(255,215,0,0.2);
         }
         
         #moneyDisplay::before {
             content: '💰';
-            font-size: 20px;
+            margin-right: 8px;
+        }
+
+        /* SHOP CONTENT WRAPPER */
+        .shop-content-wrapper {
+            flex-grow: 1;
+            position: relative;
+            overflow: hidden;
+            padding: 0 20px 20px 20px;
+        }
+
+        .view-active { display: block; height: 100%; overflow-y: auto; }
+        .view-hidden { display: none; height: 100%; }
+
+        /* CATALOG VIEW */
+        .catalog-header {
+            margin-bottom: 20px;
         }
         
-        /* Category Tabs */
+        /* New Styles for Shop Tabs to match design */
         #shopTabs {
             display: flex;
-            gap: 8px;
-            margin-bottom: 20px;
-            padding: 8px;
-            background: rgba(0,0,0,0.3);
-            border-radius: 12px;
-            flex-wrap: wrap;
+            gap: 12px;
+            padding-bottom: 10px;
         }
         
         .shop-tab {
-            padding: 10px 20px;
             background: transparent;
-            border: 1px solid rgba(255,255,255,0.1);
-            border-radius: 8px;
-            color: #888;
-            font-size: 13px;
-            font-weight: 600;
-            text-transform: uppercase;
-            letter-spacing: 1px;
+            color: #666;
+            font-weight: 700;
+            font-size: 16px;
+            padding: 8px 4px;
+            border: none;
+            border-bottom: 3px solid transparent;
             cursor: pointer;
-            transition: all 0.3s ease;
-        }
-        
-        .shop-tab:hover {
-            background: rgba(255,255,255,0.05);
-            color: #fff;
-            border-color: rgba(255,255,255,0.2);
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 8px;
         }
         
         .shop-tab.active {
-            background: linear-gradient(135deg, #00ff66 0%, #00cc55 100%);
-            color: #000;
-            border-color: #00ff66;
-            box-shadow: 0 0 15px rgba(0, 255, 100, 0.3);
+            color: #fff;
+            border-bottom-color: #00C9FF;
+            text-shadow: 0 0 20px rgba(0, 201, 255, 0.5);
         }
         
-        .shop-tab .tab-count {
-            display: inline-block;
-            margin-left: 6px;
+        .shop-tab:hover {
+            color: #ccc;
+        }
+
+        .tab-count {
+            font-size: 10px;
+            background: rgba(255,255,255,0.1);
             padding: 2px 6px;
-            background: rgba(0,0,0,0.3);
             border-radius: 10px;
-            font-size: 11px;
+            vertical-align: middle;
         }
         
         .shop-tab.active .tab-count {
-            background: rgba(0,0,0,0.2);
+            background: #00C9FF;
+            color: #000;
+        }
+
+        /* DETAIL VIEW */
+        #shopDetailView {
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .back-btn {
+            background: transparent;
+            border: none;
+            color: #888;
+            font-size: 14px;
+            margin-bottom: 20px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 0;
+            align-self: flex-start;
+        }
+        
+        .back-btn:hover { color: #fff; }
+
+        .detail-layout {
+            display: flex;
+            gap: 40px;
+            height: 100%;
+        }
+
+        .detail-left {
+            flex: 1.5;
+            background: #181920;
+            border-radius: 20px;
+            position: relative;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            overflow: hidden;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+        }
+        
+        .detail-3d-container {
+            width: 100%;
+            height: 100%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            position: relative;
+            perspective: 800px;
+        }
+        
+        /* Make preview bigger in detail view */
+        .detail-3d-container .car-preview-box {
+            background: transparent !important;
+            border: none !important;
+            height: 100%;
+            width: 100%;
+        }
+        .detail-3d-container .car-model-3d {
+            animation: detailSpin 8s linear infinite;
+        }
+
+        @keyframes detailSpin {
+            0% { transform: scale(2.5) rotateX(15deg) rotateY(0deg); }
+            100% { transform: scale(2.5) rotateX(15deg) rotateY(360deg); }
+        }
+        
+        .detail-right {
+            flex: 1;
+            padding: 20px 0;
+            display: flex;
+            flex-direction: column;
+            gap: 30px;
+        }
+        
+        .detail-header h1 {
+            font-size: 42px;
+            margin: 10px 0;
+            color: #fff;
+            letter-spacing: 1px;
+        }
+        
+        .detail-desc {
+            color: #888;
+            line-height: 1.6;
+            font-size: 14px;
+        }
+        
+        .detail-stats {
+            background: #202129;
+            padding: 25px;
+            border-radius: 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .detail-actions {
+            margin-top: auto;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 20px 0;
+            border-top: 1px solid rgba(255,255,255,0.05);
+        }
+        
+        .detail-price {
+            font-size: 32px;
+            font-weight: 800;
+            color: #fff;
+            font-family: 'Courier New', monospace;
+        }
+        
+        .action-btn {
+            background: #fff;
+            color: #000;
+            border: none;
+            padding: 16px 40px;
+            border-radius: 12px;
+            font-weight: 800;
+            font-size: 16px;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+        
+        .action-btn:hover {
+            transform: scale(1.05);
+            background: #00C9FF;
+        }
+        .action-btn.disabled {
+            background: #333;
+            color: #666;
+            cursor: not-allowed;
+            transform: none;
         }
 
         @keyframes moneyPop {
@@ -828,10 +1066,10 @@
 
         #carList {
             display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+            grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
             gap: 12px;
             overflow-y: auto;
-            padding: 10px 5px;
+            padding: 10px 0;
             flex-grow: 1;
             scroll-behavior: smooth;
         }
@@ -876,6 +1114,151 @@
             flex-direction: column;
             box-shadow: 0 4px 20px rgba(0,0,0,0.3);
         }
+
+        /* Compact catalog card elements (LEGO B2B Style) */
+        .carCard-status {
+            position: absolute;
+            top: 12px;
+            left: 12px;
+            font-size: 11px;
+            font-weight: 700;
+            padding: 4px 10px;
+            border-radius: 4px; /* More rectangular/pill */
+            letter-spacing: 0.3px;
+            z-index: 2;
+            text-transform: uppercase;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        }
+        .carCard-status.status-owned {
+            background: #E6F4EA; /* Google/LEGO Green Light */
+            color: #137333;      /* Dark Green Text */
+            border: 1px solid #137333;
+        }
+        .carCard-status.status-available {
+            background: #E6F4EA;
+            color: #137333;
+            border: 1px solid rgba(19, 115, 51, 0.2);
+        }
+        .carCard-status.status-locked {
+            background: #FCE8E6; /* Light Red */
+            color: #C5221F;      /* Dark Red */
+            border: 1px solid rgba(197, 34, 31, 0.2);
+        }
+
+        .carCard-titleRow {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 12px;
+            border-bottom: 1px solid rgba(255,255,255,0.1); /* Separator */
+            padding-bottom: 12px;
+            margin-bottom: 12px;
+        }
+
+        .carCard-titleBlock {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+            min-width: 0;
+        }
+
+        .carCard-sku {
+            font-size: 11px;
+            font-weight: 800;
+            color: #fff;
+            opacity: 0.9;
+        }
+
+        .carCard-name {
+            margin: 4px 0 0 0;
+            font-size: 16px;
+            line-height: 1.3;
+            color: #fff;
+            text-shadow: none;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; /* Clean font */
+        }
+
+        .carCard-subtitle {
+            font-size: 11px;
+            color: #aaa;
+            margin-top: 4px;
+        }
+
+        .carCard-meta {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px 20px;
+        }
+
+        .carCard-metaItem {
+            display: flex;
+            flex-direction: column;
+            gap: 0;
+            background: transparent; /* Remove box bg for cleaner text look */
+            border: none;
+            padding: 0;
+        }
+
+        .carCard-metaLabel {
+            font-size: 10px;
+            color: #888;
+            font-weight: 600;
+            text-transform: capitalize;
+        }
+
+        .carCard-metaValue {
+            font-size: 13px;
+            color: #ddd;
+            font-weight: 600;
+            font-family: inherit; /* Use main font, not mono */
+        }
+
+        .carCard-footerCompact {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            padding: 15px;
+            border-top: 1px solid rgba(255,255,255,0.1);
+            background: rgba(0,0,0,0.2);
+        }
+
+        .carCard-priceBlock {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+            min-width: 0;
+        }
+
+        .carCard-priceLabel {
+            font-size: 11px;
+            color: rgba(255,255,255,0.55);
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
+        }
+
+        .carCard-cta {
+            border: none;
+            cursor: pointer;
+            padding: 10px 16px;
+            border-radius: 999px;
+            font-weight: 900;
+            background: linear-gradient(135deg, #0078ff, #00c9ff);
+            color: #001018;
+            box-shadow: 0 6px 20px rgba(0, 201, 255, 0.25);
+            transition: transform 0.15s ease, filter 0.15s ease;
+            white-space: nowrap;
+        }
+
+        .carCard:hover .carCard-cta {
+            transform: translateY(-1px);
+            filter: brightness(1.05);
+        }
         
         .carCard::before {
             content: '';
@@ -901,16 +1284,27 @@
         
         /* Card inner padding wrapper */
         .card-content {
-            padding: 10px;
+            padding: 15px;
             display: flex;
             flex-direction: column;
-            gap: 6px;
+            gap: 12px;
             flex-grow: 1;
         }
 
+        .card-content h3 {
+            margin: 0;
+            font-size: 1.2rem;
+            color: #fff;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.5);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+
         /* Car Preview - 3D Style */
         .car-preview-box {
-            height: 90px;
+            height: 140px;
             background: linear-gradient(180deg, #15151a 0%, #25252f 40%, #1a1a22 100%);
             position: relative;
             display: flex;
@@ -918,6 +1312,7 @@
             align-items: center;
             perspective: 300px;
             overflow: hidden;
+            border-bottom: 1px solid rgba(255,255,255,0.05);
         }
         
         /* Spotlight effect */
@@ -1391,6 +1786,154 @@
             opacity: 0.9;
         }
 
+        /* Monster Truck Styles */
+        .vehicle-monstertruck .truck-body {
+            position: absolute;
+            left: 20px;
+            top: 14px;
+            width: 50px;
+            height: 18px;
+            border-radius: 4px;
+        }
+        .vehicle-monstertruck .truck-cabin {
+            position: absolute;
+            left: 45px;
+            top: 6px;
+            width: 22px;
+            height: 16px;
+            border-radius: 4px 4px 0 0;
+        }
+        .vehicle-monstertruck .monster-wheel {
+            position: absolute;
+            width: 22px;
+            height: 22px;
+            border-radius: 50%;
+            background: radial-gradient(circle at 30% 30%, #444, #000);
+            border: 3px solid #222;
+        }
+        .vehicle-monstertruck .monster-wheel.front-left { left: 8px; top: 28px; }
+        .vehicle-monstertruck .monster-wheel.front-right { right: 8px; top: 28px; }
+        .vehicle-monstertruck .monster-wheel.back-left { left: 8px; top: 30px; }
+        .vehicle-monstertruck .monster-wheel.back-right { right: 8px; top: 30px; }
+
+        /* Buggy Styles */
+        .buggy-body {
+            height: 16px !important;
+            opacity: 0.8;
+        }
+        .buggy-roll-cage {
+            position: absolute;
+            left: 8px;
+            top: -6px;
+            width: 54px;
+            height: 20px;
+            border: 2px solid rgba(200, 200, 200, 0.6);
+            border-radius: 50% 50% 0 0;
+            border-bottom: none;
+        }
+
+        /* Pickup Styles */
+        .pickup-body {
+            height: 20px !important;
+        }
+        .pickup-bed {
+            position: absolute;
+            left: 4px;
+            top: 2px;
+            width: 28px;
+            height: 16px;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 2px;
+        }
+
+        /* Rally Car Styles */
+        .rally-body {
+            height: 18px !important;
+        }
+        .rally-spoiler {
+            position: absolute;
+            left: 2px;
+            top: -2px;
+            width: 30px;
+            height: 3px;
+            background: rgba(0, 0, 0, 0.6);
+            border-radius: 2px;
+        }
+        .rally-hood-scoop {
+            position: absolute;
+            right: 12px;
+            top: -4px;
+            width: 14px;
+            height: 6px;
+            background: rgba(0, 0, 0, 0.5);
+            border-radius: 2px 2px 0 0;
+        }
+
+        /* Hot Rod Styles */
+        .hotrod-body {
+            height: 20px !important;
+        }
+        .hotrod-engine {
+            position: absolute;
+            right: 8px;
+            top: -8px;
+            width: 18px;
+            height: 10px;
+            background: linear-gradient(135deg, #888, #444);
+            border-radius: 2px;
+        }
+        .hotrod-exhaust {
+            position: absolute;
+            left: 0;
+            bottom: 2px;
+            width: 16px;
+            height: 4px;
+            background: #333;
+            border-radius: 2px 0 0 2px;
+        }
+
+        /* Formula Race Car Styles */
+        .formula-body {
+            height: 14px !important;
+            border-radius: 3px;
+        }
+        .formula-nose {
+            position: absolute;
+            right: 0;
+            top: 3px;
+            width: 20px;
+            height: 8px;
+            background: linear-gradient(90deg, rgba(0, 0, 0, 0.3), transparent);
+            border-radius: 0 50px 50px 0;
+        }
+        .formula-wing-front {
+            position: absolute;
+            right: 4px;
+            top: -4px;
+            width: 12px;
+            height: 2px;
+            background: rgba(0, 0, 0, 0.7);
+        }
+        .formula-wing-back {
+            position: absolute;
+            left: 4px;
+            top: -6px;
+            width: 24px;
+            height: 3px;
+            background: rgba(0, 0, 0, 0.7);
+            border-radius: 2px;
+        }
+        .formula-cockpit {
+            position: absolute;
+            left: 50%;
+            transform: translateX(-50%);
+            top: -3px;
+            width: 14px;
+            height: 8px;
+            background: rgba(100, 150, 200, 0.5);
+            border-radius: 50% 50% 0 0;
+        }
+
         .carCard h3 {
             color: #fff;
             margin: 0;
@@ -1405,14 +1948,15 @@
         }
         
         .car-type-badge {
-            font-size: 0.65rem;
-            padding: 3px 8px;
+            font-size: 0.75rem;
+            padding: 4px 8px;
             border-radius: 4px;
-            background: rgba(255,255,255,0.1);
-            color: #888;
-            font-weight: 600;
+            background: rgba(255,255,255,0.15);
+            color: #ccc;
+            font-weight: 700;
             text-transform: uppercase;
             letter-spacing: 0.5px;
+            align-self: flex-start;
         }
         
         .car-type-badge.special {
@@ -1439,18 +1983,19 @@
         .stats-container {
             display: flex;
             flex-direction: column;
-            gap: 5px;
-            padding: 8px;
-            background: rgba(0,0,0,0.2);
+            gap: 8px;
+            padding: 12px;
+            background: rgba(0,0,0,0.3);
             border-radius: 8px;
+            margin-top: auto;
         }
 
         .stat-row {
             display: flex;
             align-items: center;
-            gap: 8px;
-            font-size: 0.65rem;
-            color: #999;
+            gap: 10px;
+            font-size: 0.75rem;
+            color: #ccc;
             font-weight: 600;
         }
         
@@ -1475,8 +2020,8 @@
 
         .stat-bar-bg {
             flex-grow: 1;
-            height: 5px;
-            background: rgba(255,255,255,0.05);
+            height: 8px;
+            background: rgba(255,255,255,0.1);
             border-radius: 4px;
             overflow: hidden;
             position: relative;
@@ -1533,35 +2078,38 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
-            padding: 8px 10px;
-            background: rgba(0,0,0,0.3);
-            border-top: 1px solid rgba(255,255,255,0.05);
+            padding: 12px 15px;
+            background: rgba(0,0,0,0.4);
+            border-top: 1px solid rgba(255,255,255,0.08);
+            min-height: 50px;
         }
 
         .price-tag {
             color: #fff;
-            font-weight: 700;
-            font-size: 0.85rem;
+            font-weight: 800;
+            font-size: 1.1rem;
             font-family: 'Courier New', monospace;
             display: flex;
             align-items: center;
-            gap: 4px;
+            gap: 6px;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.5);
         }
         
         .price-tag::before {
             content: '🏷️';
-            font-size: 11px;
+            font-size: 14px;
         }
         
         .action-indicator {
-            padding: 6px 12px;
-            border-radius: 6px;
-            font-size: 0.65rem;
-            font-weight: 700;
+            padding: 8px 16px;
+            border-radius: 8px;
+            font-size: 0.75rem;
+            font-weight: 800;
             text-transform: uppercase;
-            letter-spacing: 0.5px;
+            letter-spacing: 1px;
             transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
             cursor: pointer;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.2);
         }
 
         /* Logic States */
@@ -1666,45 +2214,21 @@
             border-color: rgba(255,255,255,0.2);
         }
 
+        /* In the new shop layout, #playBtn is a sidebar action item */
         #playBtn {
-            padding: 18px 80px;
-            font-size: 22px;
-            background: linear-gradient(135deg, #00ff66 0%, #00cc44 100%);
+            background: linear-gradient(135deg, #00C9FF, #92FE9D);
             color: #000;
-            border: none;
-            border-radius: 12px;
-            cursor: pointer;
             font-weight: 800;
-            text-transform: uppercase;
-            letter-spacing: 2px;
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-            box-shadow: 0 8px 30px rgba(0, 255, 100, 0.3);
-            position: relative;
-            overflow: hidden;
-        }
-        
-        #playBtn::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: -100%;
-            width: 100%;
-            height: 100%;
-            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
-            transition: left 0.5s;
+            border-radius: 12px;
+            padding: 14px 20px;
+            letter-spacing: 1px;
+            box-shadow: 0 10px 30px rgba(0, 201, 255, 0.15);
+            transition: transform 0.2s cubic-bezier(0.4,0,0.2,1), box-shadow 0.2s;
         }
 
         #playBtn:hover {
-            transform: translateY(-3px) scale(1.02);
-            box-shadow: 0 15px 40px rgba(0, 255, 100, 0.4);
-        }
-        
-        #playBtn:hover::before {
-            left: 100%;
-        }
-        
-        #playBtn:active {
-            transform: translateY(0) scale(0.98);
+            transform: translateX(5px);
+            box-shadow: 0 14px 40px rgba(0, 201, 255, 0.25);
         }
 
         /* Keyboard Navigation Support */
@@ -1836,38 +2360,116 @@
             </div>
         </div>
         
-        <button id="gameOverShopBtn">🎮 Spil igen</button>
-        <button id="gameOverRejoinBtn" style="display: none; margin-top: 10px; background: #00cc66;">🔄 Drop ind igen</button>
-        <button id="gameOverMpShopBtn" style="display: none; margin-top: 10px; background: #ff9900;">🛒 Køb ny bil & Drop ind</button>
+        <button id="gameOverShopBtn" data-testid="game-over-play-again">🎮 Spil igen</button>
+        <button id="gameOverRejoinBtn" data-testid="game-over-rejoin" style="display: none; margin-top: 10px; background: #00cc66;">🔄 Drop ind igen</button>
+        <button id="gameOverMpShopBtn" data-testid="game-over-mp-shop" style="display: none; margin-top: 10px; background: #ff9900;">🛒 Køb ny bil & Drop ind</button>
     </div>
 
     <div id="shop">
-        <div id="shopContent">
-            <div id="shopHeader">
-                <h1>🏎️ Garage & Shop</h1>
-                <div style="display: flex; gap: 15px; align-items: center;">
-                    <a href="/editor" class="config-link" style="background: linear-gradient(135deg, #00aaff, #0066cc);">🏗️ Editor</a>
-                    <a href="/config" class="config-link">⚙️ Config</a>
-                    <div id="moneyDisplay"><span id="shopMoney">0</span> KR</div>
+        <div class="shop-sidebar">
+            <div class="shop-brand">
+                <div class="shop-brand-icon">🚔</div>
+                <div class="shop-brand-text">GARAGE</div>
+            </div>
+            
+            <div class="sidebar-menu">
+                <div class="sidebar-item active" onclick="switchShopView('catalog')">
+                    <span class="sidebar-icon">🏎️</span>
+                    <span>Biler</span>
+                </div>
+                <div class="sidebar-item disabled">
+                    <span class="sidebar-icon">🔧</span>
+                    <span>Opgrader</span>
+                    <span class="badge-coming-soon">SNART</span>
+                </div>
+                <!-- Editor/Config links moved to sidebar -->
+                <a href="/editor" class="sidebar-item link">
+                    <span class="sidebar-icon">🏗️</span>
+                    <span>Editor</span>
+                </a>
+                <a href="/config" class="sidebar-item link">
+                    <span class="sidebar-icon">⚙️</span>
+                    <span>Config</span>
+                </a>
+                
+                <div class="sidebar-spacer"></div>
+                
+                <div class="sidebar-item logout" id="playBtn">
+                    <span class="sidebar-icon">🚀</span>
+                    <span>KØR NU</span>
                 </div>
             </div>
-            
-            <div id="respawnNotice" style="display: none; background: linear-gradient(135deg, #ff6600, #ff9900); color: #fff; padding: 12px 20px; border-radius: 10px; margin-bottom: 15px; text-align: center; font-weight: bold;">
-                🚨 VÆLG EN BIL DU EJER FOR AT SPAWNE IGEN
+        </div>
+
+        <div class="shop-main">
+            <!-- Top Header -->
+            <div class="shop-topbar">
+                <div class="topbar-title">
+                    <span>🏎️</span>
+                    <span class="title-accent">Garage</span>
+                    <span>&amp; Shop</span>
+                </div>
+                
+                <div class="topbar-actions">
+                    <div id="respawnNotice" style="display: none; background: #ff6600; padding: 5px 15px; border-radius: 20px; font-size: 12px; font-weight: bold; margin-right: 15px;">
+                        🚨 RESPAWN MODE
+                    </div>
+                    <div id="moneyDisplay"><span id="shopMoney">0</span> KR</div>
+                    <div class="profile-pic">👤</div>
+                </div>
             </div>
-            
-            <div id="shopTabs">
-                <button class="shop-tab active" data-category="all">Alle<span class="tab-count" id="tabCountAll">0</span></button>
-                <button class="shop-tab" data-category="budget">Budget<span class="tab-count" id="tabCountBudget">0</span></button>
-                <button class="shop-tab" data-category="sport">Sport<span class="tab-count" id="tabCountSport">0</span></button>
-                <button class="shop-tab" data-category="premium">Premium<span class="tab-count" id="tabCountPremium">0</span></button>
-                <button class="shop-tab" data-category="special">Special<span class="tab-count" id="tabCountSpecial">0</span></button>
-            </div>
-            
-            <div id="carList"></div>
-            
-            <div style="text-align: center; margin-top: 20px; padding-top: 20px; border-top: 1px solid rgba(255,255,255,0.1);">
-                 <button id="playBtn">🚀 KØR NU</button>
+
+            <!-- Content Container -->
+            <div class="shop-content-wrapper">
+                
+                <!-- CATALOG VIEW -->
+                <div id="shopCatalogView" class="view-active">
+                    <div class="catalog-header">
+                         <div id="shopTabs">
+                            <button class="shop-tab active" data-category="all" data-testid="shop-tab-all">Alle<span class="tab-count" id="tabCountAll">0</span></button>
+                            <button class="shop-tab" data-category="budget" data-testid="shop-tab-budget">Budget<span class="tab-count" id="tabCountBudget">0</span></button>
+                            <button class="shop-tab" data-category="sport" data-testid="shop-tab-sport">Sport<span class="tab-count" id="tabCountSport">0</span></button>
+                            <button class="shop-tab" data-category="premium" data-testid="shop-tab-premium">Premium<span class="tab-count" id="tabCountPremium">0</span></button>
+                            <button class="shop-tab" data-category="special" data-testid="shop-tab-special">Special<span class="tab-count" id="tabCountSpecial">0</span></button>
+                        </div>
+                    </div>
+                    <div id="carList"></div>
+                </div>
+
+                <!-- DETAIL VIEW -->
+                <div id="shopDetailView" class="view-hidden">
+                    <button class="back-btn" data-testid="shop-back-btn" onclick="closeCarDetail()">
+                        <span>←</span> Tilbage til butik
+                    </button>
+                    
+                    <div class="detail-layout">
+                        <!-- Left Column: 3D Visualization -->
+                        <div class="detail-left">
+                            <div class="detail-3d-container" id="detail3DContainer">
+                                <!-- 3D Preview populated by JS -->
+                            </div>
+                        </div>
+                        
+                        <!-- Right Column: Info & Stats -->
+                        <div class="detail-right">
+                             <div class="detail-header">
+                                 <div class="detail-badges" id="detailBadges"></div>
+                                 <h1 id="detailName">Car Name</h1>
+                                 <p class="detail-desc" id="detailDesc">High performance vehicle for escaping the law.</p>
+                             </div>
+                             
+                             <div class="detail-stats" id="detailStats">
+                                 <!-- Stats populated by JS -->
+                             </div>
+                             
+                             <div class="detail-actions">
+                                 <div class="detail-price" id="detailPrice">100.000 KR</div>
+                                 <button id="detailActionBtn" data-testid="shop-buy-btn" class="action-btn">KØB NU</button>
+                             </div>
+                        </div>
+                    </div>
+                </div>
+
             </div>
         </div>
     </div>
@@ -1878,18 +2480,18 @@
             <h2>🎮 VÆLG SPILTYPE</h2>
             <p>Server kører altid - join når som helst!</p>
             <div class="gamemode-buttons">
-                <button id="multiplayerModeBtn" class="gamemode-btn host">
+                <button id="multiplayerModeBtn" data-testid="multiplayer-btn" class="gamemode-btn host">
                     <span class="icon">🌐</span> MULTIPLAYER
                     <span style="font-size: 11px; display: block; opacity: 0.8; margin-top: 3px;">Spil med venner på netværket</span>
                 </button>
-                <button id="soloModeBtn" class="gamemode-btn solo">
+                <button id="soloModeBtn" data-testid="solo-btn" class="gamemode-btn solo">
                     <span class="icon">🚗</span> SOLO
                 </button>
-                <button id="menuShopBtn" class="gamemode-btn" style="background: linear-gradient(135deg, #ff9900, #ff6600);">
+                <button id="menuShopBtn" data-testid="menu-shop-btn" class="gamemode-btn" style="background: linear-gradient(135deg, #ff9900, #ff6600);">
                     <span class="icon">🛒</span> SHOP
                     <span style="font-size: 11px; display: block; opacity: 0.8; margin-top: 3px;">Køb og vælg biler</span>
                 </button>
-                <button id="resetProgressBtn" class="gamemode-btn" style="background: linear-gradient(135deg, #cc0000, #990000); margin-top: 15px;">
+                <button id="resetProgressBtn" data-testid="reset-progress-btn" class="gamemode-btn" style="background: linear-gradient(135deg, #cc0000, #990000); margin-top: 15px;">
                     <span class="icon">⚠️</span> NULSTIL PROGRES
                     <span style="font-size: 11px; display: block; opacity: 0.8; margin-top: 3px;">Starter forfra (penge og biler)</span>
                 </button>
@@ -1901,7 +2503,7 @@
     <div id="multiplayerLobby">
         <div class="lobby-content">
             <h1>🌐 MULTIPLAYER</h1>
-            <button id="lobbyCloseBtn" class="lobby-close">✕</button>
+            <button id="lobbyCloseBtn" data-testid="lobby-close-btn" class="lobby-close">✕</button>
             
             <!-- Step 1: Server Discovery -->
             <div id="serverDiscovery" class="lobby-section">
@@ -1914,14 +2516,14 @@
                     <h3 style="color: #00ff66; margin-bottom: 10px;">📡 Fundne Servere</h3>
                     <p style="color: #666; font-size: 12px; margin-bottom: 15px;">Klik på en server for at joine</p>
                     <div id="serverList"></div>
-                    <button id="rescanBtn" class="lobby-btn" style="width: 100%; background: #333; margin-top: 15px;">🔄 Scan igen</button>
+                    <button id="rescanBtn" data-testid="rescan-btn" class="lobby-btn" style="width: 100%; background: #333; margin-top: 15px;">🔄 Scan igen</button>
                 </div>
                 
                 <div id="noServersFound" style="display: none; text-align: center; padding: 20px;">
                     <p style="color: #ff6600; font-size: 18px; margin-bottom: 10px;">❌ Ingen servere fundet</p>
                     <p style="color: #888; font-size: 12px; margin-bottom: 15px;">Sørg for at serveren kører på netværket</p>
-                    <button id="hostOwnServerBtn" class="lobby-btn host" style="width: 100%; margin-bottom: 10px;">🖥️ Forbind til localhost</button>
-                    <button id="rescanBtnEmpty" class="lobby-btn" style="width: 100%; background: #333;">🔄 Scan igen</button>
+                    <button id="hostOwnServerBtn" data-testid="host-localhost-btn" class="lobby-btn host" style="width: 100%; margin-bottom: 10px;">🖥️ Forbind til localhost</button>
+                    <button id="rescanBtnEmpty" data-testid="rescan-empty-btn" class="lobby-btn" style="width: 100%; background: #333;">🔄 Scan igen</button>
                 </div>
             </div>
             
@@ -1934,9 +2536,9 @@
                     <input type="text" id="playerNameInput" placeholder="Indtast navn..." maxlength="20" value="Spiller">
                 </div>
                 
-                <button id="joinGameBtn" class="lobby-btn host" style="width: 100%; font-size: 18px; padding: 15px; margin-top: 15px;">🎮 JOIN SPIL</button>
+                <button id="joinGameBtn" data-testid="join-game-btn" class="lobby-btn host" style="width: 100%; font-size: 18px; padding: 15px; margin-top: 15px;">🎮 JOIN SPIL</button>
                 
-                <button id="backToServersBtn" class="lobby-btn" style="width: 100%; background: #333; margin-top: 10px;">← Tilbage til serverliste</button>
+                <button id="backToServersBtn" data-testid="back-to-servers-btn" class="lobby-btn" style="width: 100%; background: #333; margin-top: 10px;">← Tilbage til serverliste</button>
                 
                 <div id="lobbyError" class="lobby-error"></div>
             </div>
@@ -1960,7 +2562,7 @@
                             <span>Tillad drop-in under spil</span>
                         </label>
                     </div>
-                    <button id="startMultiplayerBtn" class="lobby-btn start" style="width: 100%;">🚀 START SPIL</button>
+                    <button id="startMultiplayerBtn" data-testid="start-multiplayer-btn" class="lobby-btn start" style="width: 100%;">🚀 START SPIL</button>
                     <p style="color: #00ff00; font-size: 12px; text-align: center; margin-top: 10px;">👑 Du er værten!</p>
                 </div>
                 
@@ -2009,19 +2611,20 @@
                 <input type="range" id="editorHeight" min="50" max="300" value="150">
             </div>
             <div class="editor-buttons">
-                <button id="editorDeleteMode" class="editor-btn">🗑️ Slet Mode</button>
-                <button id="editorUndo" class="editor-btn">↩️ Fortryd</button>
-                <button id="editorClear" class="editor-btn danger">🧹 Ryd Alt</button>
+                <button id="editorDeleteMode" data-testid="editor-delete-btn" class="editor-btn">🗑️ Slet Mode</button>
+                <button id="editorUndo" data-testid="editor-undo-btn" class="editor-btn">↩️ Fortryd</button>
+                <button id="editorClear" data-testid="editor-clear-btn" class="editor-btn danger">🧹 Ryd Alt</button>
             </div>
             <div class="editor-buttons">
-                <button id="editorSave" class="editor-btn save">💾 Gem Level</button>
-                <button id="editorLoad" class="editor-btn">📂 Indlæs</button>
-                <button id="editorExport" class="editor-btn">📋 Eksporter</button>
+                <button id="editorSave" data-testid="editor-save-btn" class="editor-btn save">💾 Gem Level</button>
+                <button id="editorLoad" data-testid="editor-load-btn" class="editor-btn">📂 Indlæs</button>
+                <button id="editorExport" data-testid="editor-export-btn" class="editor-btn">📋 Eksporter</button>
             </div>
             <div class="editor-section">
                 <label>Objekter: <span id="objectCount">0</span></label>
             </div>
-            <button id="editorClose" class="editor-btn close">✖ Luk Editor</button>
+            <button id="editorStartGame" data-testid="editor-start-game-btn" class="editor-btn start">🎮 Start Spil</button>
+            <button id="editorClose" data-testid="editor-close-btn" class="editor-btn close">✖ Luk Editor</button>
         </div>
         <div id="editorPreview"></div>
         <div id="editorCoords">X: 0, Z: 0</div>
@@ -2127,6 +2730,20 @@
             background: linear-gradient(135deg, #666, #444);
         }
         
+        .editor-btn.start {
+            width: 100%;
+            margin-top: 10px;
+            padding: 15px;
+            font-size: 16px;
+            background: linear-gradient(135deg, #0088ff, #0066cc);
+            box-shadow: 0 0 15px rgba(0, 136, 255, 0.3);
+        }
+        
+        .editor-btn.start:hover {
+            background: linear-gradient(135deg, #00aaff, #0088ff);
+            box-shadow: 0 0 20px rgba(0, 170, 255, 0.5);
+        }
+        
         .editor-btn.active {
             background: linear-gradient(135deg, #ff6600, #cc4400);
             box-shadow: 0 0 15px rgba(255, 102, 0, 0.5);
@@ -2159,10 +2776,16 @@
         }
     </style>
 
-    <script src="/public/lib/three.min.js"></script>
-    <script type="module" src="js/main.js"></script></script>
-    <script type="module" src="js/main.js"></script></script>
-    <script type="module" src="js/main.js"></script></script>
+    <!-- Import Map for external modules (used by native browser imports) -->
+    <script type="importmap">
+    {
+        "imports": {
+            "three": "/node_modules/three/build/three.module.js",
+            "cannon-es": "/node_modules/cannon-es/dist/cannon-es.js"
+        }
+    }
+    </script>
+
     <script type="module" src="js/main.js"></script>
 </body>
 </html>

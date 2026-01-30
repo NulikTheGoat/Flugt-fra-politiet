@@ -1,19 +1,28 @@
+import * as THREE from 'three';
 import { gameState, keys } from './state.js';
 import { scene, camera } from './core.js';
 import { cars } from './constants.js';
 import { sharedGeometries, sharedMaterials } from './assets.js';
 import { createSmoke, createSpark, createTireMark, updateTireMarks, createWheelDust, updateDustParticles } from './particles.js';
-import { playSfx } from './sfx.js';
+import { playSfx, setEngineRpm, stopEngineSound, setDriftIntensity, stopDriftSound } from './sfx.js';
+import { CarBuilders, makeCarLights } from './carModels.js';
 
+/**
+ * @typedef {{ triggerDamageEffect: () => void, updateHealthUI: () => void }} UICallbacks
+ */
+
+/** @type {UICallbacks} */
 let uiCallbacks = {
     triggerDamageEffect: () => {},
     updateHealthUI: () => {}
 };
 
+/** @param {Partial<UICallbacks>} callbacks */
 export function setUICallbacks(callbacks) {
     uiCallbacks = { ...uiCallbacks, ...callbacks };
 }
 
+/** @type {any} */
 export let playerCar;
 
 function clamp01(v) {
@@ -22,42 +31,6 @@ function clamp01(v) {
 
 function isCarLikeType(type) {
     return !type || ['standard', 'sport', 'muscle', 'super', 'hyper'].includes(type);
-}
-
-function makeCarLights(carGroup, opts = {}) {
-    const {
-        headlightColor = 0xfff6d5,
-        taillightColor = 0xff2a2a,
-        y = 10,
-        zFront = 23,
-        zRear = -23,
-        x = 8
-    } = opts;
-
-    const headMat = new THREE.MeshBasicMaterial({ color: headlightColor });
-    const tailMat = new THREE.MeshBasicMaterial({ color: taillightColor });
-    const headGeo = new THREE.BoxGeometry(3, 2, 1);
-    const tailGeo = new THREE.BoxGeometry(3, 2, 1);
-
-    const headlights = [];
-    const taillights = [];
-
-    [-x, x].forEach((lx) => {
-        const h = new THREE.Mesh(headGeo, headMat);
-        h.position.set(lx, y, zFront);
-        h.name = 'headlight';
-        carGroup.add(h);
-        headlights.push(h);
-
-        const t = new THREE.Mesh(tailGeo, tailMat);
-        t.position.set(lx, y, zRear);
-        t.name = 'taillight';
-        carGroup.add(t);
-        taillights.push(t);
-    });
-
-    carGroup.userData.headlights = headlights;
-    carGroup.userData.taillights = taillights;
 }
 
 function createOnFootModel(color) {
@@ -507,6 +480,10 @@ export function createPlayerCar(color = 0xff0000, type = 'standard') {
              carGroup.add(light);
         }
 
+    } else if (CarBuilders[resolvedType]) {
+        // Use the specialized builder for this car type
+        CarBuilders[resolvedType](chassis, carGroup, color);
+    
     } else {
         // Standard Car body (with enhanced PBR materials)
         const bodyMat = new THREE.MeshStandardMaterial({
@@ -544,6 +521,7 @@ export function createPlayerCar(color = 0xff0000, type = 'standard') {
         chassis.add(backWindow);
 
         // Wheels
+        /** @type {[number, number, number][]} */
         const wheelPositions = [
             [-12, 5, 12],
             [12, 5, 12],
@@ -732,13 +710,21 @@ function applyKickScooterAnimation(target, now, wantsForward) {
 // Main update loop for player logic (Physics, controls)
 // Enhanced with industry-standard car physics simulation
 export function updatePlayer(delta, now) {
-    if (!playerCar || gameState.arrested) return;
+    if (!playerCar) return;
+    
+    if (gameState.arrested) {
+        stopEngineSound();
+        stopDriftSound();
+        return;
+    }
 
     const visualType = playerCar.userData.visualType || gameState.selectedCar || 'standard';
     const isOnFoot = visualType === 'onfoot' || gameState.selectedCar === 'onfoot';
 
     // Car cannot drive when HP is 0 or below
     if (gameState.health <= 0) {
+        stopEngineSound();
+        stopDriftSound();
         // On foot: just stop (no car-like wreck drifting)
         if (isOnFoot) {
             gameState.speed *= 0.7;
@@ -766,6 +752,8 @@ export function updatePlayer(delta, now) {
     // ON-FOOT RUNNING MODEL (no car steering)
     // ============================================
     if (isOnFoot) {
+        stopEngineSound();
+        stopDriftSound();
         // Movement vector relative to camera (XZ plane)
         const forward = new THREE.Vector3();
         camera.getWorldDirection(forward);
@@ -844,6 +832,21 @@ export function updatePlayer(delta, now) {
     const handling = gameState.handling || 0.05;
     const absSpeed = Math.abs(gameState.speed);
     const speedRatio = absSpeed / gameState.maxSpeed;
+
+    // Update Engine Sound
+    if (gameState.health > 0) {
+        setEngineRpm(speedRatio);
+        
+        // Update Drift Sound
+        if (gameState.driftFactor && gameState.driftFactor > 0.1 && absSpeed > 15) {
+            setDriftIntensity(gameState.driftFactor);
+        } else {
+            stopDriftSound();
+        }
+    } else {
+        stopEngineSound();
+        stopDriftSound();
+    }
     
     // === WEIGHT TRANSFER SIMULATION ===
     // Forward weight transfer affects grip (braking = more front grip, acceleration = more rear grip)
@@ -1092,7 +1095,7 @@ export function updatePlayer(delta, now) {
         if (gameState.driftFactor > 0.3 && absSpeed > 20) {
             createTireMark(playerCar.position.x, playerCar.position.z, playerCar.rotation.y);
         }
-        updateTireMarks(delta);
+        updateTireMarks();
         
         // Dust clouds from wheels at high speed or when drifting
         const speedRatio = absSpeed / gameState.maxSpeed;

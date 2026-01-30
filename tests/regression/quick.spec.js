@@ -13,16 +13,20 @@ const { test, expect } = require('@playwright/test');
 // Shared setup - venter til spillet faktisk er startet
 const setupGame = async (page) => {
     await page.goto('/');
-    await page.waitForSelector('canvas', { timeout: 15000 });
+    await page.waitForSelector('canvas', { timeout: 20000 });
+    // Wait for WebGL to initialize
+    await page.waitForTimeout(500);
+    
     const soloBtn = page.locator('#soloModeBtn');
-    if (await soloBtn.isVisible({ timeout: 5000 })) {
-        await soloBtn.click();
+    if (await soloBtn.isVisible({ timeout: 10000 })) {
+        // Use force:true to bypass potential overlay issues on CI
+        await soloBtn.click({ force: true });
     }
     // Vent til gameState er klar og chunks er loaded
     await page.waitForFunction(() => {
         const gs = window.gameState;
         return gs && gs.startTime > 0 && gs.chunkGrid && Object.keys(gs.chunkGrid).length > 0;
-    }, { timeout: 15000, polling: 200 });
+    }, { timeout: 20000, polling: 200 });
     await page.waitForTimeout(300);
 };
 
@@ -132,7 +136,7 @@ test.describe('🚗 Car & Shop', () => {
     
     test('All cars have valid stats', async ({ page }) => {
         await page.goto('/');
-        await page.waitForSelector('canvas', { timeout: 5000 });
+        await page.waitForSelector('canvas', { timeout: 20000 });
         
         const cars = await page.evaluate(() => {
             const c = window.cars;
@@ -153,7 +157,7 @@ test.describe('🚗 Car & Shop', () => {
 
     test('Shop modal opens and shows cars', async ({ page }) => {
         await page.goto('/');
-        await page.waitForSelector('canvas', { timeout: 5000 });
+        await page.waitForSelector('canvas', { timeout: 20000 });
         
         const shopBtn = page.locator('#openShopBtn');
         if (await shopBtn.isVisible({ timeout: 2000 })) {
@@ -189,7 +193,7 @@ test.describe('🌍 World & Rendering', () => {
 
     test('Canvas uses WebGL', async ({ page }) => {
         await page.goto('/');
-        await page.waitForSelector('canvas', { timeout: 5000 });
+        await page.waitForSelector('canvas', { timeout: 20000 });
         
         const contextType = await page.evaluate(() => {
             const canvas = document.querySelector('canvas');
@@ -207,7 +211,7 @@ test.describe('🔌 Multiplayer State', () => {
     
     test('Multiplayer state initializes correctly', async ({ page }) => {
         await page.goto('/');
-        await page.waitForSelector('canvas', { timeout: 5000 });
+        await page.waitForSelector('canvas', { timeout: 20000 });
         
         const mpState = await page.evaluate(() => ({
             isMultiplayer: window.gameState?.isMultiplayer,

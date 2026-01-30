@@ -1,3 +1,4 @@
+import * as THREE from 'three';
 import { gameState } from './state.js';
 import { scene, camera } from './core.js';
 import { getParticleFromPool, returnParticleToPool, sharedGeometries, sharedMaterials } from './assets.js';

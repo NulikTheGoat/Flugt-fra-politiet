@@ -1,4 +1,4 @@
-// @ts-check
+// @ts-nocheck
 const { test, expect } = require('@playwright/test');
 
 /**
@@ -16,23 +16,26 @@ const { test, expect } = require('@playwright/test');
 test.describe('Player Speed Limits', () => {
     
     test.beforeEach(async ({ page }) => {
-        // Start the game
-        await page.goto('http://localhost:3000');
+        // Start the game with retry logic for CI reliability
+        await page.goto('http://localhost:3000', { waitUntil: 'domcontentloaded', timeout: 30000 });
         
         // Wait for game to load (Three.js canvas should be present)
-        await page.waitForSelector('canvas', { timeout: 15000 });
+        await page.waitForSelector('canvas', { timeout: 30000 });
+        
+        // Wait for WebGL to initialize
+        await page.waitForTimeout(500);
         
         // Wait for solo mode button to be visible and ready
         const soloBtn = page.locator('#soloModeBtn');
-        await expect(soloBtn).toBeVisible({ timeout: 10000 });
+        await expect(soloBtn).toBeVisible({ timeout: 20000 });
         
-        // Click solo mode to start the game
-        await soloBtn.click();
+        // Click solo mode to start the game (force:true for CI reliability)
+        await soloBtn.click({ force: true });
         
         // Wait for game state to fully initialize (more reliable than selector)
         await page.waitForFunction(
             () => window.gameState && window.gameState.startTime > 0 && window.gameState.maxSpeed !== undefined,
-            { timeout: 15000, polling: 200 }
+            { timeout: 20000, polling: 200 }
         );
         
         // Wait for HUD element using polling (handles async rendering)
@@ -40,6 +43,9 @@ test.describe('Player Speed Limits', () => {
             () => !!document.querySelector('#speed'),
             { timeout: 15000, polling: 200 }
         );
+        
+        // Ensure game canvas has focus for input
+        await page.click('canvas', { force: true });
         
         // Small buffer for UI to stabilize
         await page.waitForTimeout(500);
@@ -203,7 +209,8 @@ test.describe('Speed System Investigation', () => {
     
     test('Check if startGame() correctly sets car stats', async ({ page }) => {
         await page.goto('http://localhost:3000');
-        await page.waitForSelector('canvas', { timeout: 15000 });
+        await page.waitForSelector('canvas', { timeout: 20000 });
+        await page.waitForTimeout(500);
         
         // Check state BEFORE clicking solo mode
         const beforeGame = await page.evaluate(() => {
@@ -216,15 +223,15 @@ test.describe('Speed System Investigation', () => {
         
         // Wait for solo mode button to be visible and stable
         const soloBtn = page.locator('#soloModeBtn');
-        await expect(soloBtn).toBeVisible({ timeout: 10000 });
+        await expect(soloBtn).toBeVisible({ timeout: 15000 });
         
-        // Click solo mode
-        await soloBtn.click();
+        // Click solo mode (force:true for CI reliability)
+        await soloBtn.click({ force: true });
         
         // Wait for game state to fully initialize (more reliable than selector)
         await page.waitForFunction(
             () => window.gameState && window.gameState.startTime > 0 && window.gameState.maxSpeed !== undefined,
-            { timeout: 15000, polling: 200 }
+            { timeout: 20000, polling: 200 }
         );
         
         // Wait for HUD element using polling

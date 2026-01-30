@@ -85,7 +85,7 @@ export const SheriffAI = {
 
     /**
      * Calculates the target speed for the Sheriff
-     * @param {number} currentDistance 
+     * @param {number} distance 
      * @param {number} playerSpeed 
      * @returns {number} The calculated target speed
      */
@@ -346,11 +346,12 @@ export function applySheriffCommand(commandType, policeCar, playerCar) {
             }
             return { speedMultiplier: 0.8, behavior: 'blocking' };
             
-        case SHERIFF_COMMANDS.SURROUND:
+        case SHERIFF_COMMANDS.SURROUND: {
             // Position around player at different angles
-            const angle = policeCar.userData.networkId ? 
+            const angle = policeCar.userData.networkId ?
                 (policeCar.userData.networkId * SURROUND_ANGLE_STEP) : 0;
             return { speedMultiplier: 1.0, targetOffset: angle, behavior: 'surrounding' };
+        }
             
         case SHERIFF_COMMANDS.SPREAD:
             // Spread out, maintain distance from other police
@@ -363,7 +364,7 @@ export function applySheriffCommand(commandType, policeCar, playerCar) {
             }
             return { speedMultiplier: 0.7, behavior: 'retreating' };
             
-        case SHERIFF_COMMANDS.INTERCEPT:
+        case SHERIFF_COMMANDS.INTERCEPT: {
             // Try to predict player path and intercept
             const playerVelocity = playerCar.userData.velocity || { x: 0, z: 0 };
             const predictedX = playerCar.position.x + playerVelocity.x * PREDICTION_TIME_MULTIPLIER;
@@ -372,11 +373,12 @@ export function applySheriffCommand(commandType, policeCar, playerCar) {
                 predictedX - policeCar.position.x,
                 predictedZ - policeCar.position.z
             );
-            return { 
-                speedMultiplier: 1.2, 
+            return {
+                speedMultiplier: 1.2,
                 overrideDirection: toPredicted,
-                behavior: 'intercepting' 
+                behavior: 'intercepting'
             };
+        }
             
         case SHERIFF_COMMANDS.REINFORCE:
             // Reinforcements called - existing units hold position and wait for backup

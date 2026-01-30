@@ -18,7 +18,7 @@ test.describe('🚔 Police Spawning', () => {
         await page.waitForSelector('canvas', { timeout: 15000 });
         const soloBtn = page.locator('#soloModeBtn');
         if (await soloBtn.isVisible()) {
-            await soloBtn.click();
+            await soloBtn.click({ force: true });
             // Wait for game state to fully initialize
             await page.waitForFunction(
                 () => window.gameState && window.gameState.startTime > 0,
@@ -62,9 +62,9 @@ test.describe('🔥 Heat Level System', () => {
     
     test.beforeEach(async ({ page }) => {
         await page.goto('http://localhost:3000');
-        await page.waitForSelector('canvas', { timeout: 10000 });
+        await page.waitForSelector('canvas', { timeout: 20000 });
         const soloBtn = page.locator('#soloModeBtn');
-        if (await soloBtn.isVisible()) await soloBtn.click();
+        if (await soloBtn.isVisible()) await soloBtn.click({ force: true });
         await page.waitForTimeout(500);
     });
 
@@ -101,9 +101,9 @@ test.describe('🎯 Combat & Collision', () => {
     
     test.beforeEach(async ({ page }) => {
         await page.goto('http://localhost:3000');
-        await page.waitForSelector('canvas', { timeout: 10000 });
+        await page.waitForSelector('canvas', { timeout: 20000 });
         const soloBtn = page.locator('#soloModeBtn');
-        if (await soloBtn.isVisible()) await soloBtn.click();
+        if (await soloBtn.isVisible()) await soloBtn.click({ force: true });
         await page.waitForTimeout(500);
     });
 

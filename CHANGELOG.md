@@ -18,6 +18,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [1.1.0] - 2026-01-29
+
+### Added
+- **Physics Overhaul**: Migrated from custom arcade physics to `cannon-es` for rigid body simulation.
+  - Debris and loose objects now tumble, stack, and interact realistically.
+  - Player car retains arcade-style handling but interacts with the physics world dynamically.
+- **Advanced Debris System**: 
+  - Buildings now crumble into persistent chunks upon impact.
+  - Large debris can be pushed and can damage other objects (cascading destruction).
+  - Debris breaks into smaller pieces on high-impact collisions.
+  - Spatial Hashing (`chunkGrid`) optimization for high-performance collision detection.
+- **AI Sheriff System**: 
+  - New "Sheriff" unit that coordinates police via LLM-powered tactical commands.
+  - Commands include: CHASE, BLOCK, SURROUND, SPREAD, RETREAT, INTERCEPT.
+- **New Vehicles**: 
+  - Monster Truck (Crushes obstacles), Formula 1 (High speed/grip), and more.
+- **Regression Testing**: Added comprehensive Playwright test suite covering Physics, AI, Economy, and HUD.
+
+### Changed
+- Refactored `physicsWorld.js` to use `cannon-es`.
+- Optimized main game loop to handle hundreds of active debris chunks.
+- Updated `README.md` and documentation structure.
+
+---
+
 ## [1.0.0] - 2026-01-23
 
 ### Added

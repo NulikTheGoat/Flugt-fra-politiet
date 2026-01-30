@@ -591,13 +591,13 @@ function showCommentaryBubble(text) {
     const existingBubbles = container.querySelectorAll('.commentary-bubble');
     existingBubbles.forEach((b, index) => {
         if (index > 0) {
-            b.style.opacity = Math.max(0.3, 1 - index * 0.2).toString();
+            /** @type {HTMLElement} */ (b).style.opacity = Math.max(0.3, 1 - index * 0.2).toString();
         }
     });
     
     // Limit number of bubbles
     while (container.children.length > 4) {
-        const lastBubble = container.lastChild;
+        const lastBubble = /** @type {HTMLElement} */ (container.lastChild);
         lastBubble.style.opacity = '0';
         lastBubble.style.transform = 'translateX(50px)';
         setTimeout(() => lastBubble.remove(), 300);
@@ -1179,20 +1179,22 @@ function updateMissionProgress() {
             }
             break;
             
-        case MISSION_TYPES.SPEED:
+        case MISSION_TYPES.SPEED: {
             const currentSpeed = Math.round(gameState.speed * 3.6);
             if (currentSpeed >= mission.target) {
                 completeMission();
             }
             break;
+        }
             
-        case MISSION_TYPES.COLLECT:
+        case MISSION_TYPES.COLLECT: {
             const currentMoney = gameState.totalMoney || gameState.money;
             const collected = currentMoney - (mission.startValue || 0);
             if (collected >= mission.target) {
                 completeMission();
             }
             break;
+        }
         // DESTROY is handled in logEvent
     }
 }

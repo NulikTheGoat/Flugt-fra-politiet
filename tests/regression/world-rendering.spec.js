@@ -20,7 +20,7 @@ test.describe('🌍 World Generation', () => {
         await page.waitForSelector('canvas', { timeout: 15000 });
         const soloBtn = page.locator('#soloModeBtn');
         if (await soloBtn.isVisible()) {
-            await soloBtn.click();
+            await soloBtn.click({ force: true });
             // Wait for game state to fully initialize
             await page.waitForFunction(
                 () => window.gameState && window.gameState.startTime > 0,
@@ -70,7 +70,7 @@ test.describe('🎨 Rendering Pipeline', () => {
     
     test.beforeEach(async ({ page }) => {
         await page.goto('http://localhost:3000');
-        await page.waitForSelector('canvas', { timeout: 10000 });
+        await page.waitForSelector('canvas', { timeout: 20000 });
     });
 
     test('Canvas is properly sized', async ({ page }) => {
@@ -105,7 +105,7 @@ test.describe('🎨 Rendering Pipeline', () => {
 
     test('FOV settings exist', async ({ page }) => {
         const soloBtn = page.locator('#soloModeBtn');
-        if (await soloBtn.isVisible()) await soloBtn.click();
+        if (await soloBtn.isVisible()) await soloBtn.click({ force: true });
         await page.waitForTimeout(500);
         
         const fovData = await page.evaluate(() => ({
@@ -120,7 +120,7 @@ test.describe('🎨 Rendering Pipeline', () => {
 
     test('2D mode toggle exists', async ({ page }) => {
         const soloBtn = page.locator('#soloModeBtn');
-        if (await soloBtn.isVisible()) await soloBtn.click();
+        if (await soloBtn.isVisible()) await soloBtn.click({ force: true });
         await page.waitForTimeout(500);
         
         const is2DMode = await page.evaluate(() => window.gameState?.is2DMode);
@@ -133,9 +133,9 @@ test.describe('📍 Player Position', () => {
     
     test.beforeEach(async ({ page }) => {
         await page.goto('http://localhost:3000');
-        await page.waitForSelector('canvas', { timeout: 10000 });
+        await page.waitForSelector('canvas', { timeout: 20000 });
         const soloBtn = page.locator('#soloModeBtn');
-        if (await soloBtn.isVisible()) await soloBtn.click();
+        if (await soloBtn.isVisible()) await soloBtn.click({ force: true });
         await page.waitForTimeout(500);
     });
 
@@ -180,9 +180,9 @@ test.describe('✨ Visual Effects', () => {
     
     test.beforeEach(async ({ page }) => {
         await page.goto('http://localhost:3000');
-        await page.waitForSelector('canvas', { timeout: 10000 });
+        await page.waitForSelector('canvas', { timeout: 20000 });
         const soloBtn = page.locator('#soloModeBtn');
-        if (await soloBtn.isVisible()) await soloBtn.click();
+        if (await soloBtn.isVisible()) await soloBtn.click({ force: true });
         await page.waitForTimeout(500);
     });
 

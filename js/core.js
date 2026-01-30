@@ -1,4 +1,6 @@
 // Three.js Scene Setup (Singletons)
+import * as THREE from 'three';
+
 export const scene = new THREE.Scene();
 scene.background = new THREE.Color(0x87ceeb);
 // Fog setup - starts at 2000, fully opaque at 9000 to hide the horizon edge smoothly

@@ -1,6 +1,7 @@
 // World Director - LLM-driven dynamic object spawning
 // The LLM decides what objects to place on the road AND creates scenarios!
 
+import * as THREE from 'three';
 import { scene } from './core.js';
 import { gameState } from './state.js';
 import { playerCar, repairCar } from './player.js';
@@ -268,6 +269,7 @@ function createSpawnedObject(type, x, z, moving = false, speed = 0) {
         });
     }
     
+    /** @type {THREE.Mesh|THREE.Group} */
     let mesh = new THREE.Mesh(geometry, material);
     mesh.position.set(x, config.height, z);
 

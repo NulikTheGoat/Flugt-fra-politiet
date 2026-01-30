@@ -1,3 +1,4 @@
+import * as THREE from 'three';
 import { gameState, saveProgress } from './state.js';
 import { generateVerdict, generateNewspaper } from './commentary.js';
 import { gameConfig } from './config.js';
@@ -97,7 +98,7 @@ function updateHighScoreDisplay() {
         container.id = 'highscoreContainer';
         container.style.cssText = `
             position: fixed;
-            bottom: 20px;
+            bottom: 140px;
             left: 20px;
             background: rgba(0, 0, 0, 0.7);
             color: #fff;
@@ -139,7 +140,7 @@ document.addEventListener('DOMContentLoaded', updateHighScoreDisplay);
 
 export function updateHUD(policeDistance) {
     const speedKmh = Math.round(gameState.speed * 3.6);
-    DOM.speed.textContent = speedKmh;
+    DOM.speed.textContent = String(speedKmh);
     DOM.speedFill.style.width = clamp((gameState.speed / gameState.maxSpeed) * 100, 0, 100) + '%';
 
     if (gameState.speed > gameState.maxSpeedWarning) {
@@ -151,7 +152,7 @@ export function updateHUD(policeDistance) {
     // Drift indicator
     if (gameState.driftFactor > 0.3) {
         DOM.driftIndicator.style.display = 'block';
-        DOM.driftIndicator.style.opacity = Math.min(1, gameState.driftFactor * 1.5);
+        DOM.driftIndicator.style.opacity = String(Math.min(1, gameState.driftFactor * 1.5));
     } else {
         DOM.driftIndicator.style.display = 'none';
     }
@@ -165,14 +166,14 @@ export function updateHUD(policeDistance) {
         } else {
             elapsedSeconds = 0;
         }
-    DOM.time.textContent = elapsedSeconds;
-    DOM.heatLevel.textContent = gameState.heatLevel;
+    DOM.time.textContent = String(elapsedSeconds);
+    DOM.heatLevel.textContent = String(gameState.heatLevel);
     
     // Count active and dead police cars
     const deadCount = gameState.policeCars.filter(c => c.userData.dead).length;
     const activeCount = gameState.policeCars.length - deadCount;
-    DOM.policeCount.textContent = activeCount;
-    DOM.deadPoliceCount.textContent = deadCount;
+    DOM.policeCount.textContent = String(activeCount);
+    DOM.deadPoliceCount.textContent = String(deadCount);
     
     // Check if Sheriff is active
     const hasSheriff = gameState.policeCars.some(c => c.userData.type === 'sheriff' && !c.userData.dead);
@@ -201,7 +202,7 @@ export function updateHUD(policeDistance) {
     if (DOM.totalMoney) DOM.totalMoney.textContent = Math.floor((gameState.totalMoney || 0) + gameState.money).toLocaleString();
 
     if (policeDistance > 0) {
-        DOM.policeDistance.textContent = Math.round(policeDistance);
+        DOM.policeDistance.textContent = String(Math.round(policeDistance));
         
         // Arrest countdown display
         if (gameState.arrestCountdown > 0) {
@@ -329,7 +330,7 @@ export function addMoney(amount) {
     if (DOM.money && DOM.money.parentElement) {
         // Find the wrapper we added in index.html for animation targeting
         // The structure changed to .money-container > .money-row > .money-value > span#money
-        const container = DOM.money.closest('.money-container'); 
+        const container = /** @type {HTMLElement|null} */ (DOM.money.closest('.money-container')); 
         if(container) {
              container.classList.remove('hud-money-pop');
              void container.offsetWidth; 
@@ -526,7 +527,7 @@ function initShopTabs() {
         tab.addEventListener('click', () => {
             tabs.forEach(t => t.classList.remove('active'));
             tab.classList.add('active');
-            currentShopCategory = tab.dataset.category;
+            currentShopCategory = /** @type {HTMLElement} */ (tab).dataset.category;
             renderShop();
         });
     });
@@ -544,7 +545,7 @@ function updateTabCounts() {
     
     Object.entries(counts).forEach(([cat, count]) => {
         const el = document.getElementById(`tabCount${cat.charAt(0).toUpperCase() + cat.slice(1)}`);
-        if (el) el.textContent = count;
+        if (el) el.textContent = String(count);
     });
 }
 
@@ -722,6 +723,110 @@ export function renderShop() {
                     </div>
                 `;
             }
+            if (vehicleType === 'monstertruck') {
+                return `
+                    <div class="car-preview-box preview-monstertruck">
+                        <div class="floor-grid"></div>
+                        <div class="vehicle-model vehicle-monstertruck" style="--accent:${colorHex};">
+                            <div class="truck-body" style="background: linear-gradient(135deg, ${colorHex} 0%, ${darkerColor} 100%);"></div>
+                            <div class="truck-cabin" style="background: linear-gradient(135deg, ${colorHex} 0%, ${darkerColor} 100%);"></div>
+                            <div class="monster-wheel front-left"></div>
+                            <div class="monster-wheel front-right"></div>
+                            <div class="monster-wheel back-left"></div>
+                            <div class="monster-wheel back-right"></div>
+                        </div>
+                    </div>
+                `;
+            }
+            if (vehicleType === 'buggy') {
+                return `
+                    <div class="car-preview-box preview-buggy">
+                        <div class="floor-grid"></div>
+                        <div class="car-model-3d">
+                            <div class="car-body buggy-body" style="background: linear-gradient(135deg, ${colorHex} 0%, ${darkerColor} 100%);">
+                                <div class="buggy-roll-cage"></div>
+                                <div class="car-wheel front-left"></div>
+                                <div class="car-wheel front-right"></div>
+                                <div class="car-wheel back-left"></div>
+                                <div class="car-wheel back-right"></div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }
+            if (vehicleType === 'pickup') {
+                return `
+                    <div class="car-preview-box preview-pickup">
+                        <div class="floor-grid"></div>
+                        <div class="car-model-3d">
+                            <div class="car-body pickup-body" style="background: linear-gradient(135deg, ${colorHex} 0%, ${darkerColor} 100%);">
+                                <div class="pickup-bed"></div>
+                                <div class="car-wheel front-left"></div>
+                                <div class="car-wheel front-right"></div>
+                                <div class="car-wheel back-left"></div>
+                                <div class="car-wheel back-right"></div>
+                                <div class="car-headlight left"></div>
+                                <div class="car-headlight right"></div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }
+            if (vehicleType === 'rally') {
+                return `
+                    <div class="car-preview-box preview-rally">
+                        <div class="floor-grid"></div>
+                        <div class="car-model-3d">
+                            <div class="car-body rally-body" style="background: linear-gradient(135deg, ${colorHex} 0%, ${darkerColor} 100%);">
+                                <div class="rally-spoiler"></div>
+                                <div class="rally-hood-scoop"></div>
+                                <div class="car-wheel front-left"></div>
+                                <div class="car-wheel front-right"></div>
+                                <div class="car-wheel back-left"></div>
+                                <div class="car-wheel back-right"></div>
+                                <div class="car-headlight left"></div>
+                                <div class="car-headlight right"></div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }
+            if (vehicleType === 'hotrod') {
+                return `
+                    <div class="car-preview-box preview-hotrod">
+                        <div class="floor-grid"></div>
+                        <div class="car-model-3d">
+                            <div class="car-body hotrod-body" style="background: linear-gradient(135deg, ${colorHex} 0%, ${darkerColor} 100%);">
+                                <div class="hotrod-engine"></div>
+                                <div class="hotrod-exhaust"></div>
+                                <div class="car-wheel front-left"></div>
+                                <div class="car-wheel front-right"></div>
+                                <div class="car-wheel back-left"></div>
+                                <div class="car-wheel back-right"></div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }
+            if (vehicleType === 'formula') {
+                return `
+                    <div class="car-preview-box preview-formula">
+                        <div class="floor-grid"></div>
+                        <div class="car-model-3d">
+                            <div class="car-body formula-body" style="background: linear-gradient(135deg, ${colorHex} 0%, ${darkerColor} 100%);">
+                                <div class="formula-nose"></div>
+                                <div class="formula-wing-front"></div>
+                                <div class="formula-wing-back"></div>
+                                <div class="formula-cockpit"></div>
+                                <div class="car-wheel front-left"></div>
+                                <div class="car-wheel front-right"></div>
+                                <div class="car-wheel back-left"></div>
+                                <div class="car-wheel back-right"></div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }
             if (vehicleType === 'ufo') {
                 return `
                     <div class="car-preview-box preview-ufo">
@@ -756,72 +861,51 @@ export function renderShop() {
 
         carCard.innerHTML = `
             ${previewHTML}
-            
+            <div class="carCard-status ${owned ? 'status-owned' : (canAfford ? 'status-available' : 'status-locked')}">
+                ${owned ? 'Owned' : (canAfford ? 'Available' : 'Locked')}
+            </div>
+
             <div class="card-content">
-                <h3>${car.name} ${categoryBadge}</h3>
-                
-                <div class="stats-container">
-                    <div class="stat-row">
-                        <span class="stat-icon">⚡</span>
-                        <span class="stat-label">Fart</span>
-                        <div class="stat-bar-bg"><div class="stat-bar-fill speed" style="width: ${maxSpeedPct}%"></div></div>
-                        <span class="stat-value">${Math.round(car.maxSpeed * 3.6)}</span>
+                <div class="carCard-titleRow">
+                    <div class="carCard-titleBlock">
+                        <div class="carCard-sku">${key.toUpperCase()}</div>
+                        <h3 class="carCard-name">${car.name}</h3>
+                        <div class="carCard-subtitle">${car.type || 'Vehicle'} • ${carCategory}</div>
                     </div>
-                    <div class="stat-row">
-                        <span class="stat-icon">🚀</span>
-                        <span class="stat-label">Acc</span>
-                        <div class="stat-bar-bg"><div class="stat-bar-fill accel" style="width: ${accelPct}%"></div></div>
-                        <span class="stat-value">${(car.acceleration * 10).toFixed(1)}</span>
+                    <div class="carCard-badges">${categoryBadge}</div>
+                </div>
+
+                <div class="carCard-meta">
+                    <div class="carCard-metaItem">
+                        <div class="carCard-metaLabel">Speed</div>
+                        <div class="carCard-metaValue">${Math.round(car.maxSpeed * 3.6)} km/h</div>
                     </div>
-                    <div class="stat-row">
-                        <span class="stat-icon">🎯</span>
-                        <span class="stat-label">Styr</span>
-                        <div class="stat-bar-bg"><div class="stat-bar-fill handle" style="width: ${handlePct}%"></div></div>
-                        <span class="stat-value">${(car.handling * 100).toFixed(0)}</span>
+                    <div class="carCard-metaItem">
+                        <div class="carCard-metaLabel">Accel</div>
+                        <div class="carCard-metaValue">${(car.acceleration * 10).toFixed(1)}s</div>
                     </div>
-                    <div class="stat-row">
-                        <span class="stat-icon">❤️</span>
-                        <span class="stat-label">HP</span>
-                        <div class="stat-bar-bg"><div class="stat-bar-fill health" style="width: ${healthPct}%"></div></div>
-                        <span class="stat-value">${car.health || 100}</span>
+                    <div class="carCard-metaItem">
+                        <div class="carCard-metaLabel">Handling</div>
+                        <div class="carCard-metaValue">${(car.handling * 100).toFixed(0)}%</div>
+                    </div>
+                    <div class="carCard-metaItem">
+                        <div class="carCard-metaLabel">Health</div>
+                        <div class="carCard-metaValue">${car.health || 100}</div>
                     </div>
                 </div>
             </div>
 
-            <div class="card-footer">
-                <span class="price-tag" style="color: ${owned ? '#88ff88' : (canAfford ? '#fff' : '#ff5555')};">${priceDisplay}</span>
-                <span class="action-indicator">${actionIcon} ${actionText}</span>
+            <div class="card-footer carCard-footerCompact">
+                <div class="carCard-priceBlock">
+                    <div class="carCard-priceLabel">Total Price</div>
+                    <div class="price-tag" style="color: ${owned ? '#88ff88' : (canAfford ? '#fff' : '#ff5555')};">${priceDisplay}</div>
+                </div>
+                <button class="carCard-cta" type="button">${owned ? 'Select' : (canAfford ? 'Add' : 'Locked')}</button>
             </div>
         `;
 
         carCard.addEventListener('click', () => {
-            if (owned) {
-                gameState.selectedCar = key;
-                updateCarStats(key);
-                renderShop();
-                
-                // If in multiplayer shop mode, trigger respawn with this car
-                if (multiplayerShopMode && onMultiplayerCarSelected) {
-                    onMultiplayerCarSelected(key);
-                }
-            } else if (canAfford) {
-                if(confirm(`Køb ${car.name} for ${car.price.toLocaleString()} kr?`)) {
-                    gameState.totalMoney -= car.price;
-                    // Mark as owned in memory (resets on page refresh)
-                    if (!gameState.ownedCars) gameState.ownedCars = {};
-                    gameState.ownedCars[key] = true;
-                    gameState.selectedCar = key;
-                    
-                    saveProgress();
-                    updateCarStats(key);
-                    renderShop();
-                    
-                    // If in multiplayer shop mode, trigger respawn with newly purchased car
-                    if (multiplayerShopMode && onMultiplayerCarSelected) {
-                        onMultiplayerCarSelected(key);
-                    }
-                }
-            }
+            window.openCarDetail(key, car);
         });
 
         DOM.carList.appendChild(carCard);
@@ -851,7 +935,7 @@ function performRebirth() {
 }
 
 export function updateHealthUI() {
-    if (DOM.healthValue) DOM.healthValue.textContent = Math.ceil(gameState.health);
+    if (DOM.healthValue) DOM.healthValue.textContent = String(Math.ceil(gameState.health));
     if (DOM.healthFill) {
         DOM.healthFill.style.width = Math.max(0, gameState.health) + '%';
         DOM.healthFill.style.background = gameState.health < 30 ? '#ff0000' : (gameState.health < 60 ? '#ffa500' : '#00ff00');
@@ -898,3 +982,182 @@ if (!document.getElementById('damageFlashStyle')) {
     `;
     document.head.appendChild(style);
 }
+
+// ==========================================
+// NEW SHOP UI LOGIC (MASTER-DETAIL)
+// ==========================================
+
+window.switchShopView = function(view) {
+    const catalog = document.getElementById('shopCatalogView');
+    const detail = document.getElementById('shopDetailView');
+    const sidebarItems = document.querySelectorAll('.sidebar-item');
+    
+    if (view === 'catalog') {
+        if(catalog && detail) {
+            catalog.classList.replace('view-hidden', 'view-active');
+            detail.classList.replace('view-active', 'view-hidden');
+        }
+        
+        // Update Sidebar
+        sidebarItems.forEach(i => i.classList.remove('active'));
+        // Find the Biler item (first one usually)
+        if (sidebarItems[0]) sidebarItems[0].classList.add('active');
+        
+    } else if (view === 'detail') {
+        if(catalog && detail) {
+            catalog.classList.replace('view-active', 'view-hidden');
+            detail.classList.replace('view-hidden', 'view-active');
+        }
+        
+        // Update Sidebar state? Maybe unselect Biler or keep it selected as parent category
+        // sidebarItems.forEach(i => i.classList.remove('active'));
+    }
+};
+
+window.closeCarDetail = function() {
+    window.switchShopView('catalog');
+};
+
+let currentDetailKey = null;
+
+// Helper to update big stats
+function updateDetailStats(car) {
+    const statsContainer = document.getElementById('detailStats');
+    if (!statsContainer) return;
+    
+    const maxSpeedPct = Math.min((car.maxSpeed / 200) * 100, 100); 
+    const accelPct = Math.min((car.acceleration / 1.5) * 100, 100);
+    const handlePct = Math.min((car.handling / 0.2) * 100, 100);
+    const healthPct = Math.min((car.health || 100) / 500 * 100, 100);
+    
+    statsContainer.innerHTML = `
+        <div class="stat-row" style="font-size: 14px;">
+            <span class="stat-icon">⚡</span>
+            <span class="stat-label" style="width: 80px;">TOP SPEED</span>
+            <div class="stat-bar-bg" style="height: 12px; background: #333;"><div class="stat-bar-fill speed" style="width: ${maxSpeedPct}%"></div></div>
+            <span class="stat-value">${Math.round(car.maxSpeed * 3.6)} km/h</span>
+        </div>
+        <div class="stat-row" style="font-size: 14px;">
+            <span class="stat-icon">🚀</span>
+            <span class="stat-label" style="width: 80px;">0-100</span>
+            <div class="stat-bar-bg" style="height: 12px; background: #333;"><div class="stat-bar-fill accel" style="width: ${accelPct}%"></div></div>
+            <span class="stat-value">${(car.acceleration * 10).toFixed(1)}s</span>
+        </div>
+        <div class="stat-row" style="font-size: 14px;">
+            <span class="stat-icon">🎯</span>
+            <span class="stat-label" style="width: 80px;">HANDLING</span>
+            <div class="stat-bar-bg" style="height: 12px; background: #333;"><div class="stat-bar-fill handle" style="width: ${handlePct}%"></div></div>
+            <span class="stat-value">${(car.handling * 100).toFixed(0)}%</span>
+        </div>
+        <div class="stat-row" style="font-size: 14px;">
+            <span class="stat-icon">❤️</span>
+            <span class="stat-label" style="width: 80px;">DURABILITY</span>
+            <div class="stat-bar-bg" style="height: 12px; background: #333;"><div class="stat-bar-fill health" style="width: ${healthPct}%"></div></div>
+            <span class="stat-value">${car.health || 100}</span>
+        </div>
+    `;
+}
+
+window.openCarDetail = function(key, car) {
+    currentDetailKey = key;
+    
+    // Update Info
+    const nameEl = document.getElementById('detailName');
+    const descEl = document.getElementById('detailDesc');
+    const priceEl = document.getElementById('detailPrice');
+    
+    if(nameEl) nameEl.textContent = car.name;
+    if(descEl) descEl.textContent = car.description || "A custom vehicle with unique handling characteristics. Perfect for high-speed evasion.";
+    if(priceEl) priceEl.textContent = `${car.price.toLocaleString()} KR`;
+    
+    // Generate Badges
+    const badgeContainer = document.getElementById('detailBadges');
+    if (badgeContainer) {
+        badgeContainer.innerHTML = '';
+        // We don't have getCarCategory logic exposed easily here unless we import it or replicate it.
+        // It's in 'ui.js' scope, so we are fine if this function is inside ui.js.
+        // But getCarCategory might be a local helper function at the top of ui.js?
+        // Let's check. If it's not global, we might need to rely on car props.
+        if (car.reqRebirth) badgeContainer.innerHTML += '<span class="car-type-badge special">SPECIAL</span>';
+        else if (car.price >= 50000) badgeContainer.innerHTML += '<span class="car-type-badge">PREMIUM</span>';
+        else if (car.speed >= 1.2) badgeContainer.innerHTML += '<span class="car-type-badge">SPORT</span>';
+    }
+    
+    updateDetailStats(car);
+    
+    // Update Button State
+    const btn = document.getElementById('detailActionBtn');
+    if (btn) {
+        // Clone button to remove old listeners
+        const newBtn = /** @type {HTMLButtonElement} */ (btn.cloneNode(true));
+        btn.parentNode.replaceChild(newBtn, btn);
+        
+        const updateBtnState = () => {
+            const isOwned = gameState.ownedCars && gameState.ownedCars[key];
+            const isSel = gameState.selectedCar === key;
+            const canAfford = gameState.totalMoney >= car.price;
+            
+            if (isOwned) {
+                newBtn.textContent = isSel ? "VALGT" : "VÆLG BIL";
+                newBtn.className = 'action-btn';
+                newBtn.style.background = isSel ? '#00ff66' : '#fff'; 
+                newBtn.disabled = isSel;
+            } else {
+                newBtn.textContent = canAfford ? "KØB NU" : "IKKE RÅD";
+                newBtn.className = canAfford ? 'action-btn' : 'action-btn disabled';
+                newBtn.style.background = canAfford ? '#fff' : '#333';
+                if (!canAfford) newBtn.disabled = true; else newBtn.disabled = false;
+            }
+        };
+        
+        updateBtnState();
+        
+        newBtn.addEventListener('click', () => {
+            const isOwned = gameState.ownedCars && gameState.ownedCars[key];
+            const canAfford = gameState.totalMoney >= car.price;
+            
+            if (isOwned) {
+                gameState.selectedCar = key;
+                updateCarStats(key);
+                updateBtnState();
+                renderShop();
+                if (window.onMultiplayerCarSelected) window.onMultiplayerCarSelected(key);
+            } else if (canAfford) {
+                if(confirm(`Køb ${car.name}?`)) {
+                    gameState.totalMoney -= car.price;
+                    if (!gameState.ownedCars) gameState.ownedCars = {};
+                    gameState.ownedCars[key] = true;
+                    gameState.selectedCar = key;
+                    saveProgress();
+                    updateCarStats(key);
+                    updateBtnState();
+                    renderShop();
+                    if (window.onMultiplayerCarSelected) window.onMultiplayerCarSelected(key);
+                }
+            }
+        });
+    }
+
+    // Update 3D Preview
+    const container = document.getElementById('detail3DContainer');
+    if (container) {
+        // Helper to find the matching card preview
+        const cards = document.querySelectorAll('.carCard');
+        /** @type {HTMLElement|null} */
+        let targetCard = null;
+        cards.forEach(c => {
+            const title = c.querySelector('h3');
+            if (title && title.textContent.includes(car.name)) targetCard = /** @type {HTMLElement} */ (c);
+        });
+        
+        if (targetCard) {
+            container.innerHTML = '';
+            const previewBox = targetCard.querySelector('.car-preview-box').cloneNode(true);
+            /** @type {HTMLElement} */ (previewBox).classList.remove('preview-onfoot', 'preview-bike', 'preview-scooter'); 
+            // Add a class that might help centering or scaling if needed
+            container.appendChild(previewBox);
+        }
+    }
+    
+    window.switchShopView('detail');
+};

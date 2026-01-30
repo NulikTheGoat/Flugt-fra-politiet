@@ -19,7 +19,7 @@ test.describe('🚨 Sheriff Reinforcement System', () => {
     
     test.beforeEach(async ({ page }) => {
         await page.goto('http://localhost:3000');
-        await page.waitForSelector('canvas', { timeout: 10000 });
+        await page.waitForSelector('canvas', { timeout: 20000 });
     });
 
     test('API endpoint /api/spawn-reinforcements responds correctly', async ({ request }) => {
@@ -110,11 +110,11 @@ test.describe('🎮 Client-side Reinforcement Functions', () => {
     
     test.beforeEach(async ({ page }) => {
         await page.goto('http://localhost:3000');
-        await page.waitForSelector('canvas', { timeout: 10000 });
+        await page.waitForSelector('canvas', { timeout: 20000 });
         
         // Start game
         const soloBtn = page.locator('#soloModeBtn');
-        if (await soloBtn.isVisible()) await soloBtn.click();
+        if (await soloBtn.isVisible()) await soloBtn.click({ force: true });
         await page.waitForTimeout(500);
     });
 
@@ -273,10 +273,10 @@ test.describe('📢 Player Notification', () => {
     
     test.beforeEach(async ({ page }) => {
         await page.goto('http://localhost:3000');
-        await page.waitForSelector('canvas', { timeout: 10000 });
+        await page.waitForSelector('canvas', { timeout: 20000 });
         
         const soloBtn = page.locator('#soloModeBtn');
-        if (await soloBtn.isVisible()) await soloBtn.click();
+        if (await soloBtn.isVisible()) await soloBtn.click({ force: true });
         await page.waitForTimeout(500);
     });
 

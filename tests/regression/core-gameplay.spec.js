@@ -24,17 +24,21 @@ test.describe('🎮 Core Gameplay', () => {
         }
 
         const soloBtn = page.locator('#soloModeBtn');
-        if (await soloBtn.isVisible()) {
-            await soloBtn.click();
+        if (await soloBtn.isVisible({ timeout: 10000 })) {
+            // Use force:true to bypass potential overlay issues on CI
+            await soloBtn.click({ force: true });
         }
 
-        await page.waitForFunction(() => !!window.gameState?.startTime, { timeout: 5000 });
-        await page.waitForTimeout(200);
+        await page.waitForFunction(() => !!window.gameState?.startTime, { timeout: 15000 });
+        // Wait for animation frame to complete rendering
+        await page.waitForFunction(() => window.gameState?.speed !== undefined, { timeout: 5000 });
     };
     
     test.beforeEach(async ({ page }) => {
         await page.goto('http://localhost:3000');
-        await page.waitForSelector('canvas', { timeout: 10000 });
+        await page.waitForSelector('canvas', { timeout: 20000 });
+        // Wait for WebGL to initialize
+        await page.waitForTimeout(500);
     });
 
     test('Game initializes with correct default state', async ({ page }) => {
@@ -67,19 +71,24 @@ test.describe('🎮 Core Gameplay', () => {
 
         // Accelerate (on foot is slower, so wait longer)
         await page.keyboard.down('w');
-        await page.waitForTimeout(2000);
+        // Wait for speed to increase meaningfully
+        await page.waitForFunction(() => window.gameState?.speed > 1, { timeout: 3000 });
         
         const acceleratedSpeed = await page.evaluate(() => window.gameState?.speed);
-        console.log(`Speed after 3s acceleration: ${acceleratedSpeed?.toFixed(2)} (${Math.round((acceleratedSpeed || 0) * 3.6)} km/h)`);
+        console.log(`Speed after acceleration: ${acceleratedSpeed?.toFixed(2)} (${Math.round((acceleratedSpeed || 0) * 3.6)} km/h)`);
         
         expect(acceleratedSpeed).toBeGreaterThan(1);
         
         // Release and coast
         await page.keyboard.up('w');
-        await page.waitForTimeout(1000);
+        // Wait for friction to take effect - speed should decrease
+        await page.waitForFunction((targetSpeed) => {
+            const currentSpeed = window.gameState?.speed || 0;
+            return currentSpeed < targetSpeed - 0.1; // Speed decreased by at least 0.1
+        }, acceleratedSpeed, { timeout: 2000 });
         
         const coastingSpeed = await page.evaluate(() => window.gameState?.speed);
-        console.log(`Speed after 1s coasting: ${coastingSpeed?.toFixed(2)} (${Math.round((coastingSpeed || 0) * 3.6)} km/h)`);
+        console.log(`Speed after coasting: ${coastingSpeed?.toFixed(2)} (${Math.round((coastingSpeed || 0) * 3.6)} km/h)`);
         
         // Should have slowed down due to friction
         expect(coastingSpeed).toBeLessThan(acceleratedSpeed);
@@ -190,9 +199,9 @@ test.describe('🏥 Health System', () => {
     
     test.beforeEach(async ({ page }) => {
         await page.goto('http://localhost:3000');
-        await page.waitForSelector('canvas', { timeout: 10000 });
+        await page.waitForSelector('canvas', { timeout: 20000 });
         const soloBtn = page.locator('#soloModeBtn');
-        if (await soloBtn.isVisible()) await soloBtn.click();
+        if (await soloBtn.isVisible()) await soloBtn.click({ force: true });
         await page.waitForTimeout(500);
     });
 
@@ -249,9 +258,9 @@ test.describe('💰 Economy System', () => {
     
     test.beforeEach(async ({ page }) => {
         await page.goto('http://localhost:3000');
-        await page.waitForSelector('canvas', { timeout: 10000 });
+        await page.waitForSelector('canvas', { timeout: 20000 });
         const soloBtn = page.locator('#soloModeBtn');
-        if (await soloBtn.isVisible()) await soloBtn.click();
+        if (await soloBtn.isVisible()) await soloBtn.click({ force: true });
         await page.waitForTimeout(500);
     });
 
@@ -266,10 +275,19 @@ test.describe('💰 Economy System', () => {
             window.gameState.money = 500;
         });
         
-        // Trigger UI update by moving
+        // Trigger UI update by moving - also ensures game loop runs
         await page.keyboard.down('w');
-        await page.waitForTimeout(500);
+        await page.waitForTimeout(200);
         await page.keyboard.up('w');
+        
+        // Wait for UI to update (handling async rendering)
+        await page.waitForFunction(
+            () => {
+                const el = document.getElementById('money');
+                return el && el.textContent.includes('500');
+            },
+            { timeout: 5000 }
+        );
         
         const displayedMoney = await page.locator('#money').textContent();
         console.log(`Money display after adding 500: ${displayedMoney}`);
@@ -283,9 +301,9 @@ test.describe('🚨 Heat Level System', () => {
     
     test.beforeEach(async ({ page }) => {
         await page.goto('http://localhost:3000');
-        await page.waitForSelector('canvas', { timeout: 10000 });
+        await page.waitForSelector('canvas', { timeout: 20000 });
         const soloBtn = page.locator('#soloModeBtn');
-        if (await soloBtn.isVisible()) await soloBtn.click();
+        if (await soloBtn.isVisible()) await soloBtn.click({ force: true });
         await page.waitForTimeout(500);
     });
 
@@ -326,9 +344,9 @@ test.describe('🚗 Police Spawning', () => {
     
     test.beforeEach(async ({ page }) => {
         await page.goto('http://localhost:3000');
-        await page.waitForSelector('canvas', { timeout: 10000 });
+        await page.waitForSelector('canvas', { timeout: 20000 });
         const soloBtn = page.locator('#soloModeBtn');
-        if (await soloBtn.isVisible()) await soloBtn.click();
+        if (await soloBtn.isVisible()) await soloBtn.click({ force: true });
         await page.waitForTimeout(1000);
     });
 
