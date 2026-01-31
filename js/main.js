@@ -146,7 +146,7 @@ let challengerButtons = []; // Track buttons for cooldown updates
 let challengerDifficulty = 'medium'; // easy, medium, hard
 
 // Challenger free camera system
-let challengerPosition = { x: 0, y: 150, z: 0 }; // Elevated view
+let challengerPosition = { x: 0, y: 400, z: 0 }; // Elevated view for better overview
 let challengerRotation = { yaw: 0, pitch: -0.5 }; // Looking down slightly
 let challengerMarker = null; // Visual marker showing spawn position
 const CHALLENGER_MOVE_SPEED = 8.0; // Units per frame-delta
@@ -468,7 +468,7 @@ function updateChallengerCamera(delta) {
         
         // Q/E for zoom in/out
         if (input['q']) {
-            challengerPosition.y = Math.min(1200, challengerPosition.y + speed * delta * 0.8);
+            challengerPosition.y = Math.min(2500, challengerPosition.y + speed * delta * 0.8);
         }
         if (input['e']) {
             challengerPosition.y = Math.max(200, challengerPosition.y - speed * delta * 0.8);
@@ -521,7 +521,7 @@ function updateChallengerCamera(delta) {
         
         // R/F for height adjustment
         if (input['r']) {
-            challengerPosition.y = Math.min(500, challengerPosition.y + speed * delta * 0.5);
+            challengerPosition.y = Math.min(2500, challengerPosition.y + speed * delta * 0.5);
         }
         if (input['f']) {
             challengerPosition.y = Math.max(30, challengerPosition.y - speed * delta * 0.5);
