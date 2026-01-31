@@ -10,6 +10,7 @@ import { createBuildingDebris } from './world.js';
 import { buildSpawnPlan } from './worldDirectorLogic.js';
 import { playSfx } from './sfx.js';
 import { resolveCollision, BONUS1_REWARD } from './worldDirectorCollisionLogic.js';
+import { appendChatMessage } from './commentary.js';
 
 // Director state
 const directorState = {
@@ -438,67 +439,15 @@ function spawnObjects(objectList, baseZ, event, mood) {
     });
 }
 
-// Show director announcement
+// Show director announcement (only in Radio chat, no blocking popup)
 function showDirectorAnnouncement(scenario, comment, mood) {
-    // Main scenario banner
-    const banner = document.createElement('div');
-    const moodColors = {
-        intense: '#ff0000',
-        rewarding: '#00ff00',
-        chaotic: '#ff00ff',
-        calm: '#00aaff',
-        dramatic: '#ffaa00'
-    };
-    
-    banner.style.cssText = `
-        position: fixed;
-        top: 80px;
-        left: 50%;
-        transform: translateX(-50%);
-        background: linear-gradient(135deg, rgba(0,0,0,0.95) 0%, rgba(30,30,30,0.95) 100%);
-        color: ${moodColors[mood] || '#fff'};
-        padding: 15px 30px;
-        border-radius: 10px;
-        font-family: 'Impact', 'Arial Black', sans-serif;
-        font-size: 20px;
-        z-index: 1000;
-        text-align: center;
-        border: 3px solid ${moodColors[mood] || '#fff'};
-        box-shadow: 0 0 30px ${moodColors[mood] || '#fff'}40;
-        animation: slideIn 0.3s ease-out;
-        text-transform: uppercase;
-        letter-spacing: 2px;
-    `;
-    banner.innerHTML = `
-        <div style="font-size: 12px; opacity: 0.7; margin-bottom: 5px;">🎬 DIRECTOR</div>
-        <div>${scenario}</div>
-        ${comment ? `<div style="font-size: 14px; margin-top: 8px; font-style: italic; opacity: 0.9;">"${comment}"</div>` : ''}
-    `;
-    document.body.appendChild(banner);
-    
-    // Add animation keyframes if not exists
-    if (!document.getElementById('director-styles')) {
-        const style = document.createElement('style');
-        style.id = 'director-styles';
-        style.textContent = `
-            @keyframes slideIn {
-                from { transform: translateX(-50%) translateY(-20px); opacity: 0; }
-                to { transform: translateX(-50%) translateY(0); opacity: 1; }
-            }
-            @keyframes pulse {
-                0%, 100% { transform: scale(1); }
-                50% { transform: scale(1.05); }
-            }
-        `;
-        document.head.appendChild(style);
-    }
-    
-    setTimeout(() => {
-        banner.style.opacity = '0';
-        banner.style.transform = 'translateX(-50%) translateY(-20px)';
-        banner.style.transition = 'all 0.5s';
-        setTimeout(() => banner.remove(), 500);
-    }, 4000);
+    // Send to Radio chat only
+    const shortScenario = scenario.length > 50 ? scenario.substring(0, 50) + '...' : scenario;
+    appendChatMessage({
+        source: '🎬 Director',
+        text: shortScenario,
+        variant: 'default'
+    });
 }
 
 // Request spawn decision from LLM
@@ -542,6 +491,13 @@ async function requestSpawnDecision() {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(context)
         });
+        
+        // Handle rate limiting (429)
+        if (response.status === 429) {
+            console.warn('[WorldDirector] Rate limited (429) - disabling LLM');
+            directorState.llmAvailable = false;
+            return;
+        }
         
         if (response.ok) {
             const data = await response.json();
