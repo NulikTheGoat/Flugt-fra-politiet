@@ -1,6 +1,15 @@
 // Physics constants
 export const GRAVITY = -9.82; // Earth gravity (m/s²)
 
+// Challenger Camera Settings
+export const CHALLENGER_CAMERA = {
+    INITIAL_HEIGHT: 400,
+    MAX_HEIGHT_2D: 2500,
+    MAX_HEIGHT_3D: 2500,
+    MIN_HEIGHT_2D: 200,
+    MIN_HEIGHT_3D: 30
+};
+
 export const enemies = {
     standard: { color: 0x0000ff, speed: 250, scale: 1, name: 'Politibil', health: 35, killReward: 150, pickupReward: 300, mass: 1.0 },
     interceptor: { color: 0x111111, speed: 300, scale: 1, name: 'Interceptor', health: 30, killReward: 200, pickupReward: 400, mass: 1.1 },

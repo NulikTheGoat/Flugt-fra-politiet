@@ -37,7 +37,7 @@ import { gameState, keys, saveProgress } from './state.js';
 import { gameConfig } from './config.js';
 import { scene, camera, renderer } from './core.js';
 import * as THREE from 'three';
-import { cars } from './constants.js';
+import { cars, CHALLENGER_CAMERA } from './constants.js';
 import { createPlayerCar, rebuildPlayerCar, updatePlayer, playerCar, setUICallbacks, createOtherPlayerCar, updateOtherPlayerCar, removeOtherPlayerCar, takeDamage } from './player.js';
 import { spawnPoliceCar, updatePoliceAI, updateProjectiles, firePlayerProjectile, syncPoliceFromNetwork, getPoliceStateForNetwork, resetPoliceNetworkIds, createPoliceCar } from './police.js';
 import { createGround, createTrees, createBuildings, updateBuildingChunks, updateCollectibles, cleanupSmallDebris, createSky, createDistantCityscape, createHotdogStands, updateEndlessWorld } from './world.js';
@@ -146,7 +146,7 @@ let challengerButtons = []; // Track buttons for cooldown updates
 let challengerDifficulty = 'medium'; // easy, medium, hard
 
 // Challenger free camera system
-let challengerPosition = { x: 0, y: 400, z: 0 }; // Elevated view for better overview
+let challengerPosition = { x: 0, y: CHALLENGER_CAMERA.INITIAL_HEIGHT, z: 0 }; // Elevated view for better overview
 let challengerRotation = { yaw: 0, pitch: -0.5 }; // Looking down slightly
 let challengerMarker = null; // Visual marker showing spawn position
 const CHALLENGER_MOVE_SPEED = 8.0; // Units per frame-delta
@@ -468,10 +468,10 @@ function updateChallengerCamera(delta) {
         
         // Q/E for zoom in/out
         if (input['q']) {
-            challengerPosition.y = Math.min(2500, challengerPosition.y + speed * delta * 0.8);
+            challengerPosition.y = Math.min(CHALLENGER_CAMERA.MAX_HEIGHT_2D, challengerPosition.y + speed * delta * 0.8);
         }
         if (input['e']) {
-            challengerPosition.y = Math.max(200, challengerPosition.y - speed * delta * 0.8);
+            challengerPosition.y = Math.max(CHALLENGER_CAMERA.MIN_HEIGHT_2D, challengerPosition.y - speed * delta * 0.8);
         }
         
         // Top-down camera setup
@@ -521,10 +521,10 @@ function updateChallengerCamera(delta) {
         
         // R/F for height adjustment
         if (input['r']) {
-            challengerPosition.y = Math.min(2500, challengerPosition.y + speed * delta * 0.5);
+            challengerPosition.y = Math.min(CHALLENGER_CAMERA.MAX_HEIGHT_3D, challengerPosition.y + speed * delta * 0.5);
         }
         if (input['f']) {
-            challengerPosition.y = Math.max(30, challengerPosition.y - speed * delta * 0.5);
+            challengerPosition.y = Math.max(CHALLENGER_CAMERA.MIN_HEIGHT_3D, challengerPosition.y - speed * delta * 0.5);
         }
         
         camera.up.set(0, 1, 0);
