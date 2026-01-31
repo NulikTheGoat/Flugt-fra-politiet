@@ -711,6 +711,7 @@ export function renderShop() {
         if (multiplayerShopMode && !owned) return;
         
         const carCard = document.createElement('div');
+        carCard.dataset.key = key;
         
         // Base classes
         let classes = ['carCard'];
@@ -1123,6 +1124,21 @@ window.switchShopView = function(view) {
 
 window.closeCarDetail = function() {
     window.switchShopView('catalog');
+    
+    // Restore focus to the card we just viewed
+    if (currentDetailKey) {
+        const card = document.querySelector(`.carCard[data-key="${currentDetailKey}"]`);
+        if (card) {
+            // Remove focus from other elements
+            if (document.activeElement instanceof HTMLElement) document.activeElement.blur();
+            
+            card.focus();
+            // Also add keyboard-selected class which menu.js uses
+            document.querySelectorAll('.keyboard-selected').forEach(el => el.classList.remove('keyboard-selected'));
+            card.classList.add('keyboard-selected');
+            card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+    }
 };
 
 let currentDetailKey = null;
@@ -1245,6 +1261,9 @@ window.openCarDetail = function(key, car) {
                 }
             }
         });
+        
+        // Auto focus for keyboard navigation
+        setTimeout(() => newBtn.focus(), 50);
     }
 
     // Update 3D Preview

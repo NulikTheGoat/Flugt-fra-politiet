@@ -317,6 +317,13 @@ export function initMenu({ startGame, cleanupGame }) {
             
             // If shop is open, close it and show menu
             if (DOM.shop && DOM.shop.style.display === 'flex') {
+                // Check if in detail view - go back to catalog instead of closing shop
+                const detailView = document.getElementById('shopDetailView');
+                if (detailView && detailView.classList.contains('view-active')) {
+                    if (window.closeCarDetail) window.closeCarDetail();
+                    return;
+                }
+
                 DOM.shop.style.display = 'none';
                 if(gameModeModal) gameModeModal.style.display = 'flex';
                 return;
@@ -503,6 +510,47 @@ export function initMenu({ startGame, cleanupGame }) {
 
 function handleShopNavigation(e) {
     const activeEl = document.activeElement;
+    
+    // Check if Detail View is active
+    const detailView = document.getElementById('shopDetailView');
+    const isDetailView = detailView && detailView.classList.contains('view-active');
+
+    if (isDetailView) {
+        const backBtn = detailView.querySelector('.back-btn');
+        const actionBtn = document.getElementById('detailActionBtn');
+        const buttons = [backBtn, actionBtn].filter(b => b && b.offsetParent !== null); // Check visibility
+        
+        if (buttons.length === 0) return;
+        
+        // If key is Enter, trigger click on active element if it's one of our buttons
+        if (e.key === 'Enter' || e.key === ' ') {
+            if (activeEl && buttons.includes(activeEl)) {
+                activeEl.click();
+                e.preventDefault();
+            }
+            return;
+        }
+        
+        e.preventDefault();
+        
+        let currentIndex = buttons.indexOf(activeEl);
+        
+        // Navigation logic
+        if (currentIndex === -1) {
+            currentIndex = 1; // Default to action button (usually "Buy" or "Select")
+            if (currentIndex >= buttons.length) currentIndex = 0;
+        } else {
+             // Simple toggle between buttons
+             currentIndex = (currentIndex + 1) % buttons.length;
+        }
+        
+        // Apply focus
+        document.querySelectorAll('.keyboard-selected').forEach(el => el.classList.remove('keyboard-selected'));
+        buttons[currentIndex].focus();
+        buttons[currentIndex].classList.add('keyboard-selected');
+        
+        return;
+    }
     
     // Define sections
     const tabs = Array.from(document.querySelectorAll('.shop-tab'));
