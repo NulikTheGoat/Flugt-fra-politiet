@@ -19,3 +19,16 @@ export function normalizeAngleRadians(angle) {
 export function clamp(val, min, max) {
     return Math.max(min, Math.min(max, val));
 }
+
+// Linear interpolation
+export function lerp(current, target, factor) {
+    return current + (target - current) * factor;
+}
+
+// Smooth rotation interpolation (handles wraparound)
+export function lerpAngle(current, target, factor) {
+    let diff = target - current;
+    if (diff > Math.PI) diff -= Math.PI * 2;
+    if (diff < -Math.PI) diff += Math.PI * 2;
+    return current + diff * factor;
+}

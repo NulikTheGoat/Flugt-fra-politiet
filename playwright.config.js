@@ -43,7 +43,7 @@ module.exports = defineConfig({
     
     // Start server before tests
     webServer: {
-        command: 'DISABLE_MPS=1 PLAYWRIGHT=1 npm start',
+        command: 'npx cross-env DISABLE_MPS=1 PLAYWRIGHT=1 npm start',
         url: 'http://localhost:3000',
         reuseExistingServer: !process.env.CI, // Always start fresh server in CI
         timeout: 60000, // 60s for CI server startup (was 10s - too short)

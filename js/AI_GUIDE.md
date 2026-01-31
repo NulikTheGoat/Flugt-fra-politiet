@@ -41,6 +41,9 @@ State:
 
 ## Dev/Automation Hooks
 
+## Always run:
+`npm run lint && npm run typecheck`
+
 ### `window.__game`
 `js/devtools.js` exposes stable references:
 - `window.__game.gameState`

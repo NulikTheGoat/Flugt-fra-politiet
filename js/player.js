@@ -6,15 +6,17 @@ import { sharedGeometries, sharedMaterials } from './assets.js';
 import { createSmoke, createSpark, createTireMark, updateTireMarks, createWheelDust, updateDustParticles } from './particles.js';
 import { playSfx, setEngineRpm, stopEngineSound, setDriftIntensity, stopDriftSound } from './sfx.js';
 import { CarBuilders, makeCarLights } from './carModels.js';
+import { clamp, lerp, lerpAngle } from './utils.js';
 
 /**
- * @typedef {{ triggerDamageEffect: () => void, updateHealthUI: () => void }} UICallbacks
+ * @typedef {{ triggerDamageEffect: () => void, updateHealthUI: () => void, showGameOver: (msg?: string) => void }} UICallbacks
  */
 
 /** @type {UICallbacks} */
 let uiCallbacks = {
     triggerDamageEffect: () => {},
-    updateHealthUI: () => {}
+    updateHealthUI: () => {},
+    showGameOver: () => {}
 };
 
 /** @param {Partial<UICallbacks>} callbacks */
@@ -24,10 +26,6 @@ export function setUICallbacks(callbacks) {
 
 /** @type {any} */
 export let playerCar;
-
-function clamp01(v) {
-    return Math.max(0, Math.min(1, v));
-}
 
 function isCarLikeType(type) {
     return !type || ['standard', 'sport', 'muscle', 'super', 'hyper'].includes(type);
@@ -726,6 +724,11 @@ export function updatePlayer(delta, now) {
 
     // Car cannot drive when HP is 0 or below
     if (gameState.health <= 0) {
+        if (!gameState.arrested) {
+             gameState.arrested = true;
+             uiCallbacks.showGameOver('Din bil er totalskadet!');
+        }
+
         stopEngineSound();
         stopDriftSound();
         // On foot: just stop (no car-like wreck drifting)
@@ -786,9 +789,9 @@ export function updatePlayer(delta, now) {
         const targetVZ = wantsMove ? dirZ * targetSpeed : 0;
 
         // Smooth acceleration towards target velocity
-        const accelLerp = clamp01((gameState.acceleration || 0.02) * 14 * delta);
-        gameState.velocityX += (targetVX - gameState.velocityX) * accelLerp;
-        gameState.velocityZ += (targetVZ - gameState.velocityZ) * accelLerp;
+        const accelFactor = clamp((gameState.acceleration || 0.02) * 14 * delta, 0, 1);
+        gameState.velocityX = lerp(gameState.velocityX, targetVX, accelFactor);
+        gameState.velocityZ = lerp(gameState.velocityZ, targetVZ, accelFactor);
 
         // Friction when no input
         if (!wantsMove) {
@@ -1344,20 +1347,13 @@ export function updateOtherPlayerCar(mesh, state) {
     if (!mesh || !state) return;
     
     // Smooth interpolation towards target position
-    const lerpFactor = 0.3;
-    mesh.position.x += (state.x - mesh.position.x) * lerpFactor;
-    mesh.position.z += (state.z - mesh.position.z) * lerpFactor;
+    const factor = 0.3;
+    mesh.position.x = lerp(mesh.position.x, state.x, factor);
+    mesh.position.z = lerp(mesh.position.z, state.z, factor);
     
     // Smooth rotation interpolation (support both rotY and rotation field names)
-    let targetRotation = state.rotY !== undefined ? state.rotY : state.rotation;
-    let currentRotation = mesh.rotation.y;
-    
-    // Handle rotation wraparound
-    let diff = targetRotation - currentRotation;
-    if (diff > Math.PI) diff -= Math.PI * 2;
-    if (diff < -Math.PI) diff += Math.PI * 2;
-    
-    mesh.rotation.y += diff * lerpFactor;
+    const targetRotation = state.rotY !== undefined ? state.rotY : state.rotation;
+    mesh.rotation.y = lerpAngle(mesh.rotation.y, targetRotation, factor);
 }
 
 // Remove another player's car from the scene

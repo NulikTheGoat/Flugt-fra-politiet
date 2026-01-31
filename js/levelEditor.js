@@ -62,23 +62,23 @@ export function initLevelEditor() {
 
     // Event listeners
     objectTypeSelect.addEventListener('change', onObjectTypeChange);
-    buildingTypeSelect.addEventListener('change', (e) => editorState.buildingType = e.target.value);
+    buildingTypeSelect.addEventListener('change', (e) => editorState.buildingType = /** @type {HTMLSelectElement} */ (e.target).value);
     
     widthSlider.addEventListener('input', (e) => {
-        editorState.width = parseInt(e.target.value);
-        widthVal.textContent = editorState.width;
+        editorState.width = parseInt(/** @type {HTMLInputElement} */ (e.target).value);
+        widthVal.textContent = String(editorState.width);
         updatePreview();
     });
     
     depthSlider.addEventListener('input', (e) => {
-        editorState.depth = parseInt(e.target.value);
-        depthVal.textContent = editorState.depth;
+        editorState.depth = parseInt(/** @type {HTMLInputElement} */ (e.target).value);
+        depthVal.textContent = String(editorState.depth);
         updatePreview();
     });
     
     heightSlider.addEventListener('input', (e) => {
-        editorState.height = parseInt(e.target.value);
-        heightVal.textContent = editorState.height;
+        editorState.height = parseInt(/** @type {HTMLInputElement} */ (e.target).value);
+        heightVal.textContent = String(editorState.height);
         updatePreview();
     });
 
@@ -463,7 +463,7 @@ function loadLevel(event) {
     const reader = new FileReader();
     reader.onload = (e) => {
         try {
-            const levelData = JSON.parse(e.target.result);
+            const levelData = JSON.parse(/** @type {string} */ (e.target?.result));
             
             // Clear existing
             editorState.placedObjects.forEach(obj => removeObjectFromWorld(obj));

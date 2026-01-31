@@ -22,8 +22,8 @@ renderer.toneMappingExposure = 1.0;
 // r152+ uses outputColorSpace, older versions use outputEncoding
 if (renderer.outputColorSpace !== undefined) {
     renderer.outputColorSpace = THREE.SRGBColorSpace; // Three.js r152+
-} else if (renderer.outputEncoding !== undefined) {
-    renderer.outputEncoding = THREE.sRGBEncoding; // Three.js r128-r151
+} else if (/** @type {any} */ (renderer).outputEncoding !== undefined) {
+    /** @type {any} */ (renderer).outputEncoding = /** @type {any} */ (THREE).sRGBEncoding; // Three.js r128-r151
 }
 
 // Lighting setup - Enhanced for PBR materials

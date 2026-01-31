@@ -73,10 +73,11 @@ test.describe('⌨️ Keyboard Navigation', () => {
         await page.waitForFunction(() => !!window.gameState?.startTime, { timeout: 5000 });
         console.log('Game started successfully');
         
-        // Step 2: Get arrested by setting health to 0 and arrested flag
+        // Step 2: Get arrested by setting health to 0
+        // We do NOT set arrested=true manually, we let the game loop handle the death state
         await page.evaluate(() => {
             window.gameState.health = 0;
-            window.gameState.arrested = true;
+            // window.gameState.arrested = true; // Let the game logic handle this
         });
         
         // Wait for game over screen to appear (check DOM)

@@ -249,6 +249,9 @@ test.describe('🎮 Client-side Reinforcement Functions', () => {
     });
 
     test('spawnReinforcementUnits creates police cars', async ({ page }) => {
+        // Ensure player car exists before spawning
+        await page.waitForFunction(() => !!window.playerCar);
+
         // Get initial police count
         const initialCount = await page.evaluate(() => window.gameState.policeCars.length);
         console.log(`Initial police count: ${initialCount}`);
@@ -258,8 +261,12 @@ test.describe('🎮 Client-side Reinforcement Functions', () => {
             window.spawnReinforcementUnits(3, ['standard', 'interceptor', 'swat']);
         });
         
-        // Wait for staggered spawns (200ms each)
-        await page.waitForTimeout(1000);
+        // Wait for staggered spawns (200ms each) -> Wait for count to change instead of fixed timeout
+        try {
+            await page.waitForFunction((expected) => window.gameState.policeCars.length === expected, initialCount + 3, { timeout: 5000 });
+        } catch (e) {
+            console.log('Timeout waiting for police count update');
+        }
         
         // Check police count increased
         const finalCount = await page.evaluate(() => window.gameState.policeCars.length);

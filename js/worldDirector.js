@@ -10,6 +10,7 @@ import { createBuildingDebris } from './world.js';
 import { buildSpawnPlan } from './worldDirectorLogic.js';
 import { playSfx } from './sfx.js';
 import { resolveCollision, BONUS1_REWARD } from './worldDirectorCollisionLogic.js';
+import { appendChatMessage } from './commentary.js';
 
 // Director state
 const directorState = {
@@ -19,6 +20,7 @@ const directorState = {
     movingObjects: [], // Track moving objects separately
     maxSpawnedObjects: 100,
     enabled: true,
+    llmAvailable: true, // Set to false after first network failure to stop retrying
     lastPlayerZ: 0,
     spawnDistance: 3000, // Spawn far ahead on horizon (increased for better draw distance)
     cleanupDistance: 600, // Cleanup behind player
@@ -437,73 +439,25 @@ function spawnObjects(objectList, baseZ, event, mood) {
     });
 }
 
-// Show director announcement
+// Show director announcement (only in Radio chat, no blocking popup)
 function showDirectorAnnouncement(scenario, comment, mood) {
-    // Main scenario banner
-    const banner = document.createElement('div');
-    const moodColors = {
-        intense: '#ff0000',
-        rewarding: '#00ff00',
-        chaotic: '#ff00ff',
-        calm: '#00aaff',
-        dramatic: '#ffaa00'
-    };
-    
-    banner.style.cssText = `
-        position: fixed;
-        top: 80px;
-        left: 50%;
-        transform: translateX(-50%);
-        background: linear-gradient(135deg, rgba(0,0,0,0.95) 0%, rgba(30,30,30,0.95) 100%);
-        color: ${moodColors[mood] || '#fff'};
-        padding: 15px 30px;
-        border-radius: 10px;
-        font-family: 'Impact', 'Arial Black', sans-serif;
-        font-size: 20px;
-        z-index: 1000;
-        text-align: center;
-        border: 3px solid ${moodColors[mood] || '#fff'};
-        box-shadow: 0 0 30px ${moodColors[mood] || '#fff'}40;
-        animation: slideIn 0.3s ease-out;
-        text-transform: uppercase;
-        letter-spacing: 2px;
-    `;
-    banner.innerHTML = `
-        <div style="font-size: 12px; opacity: 0.7; margin-bottom: 5px;">🎬 DIRECTOR</div>
-        <div>${scenario}</div>
-        ${comment ? `<div style="font-size: 14px; margin-top: 8px; font-style: italic; opacity: 0.9;">"${comment}"</div>` : ''}
-    `;
-    document.body.appendChild(banner);
-    
-    // Add animation keyframes if not exists
-    if (!document.getElementById('director-styles')) {
-        const style = document.createElement('style');
-        style.id = 'director-styles';
-        style.textContent = `
-            @keyframes slideIn {
-                from { transform: translateX(-50%) translateY(-20px); opacity: 0; }
-                to { transform: translateX(-50%) translateY(0); opacity: 1; }
-            }
-            @keyframes pulse {
-                0%, 100% { transform: scale(1); }
-                50% { transform: scale(1.05); }
-            }
-        `;
-        document.head.appendChild(style);
-    }
-    
-    setTimeout(() => {
-        banner.style.opacity = '0';
-        banner.style.transform = 'translateX(-50%) translateY(-20px)';
-        banner.style.transition = 'all 0.5s';
-        setTimeout(() => banner.remove(), 500);
-    }, 4000);
+    // Send to Radio chat only
+    const shortScenario = scenario.length > 50 ? scenario.substring(0, 50) + '...' : scenario;
+    appendChatMessage({
+        source: '🎬 Director',
+        text: shortScenario,
+        variant: 'default'
+    });
 }
 
 // Request spawn decision from LLM
 async function requestSpawnDecision() {
     if (!directorState.enabled) return;
+    if (!directorState.llmAvailable) return; // Stop retrying after network failure
     if (!playerCar) return;
+    
+    // Skip LLM requests when using Vite dev server (no backend API)
+    if (window.location.port === '5173' || window.location.port === '5174') return;
     
     const now = Date.now();
     if (now - directorState.lastRequestTime < directorState.requestCooldown) return;
@@ -538,6 +492,13 @@ async function requestSpawnDecision() {
             body: JSON.stringify(context)
         });
         
+        // Handle rate limiting (429)
+        if (response.status === 429) {
+            console.warn('[WorldDirector] Rate limited (429) - disabling LLM');
+            directorState.llmAvailable = false;
+            return;
+        }
+        
         if (response.ok) {
             const data = await response.json();
             
@@ -556,7 +517,18 @@ async function requestSpawnDecision() {
             }
         }
     } catch (error) {
-        console.error('[WorldDirector] Request failed:', error);
+        // Silently ignore network errors (server not running, etc.)
+        // TypeError with "Load failed" = fetch failed to connect
+        const isNetworkError = error.name === 'TypeError' || 
+                               error.message?.includes('Load failed') ||
+                               error.message?.includes('Failed to fetch') ||
+                               error.message?.includes('NetworkError');
+        if (isNetworkError) {
+            // Disable LLM requests after first failure to stop spamming
+            directorState.llmAvailable = false;
+        } else {
+            console.error('[WorldDirector] Request failed:', error);
+        }
     }
 }
 
@@ -908,7 +880,7 @@ function createSpawnIndicator(x, z, type) {
 
 /**
  * Spawn environment objects from Challenger role
- * @param {Array<{type: string, side?: string}>} objects - Objects to spawn
+ * @param {Array<{type: string, side?: string, moving?: boolean, speed?: number}>} objects - Objects to spawn
  * @param {number} baseZ - Base Z position (player's current Z)
  */
 export function challengerSpawnObjects(objects, baseZ) {
@@ -967,7 +939,7 @@ export function challengerSpawnObjects(objects, baseZ) {
 
 /**
  * Spawn environment objects at specific position (for free-roaming Challenger)
- * @param {Array<{type: string, side?: string}>} objects - Objects to spawn
+ * @param {Array<{type: string, side?: string, moving?: boolean, speed?: number}>} objects - Objects to spawn
  * @param {number} centerX - Center X position from Challenger marker
  * @param {number} centerZ - Center Z position from Challenger marker
  */

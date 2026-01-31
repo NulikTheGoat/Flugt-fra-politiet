@@ -37,7 +37,7 @@ import { gameState, keys, saveProgress } from './state.js';
 import { gameConfig } from './config.js';
 import { scene, camera, renderer } from './core.js';
 import * as THREE from 'three';
-import { cars } from './constants.js';
+import { cars, CHALLENGER_CAMERA } from './constants.js';
 import { createPlayerCar, rebuildPlayerCar, updatePlayer, playerCar, setUICallbacks, createOtherPlayerCar, updateOtherPlayerCar, removeOtherPlayerCar, takeDamage } from './player.js';
 import { spawnPoliceCar, updatePoliceAI, updateProjectiles, firePlayerProjectile, syncPoliceFromNetwork, getPoliceStateForNetwork, resetPoliceNetworkIds, createPoliceCar } from './police.js';
 import { createGround, createTrees, createBuildings, updateBuildingChunks, updateCollectibles, cleanupSmallDebris, createSky, createDistantCityscape, createHotdogStands, updateEndlessWorld } from './world.js';
@@ -146,7 +146,7 @@ let challengerButtons = []; // Track buttons for cooldown updates
 let challengerDifficulty = 'medium'; // easy, medium, hard
 
 // Challenger free camera system
-let challengerPosition = { x: 0, y: 150, z: 0 }; // Elevated view
+let challengerPosition = { x: 0, y: CHALLENGER_CAMERA.INITIAL_HEIGHT, z: 0 }; // Elevated view for better overview
 let challengerRotation = { yaw: 0, pitch: -0.5 }; // Looking down slightly
 let challengerMarker = null; // Visual marker showing spawn position
 const CHALLENGER_MOVE_SPEED = 8.0; // Units per frame-delta
@@ -468,10 +468,10 @@ function updateChallengerCamera(delta) {
         
         // Q/E for zoom in/out
         if (input['q']) {
-            challengerPosition.y = Math.min(1200, challengerPosition.y + speed * delta * 0.8);
+            challengerPosition.y = Math.min(CHALLENGER_CAMERA.MAX_HEIGHT_2D, challengerPosition.y + speed * delta * 0.8);
         }
         if (input['e']) {
-            challengerPosition.y = Math.max(200, challengerPosition.y - speed * delta * 0.8);
+            challengerPosition.y = Math.max(CHALLENGER_CAMERA.MIN_HEIGHT_2D, challengerPosition.y - speed * delta * 0.8);
         }
         
         // Top-down camera setup
@@ -521,10 +521,10 @@ function updateChallengerCamera(delta) {
         
         // R/F for height adjustment
         if (input['r']) {
-            challengerPosition.y = Math.min(500, challengerPosition.y + speed * delta * 0.5);
+            challengerPosition.y = Math.min(CHALLENGER_CAMERA.MAX_HEIGHT_3D, challengerPosition.y + speed * delta * 0.5);
         }
         if (input['f']) {
-            challengerPosition.y = Math.max(30, challengerPosition.y - speed * delta * 0.5);
+            challengerPosition.y = Math.max(CHALLENGER_CAMERA.MIN_HEIGHT_3D, challengerPosition.y - speed * delta * 0.5);
         }
         
         camera.up.set(0, 1, 0);
@@ -1101,20 +1101,13 @@ function updatePlayersList(players) {
         playersList.appendChild(div);
     });
     
-    // Update start button state if host is challenger
+    // Update start button state if host is challenger - Visual helper only
     const startBtn = document.getElementById('startMultiplayerBtn');
     if (startBtn && gameState.isHost && gameState.playerRole === 'challenger') {
-        const hasContester = players.some(p => p.role !== 'challenger' && !p.isHost) || 
-                             Array.from(gameState.otherPlayers?.values() || []).some(p => p.role !== 'challenger');
-        if (!hasContester) {
-            startBtn.textContent = '⏳ Venter på Contester...';
-            startBtn.style.opacity = '0.5';
-            startBtn.style.cursor = 'not-allowed';
-        } else {
-            startBtn.textContent = '🚀 START SPIL';
-            startBtn.style.opacity = '1';
-            startBtn.style.cursor = 'pointer';
-        }
+        // We now allow solo start for testing/exploration, so just ensure it resets to Start
+        startBtn.textContent = '🚀 START SPIL (SOLO/MULTI)';
+        startBtn.style.opacity = '1';
+        startBtn.style.cursor = 'pointer';
     }
 }
 
@@ -1134,8 +1127,9 @@ window.addEventListener('resize', () => {
 });
 
 window.addEventListener('keydown', (e) => {
-    if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') {
-        console.log('[KEYDOWN-BLOCKED] Target is input:', e.target.tagName);
+    const target = /** @type {HTMLElement} */ (e.target);
+    if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA') {
+        console.log('[KEYDOWN-BLOCKED] Target is input:', target.tagName);
         return;
     }
     
@@ -1181,7 +1175,8 @@ window.addEventListener('keydown', (e) => {
 });
 
 window.addEventListener('keyup', (e) => {
-    if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+    const target = /** @type {HTMLElement} */ (e.target);
+    if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA') return;
     const key = e.key.toLowerCase();
     keys[key] = false;
     
@@ -1220,6 +1215,13 @@ createPlayerCar(starterCar.color, starterCar.type || gameState.selectedCar);
 initLevelEditor();
 
 export function startGame() {
+    // FORCE SOLO STATE - Fixes issue where persistent role prevents arrest
+    console.log('[GAME] Starting SOLO mode - enforcing Contester role');
+    gameState.isMultiplayer = false;
+    gameState.playerRole = 'contester';
+    // Ensure challenger panel is hidden
+    updateChallengerPanelVisibility();
+
     // Ensure audio is unlocked when game starts
     unlockAudio();
     
@@ -1675,7 +1677,7 @@ function updateOtherPlayersHUD() {
 
 // Start
 setStartGameCallback(startGame);
-setUICallbacks({ triggerDamageEffect, updateHealthUI });
+setUICallbacks({ triggerDamageEffect, updateHealthUI, showGameOver });
 
 // Auto-start game if /start path is accessed
 if (autoStart) {

@@ -9,6 +9,14 @@ declare global {
     camera?: any;
     keys?: any;
     challengerKeys?: any;
+    challengerDebug?: {
+      position: { x: number; y: number; z: number };
+      rotation: { yaw: number; pitch: number };
+      isActive: boolean;
+      role: string;
+      isMultiplayer: boolean;
+      testMove: (dir: string) => void;
+    };
     playerCar: any;
     cars?: any;
     sheriffState?: any;
