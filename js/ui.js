@@ -1128,7 +1128,7 @@ window.closeCarDetail = function() {
     // Restore focus to the card we just viewed
     if (currentDetailKey) {
         const card = document.querySelector(`.carCard[data-key="${currentDetailKey}"]`);
-        if (card) {
+        if (card instanceof HTMLElement) {
             // Remove focus from other elements
             if (document.activeElement instanceof HTMLElement) document.activeElement.blur();
             
