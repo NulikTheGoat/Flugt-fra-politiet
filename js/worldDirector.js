@@ -505,6 +505,9 @@ async function requestSpawnDecision() {
     if (!directorState.enabled) return;
     if (!playerCar) return;
     
+    // Skip LLM requests when using Vite dev server (no backend API)
+    if (window.location.port === '5173' || window.location.port === '5174') return;
+    
     const now = Date.now();
     if (now - directorState.lastRequestTime < directorState.requestCooldown) return;
     
@@ -556,7 +559,11 @@ async function requestSpawnDecision() {
             }
         }
     } catch (error) {
-        console.error('[WorldDirector] Request failed:', error);
+        // Silently ignore network errors (server not running, etc.)
+        // Only log unexpected errors
+        if (error.name !== 'TypeError' && !error.message?.includes('Load failed')) {
+            console.error('[WorldDirector] Request failed:', error);
+        }
     }
 }
 
