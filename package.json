@@ -47,8 +47,10 @@
   },
   "homepage": "https://github.com/NulikTheGoat/Flugt-fra-politiet#readme",
   "dependencies": {
+    "@fastify/static": "^9.0.0",
     "cannon-es": "^0.20.0",
     "dotenv": "^17.2.3",
+    "fastify": "^5.7.2",
     "helmet": "^8.1.0",
     "three": "^0.182.0",
     "ws": "^8.19.0"
