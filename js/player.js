@@ -9,13 +9,14 @@ import { CarBuilders, makeCarLights } from './carModels.js';
 import { clamp, lerp, lerpAngle } from './utils.js';
 
 /**
- * @typedef {{ triggerDamageEffect: () => void, updateHealthUI: () => void }} UICallbacks
+ * @typedef {{ triggerDamageEffect: () => void, updateHealthUI: () => void, showGameOver: (msg?: string) => void }} UICallbacks
  */
 
 /** @type {UICallbacks} */
 let uiCallbacks = {
     triggerDamageEffect: () => {},
-    updateHealthUI: () => {}
+    updateHealthUI: () => {},
+    showGameOver: () => {}
 };
 
 /** @param {Partial<UICallbacks>} callbacks */
@@ -723,6 +724,11 @@ export function updatePlayer(delta, now) {
 
     // Car cannot drive when HP is 0 or below
     if (gameState.health <= 0) {
+        if (!gameState.arrested) {
+             gameState.arrested = true;
+             uiCallbacks.showGameOver('Din bil er totalskadet!');
+        }
+
         stopEngineSound();
         stopDriftSound();
         // On foot: just stop (no car-like wreck drifting)

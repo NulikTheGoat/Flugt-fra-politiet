@@ -6,33 +6,31 @@ const { test, expect } = require('@playwright/test');
  * 
  * These tests verify fundamental game mechanics work correctly.
  * Run after ANY code change to catch regressions early.
- * 
- * AI OPTIMIZATION NOTES:
- * - Each test is independent and can be run in isolation
- * - Console logs explain what's being tested and why
- * - Failures include diagnostic data for quick debugging
- * - Tests are ordered from most critical to least critical
  */
 
+// Shared helper function
+const startSoloGame = async (page, selectedCar) => {
+    if (selectedCar) {
+        await page.evaluate((car) => {
+            if (window.gameState) window.gameState.selectedCar = car;
+        }, selectedCar);
+    }
+
+    const soloBtn = page.locator('#soloModeBtn');
+    // Ensure button is stable before clicking
+    await soloBtn.waitFor({ state: 'visible', timeout: 10000 });
+    
+    // Check if we need to dismiss any modals first? No, solo button is in the modal.
+    // Use force:true to bypass potential overlay issues on CI
+    await soloBtn.click({ force: true });
+
+    // Wait for game to explicitly state start
+    await page.waitForFunction(() => window.gameState && window.gameState.startTime > 0, { timeout: 15000 });
+    // Wait for animation frame to complete rendering
+    await page.waitForFunction(() => window.gameState?.speed !== undefined, { timeout: 5000 });
+};
+
 test.describe('🎮 Core Gameplay', () => {
-
-    const startSoloGame = async (page, selectedCar) => {
-        if (selectedCar) {
-            await page.evaluate((car) => {
-                window.gameState.selectedCar = car;
-            }, selectedCar);
-        }
-
-        const soloBtn = page.locator('#soloModeBtn');
-        if (await soloBtn.isVisible({ timeout: 10000 })) {
-            // Use force:true to bypass potential overlay issues on CI
-            await soloBtn.click({ force: true });
-        }
-
-        await page.waitForFunction(() => !!window.gameState?.startTime, { timeout: 15000 });
-        // Wait for animation frame to complete rendering
-        await page.waitForFunction(() => window.gameState?.speed !== undefined, { timeout: 5000 });
-    };
     
     test.beforeEach(async ({ page }) => {
         await page.goto('http://localhost:3000');
@@ -43,6 +41,7 @@ test.describe('🎮 Core Gameplay', () => {
 
     test('Game initializes with correct default state', async ({ page }) => {
         await startSoloGame(page);
+
         const state = await page.evaluate(() => ({
             speed: window.gameState?.speed,
             health: window.gameState?.health,
@@ -200,9 +199,9 @@ test.describe('🏥 Health System', () => {
     test.beforeEach(async ({ page }) => {
         await page.goto('http://localhost:3000');
         await page.waitForSelector('canvas', { timeout: 20000 });
-        const soloBtn = page.locator('#soloModeBtn');
-        if (await soloBtn.isVisible()) await soloBtn.click({ force: true });
         await page.waitForTimeout(500);
+        // Use the robust start function instead of manual clicking
+        await startSoloGame(page);
     });
 
     test('Health starts at car maximum', async ({ page }) => {

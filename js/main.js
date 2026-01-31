@@ -1677,7 +1677,7 @@ function updateOtherPlayersHUD() {
 
 // Start
 setStartGameCallback(startGame);
-setUICallbacks({ triggerDamageEffect, updateHealthUI });
+setUICallbacks({ triggerDamageEffect, updateHealthUI, showGameOver });
 
 // Auto-start game if /start path is accessed
 if (autoStart) {
