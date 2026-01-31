@@ -1215,6 +1215,13 @@ createPlayerCar(starterCar.color, starterCar.type || gameState.selectedCar);
 initLevelEditor();
 
 export function startGame() {
+    // FORCE SOLO STATE - Fixes issue where persistent role prevents arrest
+    console.log('[GAME] Starting SOLO mode - enforcing Contester role');
+    gameState.isMultiplayer = false;
+    gameState.playerRole = 'contester';
+    // Ensure challenger panel is hidden
+    updateChallengerPanelVisibility();
+
     // Ensure audio is unlocked when game starts
     unlockAudio();
     
