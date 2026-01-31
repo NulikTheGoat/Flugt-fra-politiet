@@ -19,6 +19,7 @@ const directorState = {
     movingObjects: [], // Track moving objects separately
     maxSpawnedObjects: 100,
     enabled: true,
+    llmAvailable: true, // Set to false after first network failure to stop retrying
     lastPlayerZ: 0,
     spawnDistance: 3000, // Spawn far ahead on horizon (increased for better draw distance)
     cleanupDistance: 600, // Cleanup behind player
@@ -503,6 +504,7 @@ function showDirectorAnnouncement(scenario, comment, mood) {
 // Request spawn decision from LLM
 async function requestSpawnDecision() {
     if (!directorState.enabled) return;
+    if (!directorState.llmAvailable) return; // Stop retrying after network failure
     if (!playerCar) return;
     
     // Skip LLM requests when using Vite dev server (no backend API)
@@ -560,8 +562,15 @@ async function requestSpawnDecision() {
         }
     } catch (error) {
         // Silently ignore network errors (server not running, etc.)
-        // Only log unexpected errors
-        if (error.name !== 'TypeError' && !error.message?.includes('Load failed')) {
+        // TypeError with "Load failed" = fetch failed to connect
+        const isNetworkError = error.name === 'TypeError' || 
+                               error.message?.includes('Load failed') ||
+                               error.message?.includes('Failed to fetch') ||
+                               error.message?.includes('NetworkError');
+        if (isNetworkError) {
+            // Disable LLM requests after first failure to stop spamming
+            directorState.llmAvailable = false;
+        } else {
             console.error('[WorldDirector] Request failed:', error);
         }
     }
