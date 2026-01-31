@@ -117,7 +117,11 @@ export function getDiscoveredServers() {
 function getWsUrl() {
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
     const host = serverHost || window.location.hostname;
-    return `${protocol}//${host}:3001`;
+    // Use the same port as the web server (3000) or the current page port
+    // Fastify handles both HTTP and WebSocket on the same port
+    const port = (serverHost) ? '3000' : (window.location.port || '3000');
+
+    return `${protocol}//${host}:${port}`;
 }
 
 // Connect to server

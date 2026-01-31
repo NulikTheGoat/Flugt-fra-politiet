@@ -1101,20 +1101,13 @@ function updatePlayersList(players) {
         playersList.appendChild(div);
     });
     
-    // Update start button state if host is challenger
+    // Update start button state if host is challenger - Visual helper only
     const startBtn = document.getElementById('startMultiplayerBtn');
     if (startBtn && gameState.isHost && gameState.playerRole === 'challenger') {
-        const hasContester = players.some(p => p.role !== 'challenger' && !p.isHost) || 
-                             Array.from(gameState.otherPlayers?.values() || []).some(p => p.role !== 'challenger');
-        if (!hasContester) {
-            startBtn.textContent = '⏳ Venter på Contester...';
-            startBtn.style.opacity = '0.5';
-            startBtn.style.cursor = 'not-allowed';
-        } else {
-            startBtn.textContent = '🚀 START SPIL';
-            startBtn.style.opacity = '1';
-            startBtn.style.cursor = 'pointer';
-        }
+        // We now allow solo start for testing/exploration, so just ensure it resets to Start
+        startBtn.textContent = '🚀 START SPIL (SOLO/MULTI)';
+        startBtn.style.opacity = '1';
+        startBtn.style.cursor = 'pointer';
     }
 }
 
