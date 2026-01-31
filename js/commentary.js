@@ -148,7 +148,7 @@ function processMessageQueue() {
     }
 }
 
-function appendChatMessage({ source, text, variant = 'default' }) {
+export function appendChatMessage({ source, text, variant = 'default' }) {
     if (!text) return;
     
     // Add to queue instead of displaying immediately
@@ -661,8 +661,23 @@ function buildEventSummary() {
     return `${summary}\n${contextInfo}\n\nGiv en kort, spændende kommentar på dansk om hvad der lige skete!`;
 }
 
+// LLM availability state - stops retrying after failures
+let llmAvailable = true;
+let llmFailureCount = 0;
+const MAX_LLM_FAILURES = 3;
+
 // Helper to make LLM requests
 async function callLLM(systemPrompt, eventSummary) {
+    // Skip if LLM is disabled due to repeated failures
+    if (!llmAvailable) {
+        return null;
+    }
+    
+    // Skip LLM requests when using Vite dev server (no backend API)
+    if (window.location.port === '5173' || window.location.port === '5174') {
+        return null;
+    }
+    
     try {
         const response = await fetch('/api/commentary', {
             method: 'POST',
@@ -671,11 +686,32 @@ async function callLLM(systemPrompt, eventSummary) {
         });
         
         if (response.ok) {
+            // Reset failure count on success
+            llmFailureCount = 0;
             const data = await response.json();
             return data.commentary || null;
         }
+        
+        // Handle rate limiting (429) and server errors
+        if (response.status === 429) {
+            console.warn('[Commentary] Rate limited (429) - disabling LLM');
+            llmAvailable = false;
+            return null;
+        }
+        
+        // Track other failures
+        llmFailureCount++;
+        if (llmFailureCount >= MAX_LLM_FAILURES) {
+            console.warn(`[Commentary] ${MAX_LLM_FAILURES} failures - disabling LLM`);
+            llmAvailable = false;
+        }
     } catch (error) {
-        console.error('LLM Call Error:', error);
+        // Network error - server likely not running
+        llmFailureCount++;
+        if (llmFailureCount >= MAX_LLM_FAILURES) {
+            console.warn('[Commentary] Network failures - disabling LLM');
+            llmAvailable = false;
+        }
     }
     return null;
 }
@@ -873,6 +909,10 @@ export function resetCommentary() {
     commentaryState.criticalHealthWarning = false;
     commentaryState.lastGPSMessageTime = 0;
     commentaryState.lastMovementTime = Date.now();
+    
+    // Re-enable LLM on game reset (give it another chance)
+    llmAvailable = true;
+    llmFailureCount = 0;
     
     // Clear any existing bubbles
     hideCommentaryBubble();
